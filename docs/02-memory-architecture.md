@@ -123,7 +123,7 @@ DMN Reactive 每次看到的内容结构：
 
 `implicit` 记忆写入时必须打高质量 tag（风险类别、涉及工具、关联脑区），这是检索精度的保证，也是控制匹配面的手段。
 
-**冷启动行为**：系统初始阶段 `implicit` 记忆库为空，分级检索四级均无命中。这时 Amygdala 仅运行静态规则层（正则、金额阈值、关键词黑名单）。这是**预期行为，不是 bug**——静态规则是完整的第一道防线，动态 `implicit` 记忆是运行积累后的增强层。随着系统运行，Amygdala 会逐步写入观察到的风险模式，`implicit` 层的覆盖面自然增长。
+**冷启动行为**：系统初始阶段 `implicit` 记忆库为空，分级检索四级均无命中。这时 Amygdala 仅运行静态规则层（正则、金额阈值、关键词黑名单）。这是**预期行为，不是 bug**——静态规则是完整的第一道防线，动态 `implicit` 记忆是运行积累后的增强层。随着系统运行，Amygdala 会逐步写入观察到的风险模式，`implicit` 层的覆盖面自然增长。此退化仅影响 medium 和 high 级工具；low 级工具的 Amygdala 行为始终只使用静态规则，不受 `implicit` 记忆库状态影响。
 
 ### 场景 D：DMN Consolidation（记忆整理）
 
@@ -251,8 +251,10 @@ interface MemoryService {
   // 场景 C：Amygdala implicit 记忆分级检索
   getByTags(tags: string[], timeRange?: TimeRange, limit?: number): Promise<MemoryEntry[]>
 
-  // 历史版本查询（不走通用检索路径）
-  getHistory(supersededId: string): Promise<MemoryEntry[]>
+  // 反向查询：给定一条旧记录的 ID，返回所有取代它的新记录
+  // 即查询 supersedes_ids 数组中包含 oldRecordId 的记录（反向索引查询，非读取字段）
+  // 注意方向：调用方传入旧记录 ID，返回的是新记录；反方向（给定新记录查其取代了什么）直接读取 entry.supersedes_ids 即可
+  getSupersededBy(oldRecordId: string): Promise<MemoryEntry[]>
 
   markAccessed(ids: string[]): Promise<void>
   forget(id: string): Promise<void>
