@@ -1,6 +1,6 @@
 # AIMA 记忆架构
 
-> **版本**: 2.0
+> **版本**: 2.1
 > **状态**: 当前权威文档
 > **关联**: `01-agent-architecture.md` 第九节为概览，本文为详细设计
 
@@ -26,9 +26,13 @@
 
 每个场景的最优实现方式不同，不存在统一的"最好"检索策略。
 
-### 对话历史只追加、不重写
+### 持久化历史只追加、不重写
 
-这是保护 LLM prompt cache hit rate 的核心原则。压缩/重写对话历史会改变 context prefix，导致缓存失效，全量重新计费。AIMA 通过 Context Assembly 每轮重新组装 Block 3/4 来注入更新后的记忆摘要，对话历史本身始终是 append-only。
+**持久化的对话历史记录不允许重写或删除**。这是保护 LLM prompt cache hit rate 的核心原则——重写持久化历史会改变 context prefix，导致缓存失效，全量重新计费。
+
+这个原则不禁止 in-context 表示的裁剪：单次请求前可以对大型工具结果做内存中的软裁（保留头尾），这类操作不修改持久化记录，不影响 cache。
+
+**超长 Session 的处理**：当 Session 极长（跨天、跨任务），不在同一 Session 内做压缩，而是写 `session_anchor` 后开启新 Session。新 Session 继承锚点作为起始上下文，旧 Session 的 cache prefix 自然终止，无需重写。
 
 ---
 
@@ -84,10 +88,6 @@
 ### 场景 B：DMN Reactive（事件流读取）
 
 **目标**：获取当前 Session 的事件历史，判断是否有错误或需要预测的行为。
-
-**设计约束：不压缩对话历史**
-
-压缩/重写对话历史会使 LLM 的 prompt cache 失效，每次压缩等于全量重新计费。DMN Reactive 不做任何对话历史的重写或压缩。
 
 **Session 锚点模式**：
 
@@ -180,6 +180,7 @@ DMN Reactive 每次看到的内容结构：
   pinned:           boolean（true = 永不参与衰减/删除决策）
   source:           "brain" | "event_bus" | "dmn_consolidation"
   tags:             string[]（必填于 implicit；其他类型可选）
+  supersedes_id:    UUID | null（写入时指定被替换的旧记录 ID）
   t_valid:          timestamp | null（这条事实在现实中开始成立的时间）
   t_invalid:        timestamp | null（这条事实在现实中失效的时间，null = 仍然有效）
   expires_at:       timestamp | null（系统层面的过期时间）
@@ -189,7 +190,11 @@ DMN Reactive 每次看到的内容结构：
 }
 ```
 
-`t_valid` / `t_invalid` 区别于 `created_at` / `expires_at`：前者记录**事实在现实中的有效期**，后者记录**系统中的存储生命周期**。例如"客户 A 的联系人是张三"在 2025-01-01 更新为李四，旧记录 `t_invalid = 2025-01-01`，系统中保留历史，不删除。
+**双时态字段说明**：`t_valid` / `t_invalid` 记录**事实在现实中的有效期**；`created_at` / `expires_at` 记录**系统中的存储生命周期**。两组字段独立，不互相推导。
+
+**事实更新的写入方式**：当某条 `semantic` 事实发生变化（如联系人从张三改为李四），调用方在写入新记录时提供 `supersedes_id` 指向旧记录。MemoryService 在同一事务内执行：INSERT 新记录 + 将旧记录的 `t_invalid` 设为当前时间。`t_invalid` 只能由 MemoryService 通过 `supersedes_id` 机制设置，调用方不得直接修改。
+
+Context Assembly 检索默认只返回 `t_invalid IS NULL` 的记录（当前有效事实）。历史版本通过专用的 `getHistory()` 接口访问，不出现在通用检索路径上。
 
 `episodic` 额外字段：
 ```
@@ -225,16 +230,34 @@ Cortex 生成 → first-party Skill → 重复使用 → DMN Consolidation 固�
 
 ```typescript
 interface MemoryService {
+  // 通用写入；supersedes_id 非空时在事务内同时失效旧记录
   write(entry: MemoryEntry): Promise<void>
+
+  // 场景 A：Context Assembly 语义检索（默认只返回 t_invalid IS NULL）
   search(query: string, filters: MemoryFilters): Promise<MemoryEntry[]>
-  getRecent(type: MemoryType, n: number, since?: Date): Promise<MemoryEntry[]>
+
+  // 场景 B：DMN Reactive 专用——返回最近 session_anchor + 其后的增量 event
+  getSessionContext(sessionId: string): Promise<{
+    anchor: MemoryEntry | null
+    events: MemoryEntry[]
+  }>
+
+  // 场景 C：Amygdala implicit 记忆分级检索
   getByTags(tags: string[], timeRange?: TimeRange, limit?: number): Promise<MemoryEntry[]>
+
+  // 历史版本查询（不走通用检索路径）
+  getHistory(supersededId: string): Promise<MemoryEntry[]>
+
   markAccessed(ids: string[]): Promise<void>
   forget(id: string): Promise<void>
 }
 ```
 
-原型阶段后端：PostgreSQL + 全文搜索。演进路径：加 pgvector 支持向量检索，必要时迁移至独立向量库（Qdrant）或图数据库（Graphiti，支持实体关系 + 双时态查询）。接口不变，后端替换对上层透明。
+每个方法对应一个规定的访问场景，调用方不应跨场景混用接口。
+
+原型阶段后端：PostgreSQL + 全文搜索。演进路径：加 pgvector 支持向量检索，必要时迁移至 Qdrant 或 Graphiti（支持实体关系图 + 双时态查询）。接口不变，后端替换对上层透明。
+
+**失败处理**：记忆读写失败不中断认知主流程——记忆是辅助系统，不在控制流关键路径上。写入失败由调用方决定是否重试，不应抛出未处理异常。具体的容错策略属于实现层决策，不在本文范围内。
 
 ---
 
