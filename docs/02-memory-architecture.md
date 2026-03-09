@@ -81,6 +81,8 @@
 - 返回 top-N 条，渲染为 Markdown 段落
 - Query = 原始消息/任务描述（不做实体提取）
 
+**冷启动行为**：系统初始阶段记忆库为空，Block 4 返回空字符串或省略该 Block。这是正常路径——脑区在没有历史记忆的情况下直接基于系统提示词（Block 1/2）和当前上下文（Block 3）运行。随着使用积累，Block 4 内容自然增长，无需特殊处理。
+
 **局限**：关键词匹配无法处理语义相近但词汇不同的情况。
 
 **演进路径**：全文搜索 + 向量相似度搜索双路并行，RRF 融合重排。向量检索是独立工程项目（需要选型嵌入模型、向量索引、融合权重），不是"加一列"能解决的。
@@ -121,6 +123,8 @@ DMN Reactive 每次看到的内容结构：
 
 `implicit` 记忆写入时必须打高质量 tag（风险类别、涉及工具、关联脑区），这是检索精度的保证，也是控制匹配面的手段。
 
+**冷启动行为**：系统初始阶段 `implicit` 记忆库为空，分级检索四级均无命中。这时 Amygdala 仅运行静态规则层（正则、金额阈值、关键词黑名单）。这是**预期行为，不是 bug**——静态规则是完整的第一道防线，动态 `implicit` 记忆是运行积累后的增强层。随着系统运行，Amygdala 会逐步写入观察到的风险模式，`implicit` 层的覆盖面自然增长。
+
 ### 场景 D：DMN Consolidation（记忆整理）
 
 **目标**：批量处理历史记忆，调整权重，清理过期，固化 Skill。
@@ -130,7 +134,9 @@ DMN Reactive 每次看到的内容结构：
 - `last_accessed_at` 超过阈值且 `pinned = false` → 候选删除（不基于 importance 浮点数）
 - `base_importance` 调整 → DMN 基于使用模式显式设置，不做线性自动衰减
 - `procedural` 记忆的使用频率 → 触发 Skill 固化判断
-- 定期对 `implicit` 记忆做语义相似度聚类，合并高度重叠的模式条目
+- 定期对 `implicit` 记忆做语义相似度聚类，合并高度重叠的模式条目（见下方聚类策略）
+
+**Consolidation 聚类策略**：原型阶段采用 LLM 驱动的小批量聚类——每次取最近 20-50 条 `implicit` 记忆，请 LLM 判断哪些条目语义高度重叠并建议合并。合并后的新记录继承最高 `base_importance`，旧记录通过 `supersedes_ids` 软删除。此策略无需向量索引，代价是每次 Consolidation 消耗一次 LLM 调用。演进路径：引入嵌入模型后，改为向量聚类（DBSCAN 或 k-means），LLM 仅做最终合并摘要生成，不参与相似度计算。
 
 ---
 
@@ -180,7 +186,7 @@ DMN Reactive 每次看到的内容结构：
   pinned:           boolean（true = 永不参与衰减/删除决策）
   source:           "brain" | "event_bus" | "dmn_consolidation"
   tags:             string[]（必填于 implicit；其他类型可选）
-  supersedes_id:    UUID | null（写入时指定被替换的旧记录 ID）
+  supersedes_ids:   UUID[]（写入时指定被替换的旧记录 ID，支持 1:N 和 N:1 场景）
   t_valid:          timestamp | null（这条事实在现实中开始成立的时间）
   t_invalid:        timestamp | null（这条事实在现实中失效的时间，null = 仍然有效）
   expires_at:       timestamp | null（系统层面的过期时间）

@@ -198,6 +198,9 @@ async function runBrainLoop(params: BrainRunParams, workspace: CognitiveWorkspac
         }],
 
         // Session 摘要锚点：压缩前写入 episodic 记忆
+        // ⚠️ 注意：若 summarizeTranscript() 内部调用 LLM，需确保在 SDK 压缩流程
+        //    触发前完成，否则可能超时或死锁。推荐使用规则型摘要（提取关键 Slot /
+        //    事件标题），避免在 PreCompact hook 内嵌套 LLM 调用。
         PreCompact: [{
           hooks: [async ({ transcript }) => {
             await memoryService.write({

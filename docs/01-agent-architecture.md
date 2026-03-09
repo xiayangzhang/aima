@@ -109,7 +109,7 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 - 推理完成后，在 Cortex Slot 的 `intent` 字段标记结果归属：
   - `"communicate"` → Limbic 激活，组织对外表达
   - `"execute"` → Brainstem 激活，执行具体操作
-  - `"both"` → 两者均激活
+  - `"both"` → Limbic **先行**（试探性措辞，不说"已完成"），Brainstem 随后执行，DMN Reactive 检测执行结果后触发 Limbic 发出最终通知（成功确认或失败补偿）
 
 ### Brainstem — Executor + System Interface
 - **系统输入**：监听系统事件（Webhook、Dataverse 变更、定时触发）
@@ -162,6 +162,12 @@ AIMA 只保证事件的结构化发射，不关心谁在消费。
 
 ## 四、认知工作空间
 
+### 持久化模型
+
+Cognitive Workspace **持久化到 PostgreSQL**（与 Memory 同库，独立表）。Thread/Slot 状态是数据库记录，不是纯内存结构。
+
+Thread Runner 崩溃恢复流程：重启后加载所有 `state != complete` 的 Thread → 对每个 Thread 找到最后一个 `status = done` 的 Slot → 重新激活下一个应该激活的脑区 → 继续执行。这保证了 crash 不会导致 in-flight 工作丢失。
+
 ### 模型：Thread + Slot
 
 工作空间是 AIMA 实例内部的共享状态，支持多任务并行。
@@ -189,7 +195,7 @@ Workspace
 脑区之间**不直接互相调用**。通信通过工作空间 Slot + Thread Runner 完成：
 
 1. 当前脑区完成处理，将结构化结果写入自己的 Slot，Loop 终止并返回
-2. **Thread Runner**（基础设施层，由 pi-agent-core 承载）读取 Slot 的状态字段（`intent`、`needs_analysis` 等）
+2. **Thread Runner**（AIMA 框架层组件，与底层适配器无关）读取 Slot 的状态字段（`intent`、`needs_analysis` 等）
 3. Thread Runner 决定下一步激活哪个脑区，启动其 Loop
 
 各脑区对彼此的存在保持不知情——Cortex 不知道 Limbic，它只写 Slot。路由逻辑全部在 Thread Runner，与业务无关，不需要修改脑区代码。
@@ -239,7 +245,8 @@ Thread 数量上限是配置项。
 - 子实例有完整五脑结构
 - 与父实例共享同一记忆池（通过 `parent_session_id` 标签隔离 `working` 记忆）
 - 子实例完成后，结果写回父实例的工作空间，子实例销毁
-- 子实例是临时计算分支，Session 结束自动销毁
+
+**子实例生命周期约束**：创建时必须声明 `timeout_ms`（无默认值，强制显式）。父实例持有 cancellation token，超时后调用 abort。子实例的 working Slot 标记为 `timed_out`，父 DMN 决定重试或上报。没有 timeout 的子实例是资源泄漏源，不允许创建。
 
 ---
 
@@ -355,12 +362,12 @@ DMN 运行在两个截然不同的模式下：
 | `working` | 当前 Session 临时状态 | 所有脑区 | 所有脑区（Session 结束清除） |
 | `implicit` | 风险模式、危险行为历史 | Amygdala / DMN | Amygdala |
 
-Importance 初始值：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6、`implicit` = 0.7。
+初始 `base_importance`：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6、`implicit` = 0.7。检索排序使用 `base_importance + recency_boost`（基于 `last_accessed_at` 动态计算）。详见 `02-memory-architecture.md`。
 
 ### 检索
 
-当前：全文搜索（ILIKE），按 importance DESC + created_at DESC 排序。
-演进方向：向量嵌入 + 语义相似度，两者并存后融合重排。
+当前：全文搜索（ILIKE），按 `base_importance DESC, last_accessed_at DESC` 排序。
+演进方向：向量嵌入 + 语义相似度，两者并存后 RRF 融合重排。
 
 ### Episodic 与审计的分离
 
