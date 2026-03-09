@@ -37,6 +37,17 @@ AIMA 是一个**中间层行为框架**，位于 LLM 基础设施和具体应用
 
 **上层应用决定的是领域问题**：用这套认知框架去做什么、服务什么业务场景、承担什么角色——AIMA 不内置任何领域知识，这些全部通过 Skill 和配置由上层注入。
 
+### 底层适配器
+
+AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Event Bus）与底层 agent runtime 无关。官方提供两个适配器：
+
+| 适配器 | 特点 | 适用场景 |
+|---|---|---|
+| **pi-agent-core** | 完全 provider 无关，支持 20+ LLM provider，完整控制 agent loop | 需要 GPT-4 / Gemini / 本地模型；需要精细控制每一步 |
+| **Claude Agent SDK** | 内置 session 管理、MCP native、PreCompact hook、未来 Agent Teams | 快速上手；Claude 生态；开源用户的最低阻力入门路径 |
+
+两个适配器暴露相同接口给 Thread Runner，框架层代码无需感知底层选型。详见 `03-implementation-guide.md`。
+
 ---
 
 ## 一、核心设计哲学

@@ -30,5 +30,5 @@ Occam's Razor: minimum complexity for the current problem.
 
 ## Open Source Guidelines
 - Public API surface must be stable and well-documented before tagging releases
-- No vendor-specific dependencies in core (LLM providers are pluggable)
+- Core framework is provider-agnostic; official adapters are provided for pi-agent-core and Claude Agent SDK
 - Breaking changes require major version bump
