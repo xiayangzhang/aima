@@ -240,7 +240,7 @@ const session = await createAIMASession({ instance, sessionKey, tools, toolIndex
 
 ---
 
-## 九、设计哲学（一读必知）
+## 九、核心设计原则
 
 **分工使能协同**：五脑的价值不在单个脑区，而在分工产生的互相使能。Limbic 能大胆忽略无关消息，是因为有 Brainstem 托底执行、有 Cortex 处理复杂判断；DMN 的预测能精准送达正确的脑区，是因为每个脑区的职责边界清晰；Amygdala 能保持轻量，是因为有 DMN 在后台持续学习风险模式。单独拆出任何一个脑区，它的能力都会退化。
 
