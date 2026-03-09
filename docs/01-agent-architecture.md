@@ -86,7 +86,9 @@ AIMA 是一个**中间层行为框架**，位于 LLM 基础设施和具体应用
 | `RESPOND(content)` | 直接回复，简单对话不经过 Cortex |
 | `ROUTE(needs_analysis)` | 写入工作空间，等待 Cortex 处理后再响应 |
 | `NO_REPLY` | 接收但不响应——群聊场景、信息积累中、不需要当轮回复时 |
-| `DEFER` | 确认收到，等待更多输入再决策 |
+| `DEFER` | 确认收到，等待更多输入再决策（必须携带超时时长，由 Thread Runner 计时） |
+
+`DEFER` 超时降级行为按渠道配置：群聊 → `NO_REPLY`（上下文已过去）；DM → `RESPOND`（说明需要更多信息）；异步频道 → `RESPOND`（书面确认）。不允许无限等待。
 
 **群聊场景**：Limbic 不需要对每条提到自己的消息都响应。Limbic 积累同一对话线程的上下文，综合判断后决定是否介入，以及以何种方式介入。频繁的 `NO_REPLY` 比低质量的即时回复更像真实的人类协作者行为。
 
@@ -180,6 +182,8 @@ Workspace
 3. Thread Runner 决定下一步激活哪个脑区，启动其 Loop
 
 各脑区对彼此的存在保持不知情——Cortex 不知道 Limbic，它只写 Slot。路由逻辑全部在 Thread Runner，与业务无关，不需要修改脑区代码。
+
+Thread Runner 自身需要处理若干边界情况：`intent=both` 时两个脑区的协调顺序、Brainstem 执行失败后 Limbic 已发消息的补偿、Thread 被中断时正在运行的 Loop 的 cooperative cancellation。这些属于实现层细节，实现阶段应为 Thread Runner 单独编写规范文档。
 
 **激活触发条件**（由 Thread Runner 检测）：
 
@@ -289,7 +293,7 @@ DMN 运行在两个截然不同的模式下：
 2. **记忆整理**：清理过期 `episodic`，调整 importance 权重，生成 Memory Bulletin
 3. **跨 Session 跟进**：检查上一 Session 未完成的 Thread
 
-**资源消耗**：较重，批量处理，低优先级，不与 Reactive 模式竞争资源
+**资源消耗**：较重，逐行处理（非大批量事务），低优先级，应调度在低负载时段。PostgreSQL MVCC 保证 Consolidation 写操作不阻塞 Reactive 的读路径；I/O 压力层面的竞争通过调度时段隔离而非锁机制解决
 
 ### implicit 记忆的写入权限
 
