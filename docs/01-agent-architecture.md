@@ -448,6 +448,18 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 
 Block 4 使用原始消息/任务描述作为检索 query，无结果时省略。
 
+### 时间感知
+
+脑区的时间感知（当前时间、时区、星期几）通过 **Block 3** 注入，不得出现在 Block 1/2：
+
+```
+## Current Context
+- local_time: 2026-03-10T14:23:45+11:00
+- timezone: Australia/Sydney
+```
+
+Block 1/2 内禁止出现任何时间戳或日期——哪怕是 `last_updated` 这类字段也会导致 cache 永远 miss。时区配置属于应用层（如 Alex）的配置项，AIMA 框架不内置时区假设。时间在单次脑区激活期间保持"冻结"：Cortex 14:00 被激活、15:00 完成推理，它看到的始终是激活时注入的 14:00——这是正确行为，推理过程中时间不应跳变。
+
 ### Context Assembly 的缓存效率
 
 Block 1（身份）和 Block 2（Skill Index）内容稳定，构成 LLM prompt cache 的固定前缀。同一 Session 内这两块几乎零成本（cache hit）。每轮的真实开销只在 Block 3/4：工作空间状态读取（内存操作）和记忆检索（数据库查询），体量远小于全量重组。
