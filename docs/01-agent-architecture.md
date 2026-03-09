@@ -1,7 +1,7 @@
 # AIMA 架构设计
 
 > **AIMA** = Artificial Intelligence: A Minded Architecture — 认知个体的核心框架
-> **版本**: 3.2
+> **版本**: 3.3
 > **记忆架构详见**: `02-memory-architecture.md`
 > **状态**: 当前权威文档
 > **上层应用**: secondfirst/employee（虚拟员工产品）基于 AIMA 构建
@@ -78,6 +78,17 @@ AIMA 是一个**中间层行为框架**，位于 LLM 基础设施和具体应用
 - **直接处理**简单对话（问候、确认、记忆中能直接回答的问题），不经过 Cortex
 - 维护关系上下文、语气调节、沟通节奏
 - 用 LLM 判断复杂输入是否需要 Cortex 参与，或是否需要 Brainstem 执行操作
+
+**Limbic 输出模式**（每次激活只产生一种输出）：
+
+| 输出 | 含义 |
+|---|---|
+| `RESPOND(content)` | 直接回复，简单对话不经过 Cortex |
+| `ROUTE(needs_analysis)` | 写入工作空间，等待 Cortex 处理后再响应 |
+| `NO_REPLY` | 接收但不响应——群聊场景、信息积累中、不需要当轮回复时 |
+| `DEFER` | 确认收到，等待更多输入再决策 |
+
+**群聊场景**：Limbic 不需要对每条提到自己的消息都响应。Limbic 积累同一对话线程的上下文，综合判断后决定是否介入，以及以何种方式介入。频繁的 `NO_REPLY` 比低质量的即时回复更像真实的人类协作者行为。
 
 ### Cortex — Planner + Reasoner
 - 纯内部推理引擎，不直接与人类或系统交互
@@ -160,15 +171,23 @@ Workspace
     └── DMN 纠错 / 预测通知
 ```
 
-### 激活机制
+### 脑区间通信：Thread Runner 路由
 
-每个脑区有一组**激活条件**，当工作空间出现满足条件的状态时，脑区自行介入：
+脑区之间**不直接互相调用**。通信通过工作空间 Slot + Thread Runner 完成：
 
-- **Limbic**：有新的人类输入，或 Cortex Slot 的 `intent` 包含 `"communicate"`
-- **Cortex**：Limbic 或 Brainstem Slot 写入了 `"needs_analysis"` 标记，且 Cortex Slot 为空
-- **Brainstem**：Cortex Slot 的 `intent` 包含 `"execute"`，或 Limbic Slot 包含直接操作指令，或收到新系统事件
+1. 当前脑区完成处理，将结构化结果写入自己的 Slot，Loop 终止并返回
+2. **Thread Runner**（基础设施层，由 pi-agent-core 承载）读取 Slot 的状态字段（`intent`、`needs_analysis` 等）
+3. Thread Runner 决定下一步激活哪个脑区，启动其 Loop
 
-各脑区读取自己关心的 Slot，处理后写回结果，触发下一个脑区激活。
+各脑区对彼此的存在保持不知情——Cortex 不知道 Limbic，它只写 Slot。路由逻辑全部在 Thread Runner，与业务无关，不需要修改脑区代码。
+
+**激活触发条件**（由 Thread Runner 检测）：
+
+| 脑区 | 激活条件 |
+|---|---|
+| **Limbic** | 有新的人类输入；或 Cortex Slot 的 `intent` 包含 `"communicate"` |
+| **Cortex** | 任意 Slot 写入了 `"needs_analysis"` 标记，且当前 Thread 的 Cortex Slot 为空 |
+| **Brainstem** | Cortex Slot 的 `intent` 包含 `"execute"`；或 Limbic Slot 包含直接操作指令；或新系统事件到达 |
 
 ### 并发模型：Thread 间并行，Thread 内顺序
 
@@ -199,14 +218,13 @@ AIMA 支持两个层级的并行（并发模型详见第四节）：
 
 Thread 数量上限是配置项。
 
-### Level 2：Instance 级并行（原 Level 3）
+### Level 2：Instance 级并行
 
-### Level 3：Instance 级并行
 当任务真正独立、需要深度并行时，可以临时生成**子 AIMA 实例**：
 - 子实例有完整五脑结构
 - 与父实例共享同一记忆池（通过 `parent_session_id` 标签隔离 `working` 记忆）
 - 子实例完成后，结果写回父实例的工作空间，子实例销毁
-- 义体是永久扩展，子实例是临时计算分支，两者不同
+- 子实例是临时计算分支，Session 结束自动销毁
 
 ---
 
@@ -219,6 +237,18 @@ Thread 数量上限是配置项。
 - **Haiku 降级**：规则无法覆盖时快速评估
 - 违规时向工作空间写入中断 Signal，优先级最高
 - 发现新风险模式时，写入 `implicit` 记忆（供未来检测）
+
+### 工具风险分级
+
+工具注册时声明 `risk_level`，决定 Amygdala 的介入程度：
+
+| 风险等级 | 典型工具 | Amygdala 行为 |
+|---|---|---|
+| `low` | 文件读、记忆读、状态查询 | 仅静态规则检查（注册时预计算，零运行时成本） |
+| `medium` | 写操作、发送通知 | 静态规则 + `implicit` 记忆匹配 |
+| `high` | 外部 API 调用、金融操作、删除操作 | 完整 Amygdala 评估（含 Haiku 降级） |
+
+大多数工具是 `low`，Amygdala 的 LLM 成本只在 `high` 级别工具上发生。
 
 ### 与 DMN 的分工
 
@@ -248,7 +278,7 @@ DMN 运行在两个截然不同的模式下：
 2. **回溯纠错**：读取最新 Action Log，判断刚刚发生的行为是否有误；如需纠错，向工作空间写入中断 Signal
 3. **前瞻预测**：基于近期 Action Log 预测接下来需要的行为，无预测则跳过
 
-**资源消耗**：轻量，每次只读最新增量（历史已缓存，cache hit rate 随 Session 增长趋近 100%）
+**资源消耗**：轻量，每次只读最新增量（`created_at > last_anchor`），历史已在 LLM context 中
 
 ### 模式二：Consolidation（心跳触发）
 
@@ -317,9 +347,11 @@ Importance 初始值：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6�
 当前：全文搜索（ILIKE），按 importance DESC + created_at DESC 排序。
 演进方向：向量嵌入 + 语义相似度，两者并存后融合重排。
 
-### Episodic = Action Log = 审计原始数据
+### Episodic 与审计的分离
 
-`INFO` 级及以上 Event Bus 事件由 DMN 写入 `episodic`。外部审计系统直接订阅 Event Bus（`COMPLIANCE` 级），不依赖数据库记录。
+`episodic` 是认知衍生物——DMN 从 Event Bus 消费事件后写入的压缩表示，可以自由衰减和整理。外部审计系统直接订阅 Event Bus（`COMPLIANCE` 级），保证不可变的完整记录，不依赖 `episodic` 数据库记录。
+
+**五种记忆类型的划分依据是访问模式，不是内容类型**：`episodic` 时序读取、`implicit` 每次工具执行前查、`procedural` Context Assembly 时加载、`working` 不持久化——四种不同的读写频率和检索策略，合并进同一接口会互相干扰。详见 `02-memory-architecture.md`。
 
 ### 涌现式文档结构
 
@@ -338,24 +370,20 @@ Importance 初始值：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6�
 
 Block 4 使用原始消息/任务描述作为检索 query，无结果时省略。
 
----
+### Context Assembly 的缓存效率
 
-## 十一、义体（Augmentations）
+Block 1（身份）和 Block 2（Skill Index）内容稳定，构成 LLM prompt cache 的固定前缀。同一 Session 内这两块几乎零成本（cache hit）。每轮的真实开销只在 Block 3/4：工作空间状态读取（内存操作）和记忆检索（数据库查询），体量远小于全量重组。
 
-五个脑区是固定核心。按需加装**义体**——额外专职脑区，扩展能力边界但不改变核心架构。
-
-- 有明确激活条件，只在特定场景介入
-- 通过认知工作空间交互，也发射 Event Bus 事件
-- 义体是永久扩展；子实例是临时计算分支——两者不同
+这是持久化历史不允许重写的另一个原因：重写会使 Block 1/2 之后的 cache 前缀失效，导致全量重新计费。
 
 ---
 
-## 十二、Runtime 边界
+## 十一、Runtime 边界
 
 ```
 ┌─────────────────────────────────── AIMA 实例 ───────────────┐
 │                                                               │
-│  ┌─────────┐  ┌─────────┐  ┌───────────┐  [义体（可选）]    │
+│  ┌─────────┐  ┌─────────┐  ┌───────────┐                     │
 │  │ Limbic  │  │ Cortex  │  │ Brainstem │                     │
 │  │ LLM路由 │  │ intent  │  │ 规则路由  │                     │
 │  └────┬────┘  └────┬────┘  └─────┬─────┘                    │
