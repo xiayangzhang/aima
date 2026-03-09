@@ -1,7 +1,7 @@
 # AIMA 架构设计
 
 > **AIMA** = Artificial Intelligence: A Minded Architecture — 认知个体的核心框架
-> **版本**: 3.0
+> **版本**: 3.1
 > **状态**: 当前权威文档
 > **上层应用**: secondfirst/employee（虚拟员工产品）基于 AIMA 构建
 
@@ -35,34 +35,40 @@
 |---|---|---|---|
 | **Limbic** | 古哺乳脑 / 边缘系统 | 双向人类接口、社交、关系、对外人格 | Sonnet |
 | **Cortex** | 新哺乳脑 / 新皮层 | 推理、规划、抽象、复杂判断 | Opus |
-| **Brainstem** | 爬行脑 / 脑干 | 双向系统接口、执行、指令翻译 | Haiku |
+| **Brainstem** | 爬行脑 / 脑干 | 双向系统接口、规则路由、执行翻译 | Haiku |
 | **Amygdala** | 杏仁核 | 执行前风险中断 | 规则优先 / Haiku 降级 |
 | **DMN** | 默认模式网络 | 内省、纠错、预测、记忆管理 | Haiku |
 
 ### Limbic（古哺乳脑）
 - 所有来自人类协作者的输入首先进入 Limbic；所有发向人类的输出由 Limbic 发出
 - 维护关系上下文、语气调节、沟通节奏
-- 判断当前输入是否需要 Cortex 参与，或直接调用 Brainstem 完成简单操作
+- 用 LLM 判断当前输入是否需要 Cortex 参与，或直接路由 Brainstem 完成简单操作
 
 ### Cortex（新哺乳脑）
 - 纯内部推理引擎，不直接与人类或系统交互
 - 负责复杂任务的分解、规划、判断和研究
-- 推理结果写入工作空间，由 Limbic 或 Brainstem 取用
+- 推理完成后，在 Cortex Slot 的 `intent` 字段标记结果归属：
+  - `"communicate"` → Limbic 激活，组织对外表达
+  - `"execute"` → Brainstem 激活，执行具体操作
+  - `"both"` → 两者均激活
 
 ### Brainstem（爬行脑）
 - **系统输入**：监听系统事件（Webhook、Dataverse 变更、定时触发）
 - **系统输出**：将抽象指令翻译为具体操作参数并执行（API 调用、CRUD、文件操作）
-- 核心能力是**翻译**——将高层意图转化为精确的执行参数
+- **规则路由**（非 LLM）：收到系统事件后，用配置化规则判断处理方式：
+  - 已知事件类型 → Brainstem 直接处理
+  - 复杂 / 未知事件 → 写入工作空间并标记 `"needs_analysis"` → Cortex 激活
+- 规则路由保持确定性和低延迟，与 Limbic 的 LLM 判断形成对称但不对等的设计
 
 ### 两个接口原则
 
 ```
-人类协作者 ←→ Limbic ←→ [认知工作空间] ←→ Cortex
-                               ↕
-系统 / 平台  ←→ Brainstem ←──────────────────┘
+人类协作者 ←→ Limbic（LLM 判断路由）←→ [认知工作空间] ←→ Cortex
+                                                ↕
+系统 / 平台  ←→ Brainstem（规则路由）←─────────────────────┘
 ```
 
-> **待讨论**：当系统 Hook 触发（无人类发起）时，Brainstem 收到事件后的激活路径
+Limbic 用 LLM 判断社交情境，Brainstem 用规则处理系统事件——两者都做路由决策，但方式不同，因为各自面对的不确定性类型不同。
 
 ---
 
@@ -87,9 +93,9 @@ AIMA 实例不实现 Audit 逻辑。Audit 是外部关注点。取而代之的�
 
 ### 外部订阅（由集成方实现）
 
-- Audit 系统：订阅 `COMPLIANCE` + `ALERT` → 写入 WORM
-- 可观测性系统：订阅 `INFO` → OTel Span
-- HR Alex：订阅 `ALERT`
+- Audit 系统：订阅 `COMPLIANCE` + `ALERT`
+- 可观测性系统：订阅 `INFO`
+- 其他 AIMA 实例：订阅 `ALERT`，实现跨实例协调
 
 AIMA 只保证事件的结构化发射，不关心谁在消费。
 
@@ -104,34 +110,34 @@ AIMA 只保证事件的结构化发射，不关心谁在消费。
 ```
 Workspace
 ├── session_id
-├── threads[]              // 并行任务线程
+├── threads[]
 │   ├── thread_id
-│   ├── trigger            // 触发本线程的事件（人类输入 / 系统事件 / DMN 通知）
-│   ├── priority           // 用于脑区在多 Thread 时决定处理顺序
+│   ├── trigger            // 触发事件（人类输入 / 系统事件 / DMN 通知）
+│   ├── priority
 │   ├── state              // active | waiting | complete | interrupted
-│   └── slots              // 各脑区的输入/输出槽
+│   └── slots
 │       ├── limbic:    { input, output, status }
-│       ├── cortex:    { input, output, status }
+│       ├── cortex:    { input, output, status, intent }   // intent: communicate|execute|both
 │       ├── brainstem: { input, output, status }
 │       └── ...
-└── signals[]              // 横切信号（不属于任何 Thread）
+└── signals[]              // 横切信号（优先于任何 Thread）
     ├── Amygdala 中断信号
     └── DMN 纠错 / 预测通知
 ```
 
 ### 激活机制
 
-每个脑区有一组**激活条件**——当工作空间中出现满足条件的状态时，脑区自行决定介入：
+每个脑区有一组**激活条件**，当工作空间出现满足条件的状态时，脑区自行介入：
 
-- **Limbic** 激活条件：有新的人类输入（任意 Thread），或 Cortex 输出了需要对外表达的内容
-- **Cortex** 激活条件：Limbic Slot 写入了"需要推理"的标记，且 Cortex Slot 为空
-- **Brainstem** 激活条件：Cortex 或 Limbic 的 Slot 包含具体操作指令，或有新的系统事件
+- **Limbic**：有新的人类输入，或 Cortex Slot 的 `intent` 包含 `"communicate"`
+- **Cortex**：Limbic 或 Brainstem Slot 写入了 `"needs_analysis"` 标记，且 Cortex Slot 为空
+- **Brainstem**：Cortex Slot 的 `intent` 包含 `"execute"`，或 Limbic Slot 包含直接操作指令，或收到新系统事件
 
-各脑区读取自己关心的 Slot，处理后将结果写回对应 Slot，触发下一个脑区激活。这是**认知接力**而非显式委派。
+各脑区读取自己关心的 Slot，处理后写回结果，触发下一个脑区激活。这是**认知接力**而非显式委派。
 
 ### 信号优先级
 
-Signals（横切信号）优先于 Thread 内的正常流程：
+Signals 优先于 Thread 内的正常流程：
 1. Amygdala 中断信号 → 立即停止当前 Brainstem 操作
 2. DMN 纠错通知 → 中断当前 Thread，写入新的纠错 Thread
 3. DMN 预测通知 → 插入新 Thread，优先级可配置
@@ -143,73 +149,73 @@ Signals（横切信号）优先于 Thread 内的正常流程：
 AIMA 支持三个层级的并行：
 
 ### Level 1：Brain 级并行
-不同脑区可同时处理不同 Thread：
-- Cortex 在分析 Thread-A 的复杂问题
-- Brainstem 同时在执行 Thread-B 的 API 调用
-- Limbic 正在等待 Thread-C 的人类回复
-
-各脑区的并发由工作空间中各自的 Slot 独立管理，互不阻塞。
+不同脑区可同时处理不同 Thread，各脑区的并发由工作空间中各自的 Slot 独立管理，互不阻塞。
 
 ### Level 2：Thread 级并行
-一个 AIMA 实例可同时维护多个活跃 Thread：
-- 同时处理来自不同协作者的消息
-- 主线程等待人类回复时，后台 Thread 可预处理相关资料
-- DMN 心跳作为独立 Thread 持续运行
-
-Thread 数量上限是配置项，默认建议值待实测确定。
+一个 AIMA 实例可同时维护多个活跃 Thread。Thread 数量上限是配置项。
 
 ### Level 3：Instance 级并行
 当任务真正独立、需要深度并行时，可以临时生成**子 AIMA 实例**：
 - 子实例有完整五脑结构
-- 与父实例共享同一记忆池（通过 `parent_session_id` 标签隔离 working 记忆）
+- 与父实例共享同一记忆池（通过 `parent_session_id` 标签隔离 `working` 记忆）
 - 子实例完成后，结果写回父实例的工作空间，子实例销毁
-- 这不是义体——义体是永久扩展，子实例是临时计算分支
-
-> **注**：子实例类似 Spacebot 的 Branch 模式（context.clone() → 独立运行 → 结果写回），但在 AIMA 架构中以完整实例而非 context 副本实现。
+- 义体是永久扩展，子实例是临时计算分支，两者不同
 
 ---
 
 ## 六、Amygdala（杏仁核）
 
-执行前同步中断，速度优先于深度。
+执行前同步中断，速度优先于深度。职责边界清晰：**只拦截工具调用层面的风险**，不涉及决策/推理层面的错误（后者归 DMN）。
 
 - 订阅 Event Bus 上的 `tool.pre_use` 事件
 - **规则优先**：确定性规则（正则、金额阈值、黑名单）零 LLM 成本
 - **Haiku 降级**：规则无法覆盖时快速评估
 - 违规时向工作空间写入中断 Signal，优先级最高
+- 发现新风险模式时，写入 `implicit` 记忆（供未来检测）
 
-### 与 DMN 的明确区分
+### 与 DMN 的分工
 
 | | Amygdala | DMN |
 |---|---|---|
 | 时序 | 执行**前**（pre-execution） | 执行**后**（post-action） |
 | 性质 | 同步阻断 | 异步回顾 |
+| 覆盖范围 | 工具调用风险 | 决策错误、行为偏差、长期模式 |
 | 功能 | "这个不能做" | "刚才做错了" / "接下来应该做" |
-| 触发 | `tool.pre_use` 事件 | Action Log（`INFO`+）+ 心跳 |
 
 ---
 
 ## 七、DMN（默认模式网络）
 
-DMN 是 AIMA 的唯一主动性来源，三个核心脑区（Limbic / Cortex / Brainstem）是纯被动的。
+DMN 是 AIMA 中**唯一能在没有外部触发的情况下自发启动行为**的脑区。Limbic 和 Brainstem 响应外部输入（人类消息、系统事件），DMN 通过心跳自发唤醒。
 
-### 触发源
-1. **Event Bus 订阅触发**：`INFO` 级及以上事件写入 → 触发短期评估
-2. **心跳触发**：定期唤醒 → 长期记忆整理 + 跨 Session 跟进
+DMN 运行在两个截然不同的模式下：
 
-### 两大功能
+### 模式一：Reactive（Event Bus 触发）
 
-**回溯纠错（优先）**：读取最新 Action Log 条目，判断是否有误。如需纠错，向工作空间写入中断 Signal，向对应脑区发出纠错通知。
+**触发**：`INFO` 级及以上事件写入 → 毫秒级响应
 
-**前瞻预测**：基于 Action Log 历史预测接下来需要的行为。无预测则跳过。
+**职责**（按优先级）：
+1. **回溯纠错**：读取最新 Action Log，判断刚刚发生的行为是否有误；如需纠错，向工作空间写入中断 Signal
+2. **前瞻预测**：基于近期 Action Log 预测接下来需要的行为，无预测则跳过
 
-### Skill 生命周期管理（DMN 长期模式）
-- 监控 Skill 使用频率和稳定性，触发固化流程
-- 监控 Skill 有效性，发现失效时触发 Cortex 重新学习
-- 生成 Memory Bulletin，注入下次 Session 的系统提示词
+**资源消耗**：轻量，每次只读最新增量（历史已缓存，cache hit rate 随 Session 增长趋近 100%）
 
-### Cache 效率
-Event Bus 输出增量追加到 Action Log，DMN 每次调用只读取最新增量，历史已缓存。Session 越长，cache hit rate 越高。
+### 模式二：Consolidation（心跳触发）
+
+**触发**：定期心跳（分钟/小时级）
+
+**职责**：
+1. **Skill 生命周期**：监控使用频率，触发固化；检测失效，触发 Cortex 重新学习
+2. **记忆整理**：清理过期 `episodic`，调整 importance 权重，生成 Memory Bulletin
+3. **跨 Session 跟进**：检查上一 Session 未完成的 Thread
+
+**资源消耗**：较重，批量处理，低优先级，不与 Reactive 模式竞争资源
+
+### implicit 记忆的写入权限
+
+`implicit` 记忆（风险模式）允许 Amygdala 和 DMN 共同写入：
+- Amygdala：在拦截新风险时写入
+- DMN：在 Reactive 模式发现行为错误模式后写入（同时也写 `episodic` 作为事件记录）
 
 ---
 
@@ -219,34 +225,22 @@ Event Bus 输出增量追加到 Action Log，DMN 每次调用只读取最新增�
 
 | 类型 | 来源 | 可修改 | 说明 |
 |---|---|---|---|
-| `reference` | 外部提供（Cloudflare、Vercel、TDP Hub 文档等） | 否 | 只读参考书，外部方维护和更新 |
-| `adapted` | Alex 基于 `reference` 改编 | 是 | 保留对原始 `reference` 的引用，融入 Alex 自己的上下文和习惯 |
-| `first-party` | Alex 从实践中生成 | 是 | 纯 Alex 经验，无外部来源 |
+| `reference` | 外部提供 | 否 | 只读参考书，外部方维护 |
+| `adapted` | 基于 `reference` 改编 | 是 | 保留原始引用，融入实例自己的上下文 |
+| `first-party` | 从实践中生成 | 是 | 纯实例经验，无外部来源 |
 
-**学习原则**：对着菜谱做菜，而非照单全收。`adapted` Skill 保留菜谱引用，但加入了 Alex 自己的调味理解。外部 Skill 更新时，DMN 通知 Cortex 评估是否需要更新 `adapted` 版本。
-
-### 技能模式
-
-**泛化技能**（Generalizable Skill）
-- 新任务首次出现 → Cortex 推理 → 提取可复用模式 → 写入 `adapted` 或 `first-party` Skill 文件
-- Skill 是抽象的、参数化的，适用于同类任务的不同实例
-
-**固化技能**（Consolidated Skill）
-- Skill 重复使用 N 次且内容稳定 → DMN 判断已成熟 → 固化为更具体的操作映射
-- 固化后直接由 Brainstem 执行，Cortex 退出该流程
+学习原则：观察→理解→在自己的上下文中重新表达，而非复制。
 
 ### Skill 生命周期
-```
-外部 reference Skill ──→ Cortex 学习 ──→ adapted Skill
-                                           ↕ 多次使用
-新任务经验 ──→ Cortex 推理 ──→ first-party Skill
-                                     ↕ 稳定后
-                              DMN 固化 ──→ 直接执行
-                                     ↕ 失效时
-                              DMN 检测 ──→ Cortex 重新学习
-```
 
-> **待讨论**：`adapted` 和 `first-party` Skill 是否可在不同 Alex 实例间共享，以及共享的边界
+```
+外部 reference ──→ Cortex 学习 ──→ adapted Skill
+新任务经验 ──→ Cortex 推理 ──→ first-party Skill
+                                  ↓ 重复使用、稳定
+                           DMN Consolidation 固化
+                                  ↓ 环境变化、失效
+                           DMN 检测 → Cortex 重新学习
+```
 
 ---
 
@@ -254,104 +248,91 @@ Event Bus 输出增量追加到 Action Log，DMN 每次调用只读取最新增�
 
 ### 统一记忆模型
 
-五个脑区使用同一记忆池，通过 `partition_id` 和 `type` 区分用途。
+五个脑区使用同一记忆池，通过 `partition_id` 和 `type` 区分。
 
 ### 记忆类型
 
-| 类型 | 内容 | 主要写入方 | 主要读取方 |
+| 类型 | 内容 | 写入方 | 读取方 |
 |---|---|---|---|
-| `semantic` | 事实、实体、关系（人、组织、系统、项目） | Limbic / Cortex | Limbic / Cortex |
-| `episodic` | 发生过的事件序列（= Action Log） | Event Bus → DMN | DMN / Amygdala |
+| `semantic` | 事实、实体、关系 | Limbic / Cortex | Limbic / Cortex |
+| `episodic` | 事件序列（= Action Log） | DMN（消费 Event Bus） | DMN |
 | `procedural` | Skill 化的流程模式 | Cortex | Limbic / Brainstem |
-| `working` | 当前 Session 的临时状态 | 所有脑区 | 所有脑区（Session 结束清除） |
-| `implicit` | 风险模式、危险行为历史 | Amygdala | Amygdala |
+| `working` | 当前 Session 临时状态 | 所有脑区 | 所有脑区（Session 结束清除） |
+| `implicit` | 风险模式、危险行为历史 | Amygdala / DMN | Amygdala |
 
-### 写入
+Importance 初始值：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6、`implicit` = 0.7。
 
-每条记忆记录包含：`type`、`content`、`partition_id`、`importance`（初始值）、`source`（哪个脑区写的）、`session_id`、`expires_at`（可选）。
+### 检索
 
-Importance 初始值：`episodic` = 0.3（高频低价值）、`procedural` = 0.8（Skill 是核心知识）、`semantic` = 0.6、`implicit` = 0.7。
+当前：全文搜索（ILIKE），按 importance DESC + created_at DESC 排序。
+演进方向：向量嵌入 + 语义相似度，两者并存后融合重排。
 
-### 读取与检索
+### Episodic = Action Log = 审计原始数据
 
-当前实现：**全文搜索（ILIKE）**，按 importance DESC + created_at DESC 排序，返回 top-N 条渲染为 Markdown。
-
-待演进方向：引入向量嵌入，实现语义相似度检索，替代纯关键词匹配。两者可并存，重排序后融合结果。
-
-### Episodic 作为 Action Log
-
-Event Bus 上的 `INFO` 级及以上事件由 DMN 消费，写入 `episodic` 记忆。这使得 Action Log、Memory 和审计原始数据统一为同一张表。外部审计系统直接消费 Event Bus（`COMPLIANCE` 级），不依赖数据库中的 `episodic` 记录。
+`INFO` 级及以上 Event Bus 事件由 DMN 写入 `episodic`。外部审计系统直接订阅 Event Bus（`COMPLIANCE` 级），不依赖数据库记录。
 
 ### 涌现式文档结构
 
-Alex 可通过 `create_document` 工具创建自己的知识文件，文件结构不由系统预定义。`knowledge-index.md` 是唯一约束：Alex 自建的所有文件必须在此索引。
+实例可通过 `create_document` 工具创建知识文件，结构不由系统预定义。`knowledge-index.md` 是唯一约束。
 
 ---
 
 ## 十、Context Assembly（面向五脑）
 
-各脑区的系统提示词组装策略不同，反映各脑的信息需求：
-
 | Block | Limbic | Cortex | Brainstem |
 |---|---|---|---|
-| **身份** | Alex 人格 + 人际关系 + 沟通风格 | 推理角色 + 当前任务上下文 | 系统权限 + 可用 API 清单 |
-| **Skill** | Skill Index + 固化/适配 Skill | 分析方法论 + 研究 Skill | 操作 Skill + 执行参数模板 |
-| **状态** | 工作空间状态 + 待处理 Thread 列表 | 当前分析任务 + 中间结论 | 待执行指令队列 + 系统状态 |
-| **记忆** | `semantic`（关系）+ `episodic`（近期互动） | `semantic`（领域知识）+ `procedural`（过往推理） | `implicit`（风险模式）+ `procedural`（操作序列） |
+| **身份** | 人格 + 人际关系 + 沟通风格 | 推理角色 + 当前任务 | 系统权限 + API 清单 |
+| **Skill** | Skill Index + 固化/适配 Skill | 分析方法论 | 操作 Skill + 执行参数模板 |
+| **状态** | 工作空间状态 + 待处理 Thread | 当前分析任务 + 中间结论 | 待执行队列 + 系统状态 |
+| **记忆** | `semantic` + `episodic` | `semantic` + `procedural` | `implicit` + `procedural` |
 
-Block 4（记忆）使用原始消息/任务描述作为检索 query，无结果时省略整块。
+Block 4 使用原始消息/任务描述作为检索 query，无结果时省略。
 
 ---
 
 ## 十一、义体（Augmentations）
 
-五个脑区是 AIMA 的固定核心。按业务需要可加装**义体**——额外的专职脑区，扩展能力边界但不改变核心架构。
+五个脑区是固定核心。按需加装**义体**——额外专职脑区，扩展能力边界但不改变核心架构。
 
-**义体特征**：
-- 有明确的激活条件（只在特定场景介入）
-- 通过认知工作空间与核心脑区交互
-- 也发射 Event Bus 事件（可被 Amygdala / DMN / 外部系统订阅）
-
-**义体 vs 子实例**：
-- 义体是**永久扩展**，随 AIMA 实例生命周期存在
-- 子实例是**临时计算分支**，完成即销毁
+- 有明确激活条件，只在特定场景介入
+- 通过认知工作空间交互，也发射 Event Bus 事件
+- 义体是永久扩展；子实例是临时计算分支——两者不同
 
 ---
 
 ## 十二、Runtime 边界
 
 ```
-┌─────────────────────────────────── AIMA 实例（如 Alex） ────┐
+┌─────────────────────────────────── AIMA 实例 ───────────────┐
 │                                                               │
-│  ┌─────────┐  ┌─────────┐  ┌───────────┐                    │
-│  │ Limbic  │  │ Cortex  │  │ Brainstem │  [义体（可选）]     │
+│  ┌─────────┐  ┌─────────┐  ┌───────────┐  [义体（可选）]    │
+│  │ Limbic  │  │ Cortex  │  │ Brainstem │                     │
+│  │ LLM路由 │  │ intent  │  │ 规则路由  │                     │
 │  └────┬────┘  └────┬────┘  └─────┬─────┘                    │
 │       │            │             │                            │
 │       └────────────┴─────────────┘                           │
 │                    │                                          │
 │          ┌─────────▼──────────┐                              │
-│          │   认知工作空间      │  ← Threads + Slots + Signals │
+│          │   认知工作空间      │  Threads + Slots + Signals   │
 │          └─────────┬──────────┘                              │
 │                    │                                          │
 │         ┌──────────┴──────────┐                              │
-│         │                     │                              │
-│  ┌──────▼──────┐    ┌─────────▼───┐                         │
-│  │  Amygdala   │    │     DMN     │                         │
-│  └─────────────┘    └─────────────┘                         │
+│  ┌──────▼──────┐    ┌─────────▼──────────────────┐          │
+│  │  Amygdala   │    │  DMN                        │          │
+│  │  pre-exec   │    │  Reactive | Consolidation   │          │
+│  └─────────────┘    └─────────────────────────────┘          │
 │                                                               │
 │  ┌──────────────────────────────────────────────────────┐    │
-│  │  Brain Event Bus（事件总线 / 脑机接口）               │    │
-│  │  TRACE / DEBUG / INFO / COMPLIANCE / ALERT           │    │
+│  │  Brain Event Bus  TRACE|DEBUG|INFO|COMPLIANCE|ALERT  │    │
 │  └──────────────────────────────────────────────────────┘    │
 │                                                               │
 │  ┌──────────────────────────────────────────────────────┐    │
-│  │  记忆池（PostgreSQL）                                 │    │
-│  │  semantic / episodic / procedural / working / implicit│    │
+│  │  记忆池  semantic|episodic|procedural|working|implicit│    │
 │  └──────────────────────────────────────────────────────┘    │
 └───────────────────────────────────────────────────────────────┘
 
-外部（由上层应用实现，订阅 Event Bus）：
-  Audit 系统（订阅 COMPLIANCE + ALERT）
-  可观测性系统（订阅 INFO）
-  其他 AIMA 实例（订阅 ALERT，实现跨实例协调）
+外部（订阅 Event Bus）：
+  Audit 系统（COMPLIANCE + ALERT）
+  可观测性系统（INFO）
+  其他 AIMA 实例（ALERT，跨实例协调）
 ```
