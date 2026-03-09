@@ -12,20 +12,25 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 
 ```typescript
 interface BrainAdapter {
-  // 启动或续接一个脑区的 Loop
-  run(params: BrainRunParams): AsyncIterable<BrainEvent>
-  // 向正在运行的 Loop 注入新消息（如 Amygdala 中断信号）
+  // 启动或续接一个脑区的 Loop，阻塞直到 Loop 完成
+  run(params: BrainRunParams): Promise<BrainRunResult>
+  // 向正在运行的 Loop 注入信号（如 Amygdala 中断）
   inject(signal: BrainSignal): Promise<void>
   // 中止当前 Loop（cooperative cancellation）
   abort(): void
 }
 
 interface BrainRunParams {
-  brain:       BrainType               // limbic | cortex | brainstem | amygdala | dmn
-  sessionId?:  string                  // 续接已有 session
-  systemPrompt: string                 // Context Assembly 组装结果（Block 1-4）
-  tools:       ToolDefinition[]        // 该脑区允许的工具
-  initialPrompt?: string               // 本次激活的触发内容
+  brain:          BrainType       // limbic | cortex | brainstem | amygdala | dmn
+  thread_id:      string          // 所属 Thread（session key = brain:thread_id）
+  system_prompt:  string          // Context Assembly 组装结果（Block 1-4）
+  initial_prompt?: string         // 本次激活的触发内容；不传则调用 agent.continue()
+}
+
+interface BrainRunResult {
+  session_id:  string             // 本次 Loop 使用的 session ID
+  output:      Record<string, unknown>
+  stop_reason: 'done' | 'interrupted' | 'error'
 }
 ```
 
@@ -375,16 +380,20 @@ Cache 以模型为边界。Limbic（Sonnet）和 Cortex（Opus）的 Block 1+2 �
 ## 六、选择适配器的决策树
 
 ```
-需要 Claude 以外的模型？
-├── 是 → pi-agent-core 适配器
-└── 否
-    ├── 需要精细控制 token 和每一步调用？
+构建 @aima/crew（OpenClaw 兼容层）？
+├── 是 → pi-coding-agent 适配器
+│         （与 OpenClaw 工具集对齐；需额外接入 Amygdala 覆盖内置工具）
+└── 否（secondfirst/employee 或其他直接基于 AIMA 的应用）
+    ├── 需要 Claude 以外的模型？
     │   ├── 是 → pi-agent-core 适配器
-    │   └── 否 → Claude Agent SDK 适配器
-    ├── 政府/企业合规要求：数据不出特定云？
-    │   └── Azure AI Foundry / Amazon Bedrock → Claude Agent SDK 适配器（支持）
-    └── 快速原型 / 开源贡献 / 最低阻力？
-        └── Claude Agent SDK 适配器
+    │   └── 否
+    │       ├── 需要精细控制 token 和每一步调用？
+    │       │   ├── 是 → pi-agent-core 适配器
+    │       │   └── 否 → Claude Agent SDK 适配器
+    │       ├── 政府/企业合规要求：数据不出特定云？
+    │       │   └── Azure AI Foundry / Amazon Bedrock → Claude Agent SDK 适配器（支持）
+    │       └── 快速原型 / 开源贡献 / 最低阻力？
+    │           └── Claude Agent SDK 适配器
 ```
 
 ---
@@ -393,12 +402,15 @@ Cache 以模型为边界。Limbic（Sonnet）和 Cortex（Opus）的 Block 1+2 �
 
 | 组件 | 状态 |
 |---|---|
-| BrainAdapter 接口 | 设计完成，待实现 |
-| pi-agent-core 适配器 | 待实现 |
-| Claude Agent SDK 适配器 | 待实现 |
-| Thread Runner | 待实现 |
-| MemoryService（PostgreSQL 后端） | 待实现 |
-| Brain Event Bus | 待实现 |
-| MCP server（AIMA 工具集） | 待实现 |
+| BrainAdapter 接口 | ✅ 已实现（`src/adapters/pi-agent/index.ts`） |
+| pi-agent-core 适配器（PiAgentAdapter） | ✅ 已实现，18/18 测试通过 |
+| Thread Runner | ✅ 已实现（`src/runner/index.ts`） |
+| CognitiveWorkspace（PostgreSQL 后端） | ✅ 已实现，含 crash recovery |
+| Brain Event Bus | ✅ 已实现（`src/eventbus/index.ts`） |
+| MemoryService（PostgreSQL 后端） | ✅ 已实现 |
+| Limbic / Cortex / Brainstem 脑区 | ✅ 已实现，E2E 通过 |
+| Claude Agent SDK 适配器 | ⏳ 待实现 |
+| MCP server（AIMA 工具集） | ⏳ 待实现 |
+| `@aima/crew`（pi 兼容 facade） | ⏳ 待实现（见 `04-sdk-api.md`） |
 
-AIMA 当前处于架构设计阶段，无生产代码。
+实现代码位于 `aima-feature` 分支（独立 git repo，待 PR 合入）。
