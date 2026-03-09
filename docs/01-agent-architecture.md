@@ -334,6 +334,7 @@ Thread 数量上限是配置项。
 | | Amygdala | DMN |
 |---|---|---|
 | 时序 | 执行**前**（pre-execution） | 执行**后**（post-action） |
+| 关注点 | 这个行为**该不该做** | 这个行为**做没做成** |
 | 性质 | 同步阻断 | 异步回顾 |
 | 覆盖范围 | 工具调用风险 | 决策错误、行为偏差、长期模式 |
 | 功能 | "这个不能做" | "刚才做错了" / "接下来应该做" |
@@ -342,87 +343,128 @@ Thread 数量上限是配置项。
 
 ## 七、DMN（默认模式网络）
 
-DMN 是 AIMA 中**唯一能在没有外部触发的情况下自发启动行为**的脑区。Limbic 和 Brainstem 响应外部输入（人类消息、系统事件），DMN 通过心跳自发唤醒。
+DMN 是 AIMA 中**唯一能在没有外部触发的情况下主动分析并写入状态**的脑区。Limbic 和 Brainstem 响应外部输入（人类消息、系统事件），DMN 通过两种机制自发运作。
 
-DMN 在概念上是一个脑区，**工程上由两个独立运行单元实现**——Reactive 和 Consolidation 各自独立调度，不共享运行时，不互相阻塞：
+**核心原则：DMN 从不直接激活脑区。** DMN 只写状态（Thread Slot、中断 Signal、`pending_observations`）；Thread Runner 负责读取 pending 并路由给目标脑区执行。DMN 是分析者，不是执行者。
 
-### 模式一：Reactive（Event Bus 触发）
+DMN 在概念上是一个脑区，**工程上由两种触发方式实现**——事件响应和心跳整合各自独立调度，不共享运行时，不互相阻塞：
 
-**实现性质**：DMN Reactive 是**代码驱动的事件监听器**，不是持续运行的 LLM 对话 Agent。它订阅 Event Bus 事件，执行确定性逻辑；需要判断时发起**一次性** LLM 调用（非对话 session）。跨 Thread 的全局视野来自直接查询数据库（workspace 表、episodic 事件记录），而非 LLM context window。
+### 事件响应（Event Bus 触发）
+
+**实现性质**：代码驱动的事件监听器，不是持续运行的 LLM 对话 Agent。订阅 Event Bus 事件，执行确定性逻辑；需要判断时发起**一次性** LLM 调用（Haiku，非对话 session）。跨 Thread 的全局视野来自直接查询数据库，而非 LLM context window。
 
 **触发**：`INFO` 级及以上事件写入 → 毫秒级响应
 
 **职责**（按优先级）：
-1. **错误恢复**：脑区遇到 LLM 调用失败或工具执行错误时，发射 `ALERT` 事件 → DMN 立即介入，决策重试、换策略、还是上报。具体：
+1. **错误恢复**：脑区遇到 LLM 调用失败或工具执行错误时，发射 `ALERT` 事件 → DMN 立即介入，决策重试、换策略、还是上报：
    - 可重试错误（超时、限流）→ 写入 retry 指令到对应 Thread Slot
    - 不可重试错误（权限拒绝、数据异常）→ 标记 Thread 为 `interrupted`，发射 `ALERT` 供外部处理
 2. **回溯纠错**：读取最新 Action Log，判断刚刚发生的行为是否有误；如需纠错，向工作空间写入中断 Signal
-3. **前瞻预测**：基于积累的模式，预判接下来需要发生的事，**主动发起行动而不等外部触发**
+3. **信号捕获**：检测到已知的触发信号（确定性规则 + Haiku fallback）→ 写入 `pending_observations`，由 Thread Runner 下次扫描时路由执行
 
-**资源消耗**：轻量，每次只读最新增量（`created_at > last_anchor`）
+**资源消耗**：轻量，每次只读最新增量（`created_at > last_processed`）
 
-### 前瞻预测（Predictive Activation）
+### Session Anchor（Context 边界管理）
 
-这是 DMN 最核心也最独特的能力——**Agent 自己决定什么时候该做什么**，不依赖外部 cron 或人工触发。
+当 LLM session 的 context 使用率接近阈值，DMN 事件响应触发 **anchor**：
 
-**预测来源**：DMN 从三类记忆中读取模式：
-- `episodic`：历史事件序列（"合同签署后第 28-30 天总出现付款问题"）
-- `procedural`：已知流程结构（"采购审批在 PO 创建后进入等待审核状态"）
-- `semantic`：领域知识（"这类申请通常需要 48 小时处理"）
-
-模式匹配以确定性规则为主，模糊情况发起一次性 LLM 调用辅助判断。
-
-**预测的输出**：DMN 把预测结论转化为针对具体脑区的主动信号，而非模糊地"发条消息":
-
-| 预测内容 | 目标脑区 | 具体动作 |
-|---|---|---|
-| "这个审批流程下一步需要规划多方协调" | Cortex | 预创建 Thread，context 已加载，等待触发即可开始推理 |
-| "这个合同 28 天后需要付款核查" | Brainstem | 在指定时间点注册一个定时执行任务 |
-| "用户 X 通常在收到复杂回复 10 分钟后追问" | Limbic | 预备追问处理逻辑，降低响应延迟 |
-| "周一早上这个频道流量高，需要预热 Skill" | Cortex + Brainstem | 提前加载常用 Skill 到 working 记忆 |
-
-**精准落地依赖分工**：DMN 能做到"送到正确的脑区"，正是因为其他脑区职责边界清晰。如果是 all-in-one 单 Agent，预测只能是"发一条消息进来"，精度全失。
-
-**预测可以取消**：当预测条件已不成立，DMN 自动撤销：
 ```
-DMN 预测：合同 C-2847 在第 28 天需要付款核查
-→ 第 25 天，Brainstem 已执行付款确认工具，episodic 记录了完成事件
-→ DMN Reactive 检测到"已完成"信号，取消第 28 天的预测任务
+Context 使用率接近阈值
+  → DMN 检测到（通过 API usage 字段）
+  → 触发 anchor：Thread Slot 状态已在 PG；写入 anchor 事件到 episodic
+  → 当前 LLM session 关闭
+  → 新 session 开启，Context Assembly 从 PG + 记忆系统精准重建必要状态
+  → Thread 继续执行，不是重新开始
+```
+
+anchor 事件记录触发原因（`reason: "context_limit" | "explicit_reset" | "new_thread"`）。DMN 后续可从 episodic 中读取 anchor 频率——若某类 Thread 频繁触发 `context_limit`，说明需要更激进的 Context Assembly 策略。
+
+**与 @aima/crew 的衔接**：OpenClaw 层有 `clear()` / `flush()` / `new()` 操作，@aima/crew 在 fork 层重写这些方法，不 call super，转换为 AIMA anchor 语义：
+
+| @aima/crew 调用 | AIMA 实际执行 |
+|---|---|
+| `clear()` / `flush()` | anchor 当前状态 → 新 LLM session，精准重建 context（历史保留，session 重置） |
+| `new()` | anchor 当前 Thread → 创建新 Thread，新 session 空白启动 |
+
+对调用方效果一致，Thread 状态和 episodic 记录不丢失。
+
+### 心跳整合（30分钟-1小时触发）
+
+**实现性质**：定期唤醒，读取 episodic 事件增量 + 当前 `pending_observations` 列表，LLM 辅助分析（Haiku 为主，复杂跨流程可升 Sonnet）。
+
+**职责**：
+
+1. **深度前瞻预测（Predictive Activation）**：这是 DMN 最核心也最独特的能力——**Agent 自己决定什么时候该做什么**，不依赖外部 cron 或人工触发。
+
+   预测来源：从三类记忆中读取模式：
+   - `episodic`：历史事件序列（"合同签署后第 28-30 天总出现付款问题"）
+   - `procedural`：已知流程结构（"采购审批在 PO 创建后进入等待审核状态"）
+   - `semantic`：领域知识（"这类申请通常需要 48 小时处理"）
+
+   预测写入 `pending_observations`，极简结构（`entity_ref` + `note` + `target_brain` + `added_at`）。Thread Runner 定期扫描 pending 列表，将成熟的项路由给对应脑区执行。
+
+   | 预测内容 | pending 的 target_brain | Thread Runner 路由后的动作 |
+   |---|---|---|
+   | "这个审批流程下一步需要规划多方协调" | cortex | 预创建 Thread，context 已加载，等待触发即可开始推理 |
+   | "这个合同 28 天后需要付款核查" | brainstem | 在指定时间点注册一个定时执行任务 |
+   | "用户 X 通常在收到复杂回复 10 分钟后追问" | limbic | 预备追问处理逻辑，降低响应延迟 |
+   | "周一早上这个频道流量高，需要预热 Skill" | cortex | 提前加载常用 Skill 到 working 记忆 |
+
+   **精准落地依赖分工**：DMN 能写到正确的 target_brain，正是因为其他脑区职责边界清晰。all-in-one 单 Agent 的预测只能是"发一条消息进来"，精度全失。
+
+2. **pending 维护**：下一轮心跳整合时，新 episodic log 覆盖进来，DMN 重新评估每条 pending 项：已解决 → 移除；继续等待 → 保留；情况升级 → 更新 note，Thread Runner 下次扫描以新描述路由。pending 无需主动清理——若长期无法移除，说明任务本身未推进，是业务信号而非架构问题。
+
+3. **implicit 记忆聚类合并**：将 Amygdala 写入的 provisional 条目聚类归并为 canonical 记录，消除冗余。
+
+**预测取消**：当预测条件已不成立，pending 项在下一轮自然移除：
+```
+DMN pending：合同 C-2847 在第 28 天需要付款核查
+→ 第 25 天，Brainstem 已执行付款确认，episodic 记录完成事件
+→ 下一轮心跳整合读到"已完成"信号，pending 项移除
 ```
 这是 cron 做不到的——cron 不能感知上下文，不能取消自己。
 
-**预测准确度的反馈闭环**：预测执行后，DMN Consolidation 评估预测是否准确：
+**预测反馈闭环**：预测执行后，Hippocampus 在每日记忆整理时评估预测准确度：
 - 准确 → 强化对应 `episodic` 模式的 `base_importance`
 - 偏差 → 修正模式，更新 `procedural` 记忆或标记该模式为"低可信度"
 
-随着运行时间增长，Agent 对自身工作节奏的预测越来越准，主动行为越来越多，被动等待越来越少。
-
-### 模式二：Consolidation（心跳触发）
-
-**触发**：定期心跳（分钟/小时级）
-
-**职责**：
-1. **Skill 生命周期**：监控使用频率，触发固化；检测失效，触发 Cortex 重新学习
-2. **记忆整理**：清理过期 `episodic`，调整 importance 权重，生成 Memory Bulletin
-3. **跨 Session 跟进**：检查上一 Session 未完成的 Thread
-
-**资源消耗**：较重，逐行处理（非大批量事务），低优先级，应调度在低负载时段。PostgreSQL MVCC 保证 Consolidation 写操作不阻塞 Reactive 的读路径；I/O 压力层面的竞争通过调度时段隔离而非锁机制解决
-
-**最终一致性声明**：Reactive 和 Consolidation 各自在 PostgreSQL MVCC 的一致性快照下工作，互不阻塞，但两者不协调写入顺序。任意时刻记忆库中可能存在短暂冗余（如 Reactive 刚写入的 implicit 记录尚未被 Consolidation 归并）。这是设计选择，不是缺陷——Consolidation 定期收敛，系统最终一致。
+**最终一致性**：事件响应和心跳整合各自在 PostgreSQL MVCC 的一致性快照下工作，互不阻塞。任意时刻记忆库中可能存在短暂冗余（如事件响应刚写入的 implicit 记录尚未被归并）。这是设计选择，不是缺陷——心跳整合定期收敛，系统最终一致。
 
 ### implicit 记忆的写入权限
 
 `implicit` 记忆（风险模式）允许 Amygdala 和 DMN 共同写入：
 - **Amygdala**：在拦截新风险时即时写入（provisional）
-- **DMN**：在 Reactive 模式发现行为错误模式后写入（同时也写 `episodic` 作为事件记录）；Consolidation 负责定期聚类合并（canonical）
+- **DMN**：在事件响应模式发现行为错误模式后写入（同时也写 `episodic` 作为事件记录）；心跳整合负责定期聚类合并（canonical）
 
-**写入语义与冲突解决**：Amygdala 写入是 provisional——即时生效，best-effort，不持锁，不等待 DMN。DMN Consolidation 是最终仲裁者，负责将语义重叠的条目合并为 canonical 记录。冲突合并规则：tag 取并集，`base_importance` 取较高值，被合并的旧记录通过 `supersedes_ids` 软删除。
+**写入语义与冲突解决**：Amygdala 写入是 provisional——即时生效，best-effort，不持锁，不等待 DMN。DMN 心跳整合是最终仲裁者，负责将语义重叠的条目合并为 canonical 记录。冲突合并规则：tag 取并集，`base_importance` 取较高值，被合并的旧记录通过 `supersedes_ids` 软删除。
 
-任意时刻库中可能存在 Amygdala 刚写入但尚未被 DMN 合并的冗余条目，这是设计选择——Amygdala 宁可多一条冗余记录也不能因等锁而延迟工具拦截决策。
+Amygdala 宁可多一条冗余记录也不能因等锁而延迟工具拦截决策。
 
 ---
 
-## 八、习惯形成与技能内化
+## 八、Hippocampus（海马体）
+
+Hippocampus 是 AIMA 的**长期记忆管理者**，独立于五脑实时运作，每天定时批量执行，不参与实时决策，不阻塞任何脑区。
+
+**职责**（每次运行均执行）：
+1. **记忆整理**：清理低权重 `episodic` 条目，调整 `importance` 权重（基于访问频率和时间衰减），将高价值 episodic 模式提炼为 `semantic` 记忆
+2. **预测反馈**：评估 DMN 心跳整合上轮预测的准确度，更新对应记忆条目权重（准确 → 强化，偏差 → 修正或标记低可信度）
+
+**Skill Review**（条件执行，距上次运行超过 N 天时触发）：
+1. 分析 `procedural` Skill 的使用频率和成功率
+2. 识别固化候选：重复执行、结果高度一致的 Cortex 推理路径 → 生成 Skill Draft，暴露给人工确认
+3. 固化路径：确认后写入 `first-party` Skill 文件，路由变更为 Brainstem 直接执行（绕过 Cortex，成本从 Opus 降至 Haiku）
+4. 检测失效 Skill：执行出错率上升或语义漂移 → 标记为待更新，触发 Cortex 重新学习
+
+**SDK 暴露参数**：
+- `hippocampus.runAt`：每天运行的时间窗口（默认低负载时段）
+- `hippocampus.skillReviewIntervalDays`：Skill Review 间隔天数（默认 7 天）
+
+**资源消耗**：较重，逐条处理，低优先级。PostgreSQL MVCC 保证写操作不阻塞其他脑区的读路径；通过调度时段隔离 I/O 压力。
+
+---
+
+## 十、习惯形成与技能内化
 
 ### Skill 三层分类
 
@@ -440,9 +482,9 @@ DMN 预测：合同 C-2847 在第 28 天需要付款核查
 外部 reference ──→ Cortex 学习 ──→ adapted Skill
 新任务经验 ──→ Cortex 推理 ──→ first-party Skill
                                   ↓ 重复使用、稳定
-                           DMN Consolidation 固化
+                           Hippocampus Skill Review 固化
                                   ↓ 环境变化、失效
-                           DMN 检测 → Cortex 重新学习
+                           Hippocampus 检测 → Cortex 重新学习
 ```
 
 ---
@@ -487,7 +529,7 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 
 **大脑是实体**：每个脑区（Limbic/Cortex/Brainstem/Amygdala/DMN）在 `semantic` 记忆中有对应的实体记录。DMN 将观察到的脑区行为模式写入 `implicit` 记忆（如"Cortex 在多步数学任务上的可靠性较低"），使路由和风险评估能从自身历史中学习。这是 AIMA 元认知能力的底层机制。
 
-**Skill 是实体**：每个 Skill 文件对应一个稳定的 `entity_id`（如 `skill:procurement-approval`）。Skill 实体（认知层）与 Skill 文件（操作层）分离：文件是 Agent 运行时读取的可执行知识，实体记录是 AIMA 对这个 Skill 的认知积累——使用历史、版本关系（`supersedes_ids`）、适用场景模式。DMN Consolidation 基于实体记录评估 Skill 的健康度和固化时机。
+**Skill 是实体**：每个 Skill 文件对应一个稳定的 `entity_id`（如 `skill:procurement-approval`）。Skill 实体（认知层）与 Skill 文件（操作层）分离：文件是 Agent 运行时读取的可执行知识，实体记录是 AIMA 对这个 Skill 的认知积累——使用历史、版本关系（`supersedes_ids`）、适用场景模式。Hippocampus 基于实体记录评估 Skill 的健康度和固化时机。
 
 **实例自身是实体**：`entity_id = "instance:self"` 保留给实例的整体自我描述（能力边界、当前工作状态、已知局限）。
 
@@ -549,7 +591,7 @@ Block 1（身份）和 Block 2（Skill Index）内容稳定，构成 LLM prompt 
 │         ┌──────────┴──────────┐                              │
 │  ┌──────▼──────┐    ┌─────────▼──────────────────┐          │
 │  │  Amygdala   │    │  DMN                        │          │
-│  │  pre-exec   │    │  Reactive | Consolidation   │          │
+│  │  pre-exec   │    │  事件响应 | 心跳整合        │          │
 │  └─────────────┘    └─────────────────────────────┘          │
 │                                                               │
 │  ┌──────────────────────────────────────────────────────┐    │

@@ -19,10 +19,11 @@
 | 场景 | 使用方 | 需要什么 |
 |---|---|---|
 | Context Assembly | 所有脑区 | 检索与当前任务相关的历史知识 |
-| DMN Reactive | DMN | 读取会话锚点 + 最新增量事件 |
-| DMN Consolidation | DMN | 批量扫描，调整权重，清理过期 |
+| DMN 事件响应 | DMN | 读取会话锚点 + 最新增量事件 |
+| DMN 心跳整合 | DMN | 批量扫描 episodic，维护 pending_observations，归并 implicit |
+| Hippocampus | Hippocampus | 清理低权重条目，调整权重，提炼 semantic；定期 Skill Review |
 | Amygdala 检测 | Amygdala | tag 过滤 + 时间窗口的风险模式匹配 |
-| Skill 固化 | DMN + Cortex | 读写 procedural 记忆 |
+| Skill 固化 | Hippocampus + Cortex | 读写 procedural 记忆 |
 
 每个场景的最优实现方式不同，不存在统一的"最好"检索策略。
 
@@ -56,7 +57,7 @@
 
 | 字段 | 含义 | 由谁设置 | 是否衰减 |
 |---|---|---|---|
-| `base_importance` | 这条记忆的内在价值 | 写入时设定，DMN Consolidation 可显式调整 | 不自动衰减 |
+| `base_importance` | 这条记忆的内在价值 | 写入时设定，Hippocampus 可显式调整 | 不自动衰减 |
 | `pinned` | 受保护，永不衰减 | 写入时或人工标记 | 永不参与删除决策 |
 
 检索排序使用 `base_importance + recency_boost`，其中 `recency_boost` 基于 `last_accessed_at` 动态计算，不持久化。删除决策基于 `last_accessed_at` 超过阈值 + `expires_at`，**不基于 base_importance 浮点数**。
@@ -127,18 +128,19 @@ DMN Reactive 每次看到的内容结构：
 
 **冷启动行为**：系统初始阶段 `implicit` 记忆库为空，分级检索四级均无命中。这时 Amygdala 仅运行静态规则层（正则、金额阈值、关键词黑名单）。这是**预期行为，不是 bug**——静态规则是完整的第一道防线，动态 `implicit` 记忆是运行积累后的增强层。随着系统运行，Amygdala 会逐步写入观察到的风险模式，`implicit` 层的覆盖面自然增长。此退化仅影响 medium 和 high 级工具；low 级工具的 Amygdala 行为始终只使用静态规则，不受 `implicit` 记忆库状态影响。
 
-### 场景 D：DMN Consolidation（记忆整理）
+### 场景 D：Hippocampus（记忆整理）
 
-**目标**：批量处理历史记忆，调整权重，清理过期，固化 Skill。
+**目标**：每日批量处理历史记忆，调整权重，清理过期，提炼 semantic。定期（可配置间隔）执行 Skill Review。
 
 **实现**：结构化查询，不走检索接口：
 - `expires_at < now()` 且 `pinned = false` → 软删除（标记 `forgotten = true`）
 - `last_accessed_at` 超过阈值且 `pinned = false` → 候选删除（不基于 importance 浮点数）
-- `base_importance` 调整 → DMN 基于使用模式显式设置，不做线性自动衰减
-- `procedural` 记忆的使用频率 → 触发 Skill 固化判断
+- `base_importance` 调整 → Hippocampus 基于使用模式显式设置，不做线性自动衰减
+- 重要 `episodic` 模式提炼 → 写入 `semantic` 记忆（跨 Thread 的长期知识）
 - 定期对 `implicit` 记忆做语义相似度聚类，合并高度重叠的模式条目（见下方聚类策略）
+- Skill Review：分析 `procedural` 使用频率和成功率 → 生成固化候选 Skill Draft
 
-**Consolidation 聚类策略**：原型阶段采用 LLM 驱动的小批量聚类——每次取最近 20-50 条 `implicit` 记忆，请 LLM 判断哪些条目语义高度重叠并建议合并。合并后的新记录继承最高 `base_importance`，旧记录通过 `supersedes_ids` 软删除。此策略无需向量索引，代价是每次 Consolidation 消耗一次 LLM 调用。演进路径：引入嵌入模型后，改为向量聚类（DBSCAN 或 k-means），LLM 仅做最终合并摘要生成，不参与相似度计算。
+**聚类策略**：原型阶段采用 LLM 驱动的小批量聚类——每次取最近 20-50 条 `implicit` 记忆，请 LLM 判断哪些条目语义高度重叠并建议合并。合并后的新记录继承最高 `base_importance`，旧记录通过 `supersedes_ids` 软删除。此策略无需向量索引，代价是每次运行消耗一次 LLM 调用。演进路径：引入嵌入模型后，改为向量聚类（DBSCAN 或 k-means），LLM 仅做最终合并摘要生成，不参与相似度计算。
 
 ---
 
@@ -200,7 +202,7 @@ DMN Reactive 每次看到的内容结构：
 }
 ```
 
-**`entity_id` 和 `attribute` 是可选的轻量锚点**，不强制唯一约束。写入方尽力填写——尤其是 `semantic` 类型记录。当同一 `entity_id + attribute` 组合存在多条 `t_invalid=null` 记录时（如"当前项目 owner"有两个版本），检索方（LLM）基于 `created_at` 推断更新者，DMN Consolidation 定期清理矛盾记录并设置 `supersedes_ids`。这遵循"治理而非强约束"的原则：不要求写入时必须正确，但提供足够的结构信息让系统能在事后修复。
+**`entity_id` 和 `attribute` 是可选的轻量锚点**，不强制唯一约束。写入方尽力填写——尤其是 `semantic` 类型记录。当同一 `entity_id + attribute` 组合存在多条 `t_invalid=null` 记录时（如"当前项目 owner"有两个版本），检索方（LLM）基于 `created_at` 推断更新者，Hippocampus 定期清理矛盾记录并设置 `supersedes_ids`。这遵循"治理而非强约束"的原则：不要求写入时必须正确，但提供足够的结构信息让系统能在事后修复。
 
 **双时态字段说明**：`t_valid` / `t_invalid` 记录**事实在现实中的有效期**；`created_at` / `expires_at` 记录**系统中的存储生命周期**。两组字段独立，不互相推导。
 
@@ -227,11 +229,11 @@ Context Assembly 检索默认只返回 `t_invalid IS NULL` 的记录（当前有
 
 episodic 特殊路径：
 Event Bus → DMN 消费 → 写入（kind=event）
-→ Session 积累过多时，DMN Reactive 触发锚点写入（kind=session_anchor）
-→ DMN Consolidation 定期归档（超过 N 天的旧 event 条目软删除，anchor 保留更长）
+→ Context 接近上限时，DMN 事件响应触发 anchor 写入（kind=session_anchor）
+→ Hippocampus 每日归档（超过 N 天的旧 event 条目软删除，anchor 保留更长）
 
 procedural 特殊路径：
-Cortex 生成 → first-party Skill → 重复使用 → DMN Consolidation 固化 → 高 base_importance
+Cortex 生成 → first-party Skill → 重复使用 → Hippocampus Skill Review 固化 → 高 base_importance
 ```
 
 ---
@@ -281,7 +283,7 @@ interface MemoryService {
 |---|---|---|
 | `semantic` / `procedural` 只有全文搜索 | 语义相近但词汇不同的内容无法命中 | 向量嵌入 + BM25 双路 + RRF 融合（独立工程项目） |
 | `episodic` 无结构化事件图 | 无法查询因果关系链 | 事件图谱（可选，高复杂度，Graphiti 模式） |
-| `implicit` 写入无去重机制 | 语义重叠的模式会累积 | DMN Consolidation 周期聚类合并 |
+| `implicit` 写入无去重机制 | 语义重叠的模式会累积 | Hippocampus 每日聚类合并 |
 | `session_anchor` 是 LLM 生成的摘要 | 有失真风险，细节不可还原 | 明确的能力边界，不是待修复的缺陷 |
 
 当前阶段（原型）：接受全文搜索的局限，通过 MemoryService 接口抽象确保后端可替换，数据结构为向量检索演进预留字段位置。

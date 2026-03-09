@@ -62,11 +62,12 @@ workspace_read/write → ALLOW
 
 ### 中期（认知能力核心）
 
-5. DMN Reactive — 事件监听、错误恢复、Memory Bulletin 生成
-6. DMN Consolidation — episodic 清理、implicit 聚类合并、Skill 健康评估
-7. **DMN Predictive** — 基于历史模式主动激活脑区、发起 Thread、取消失效预测
+5. DMN 事件响应 — 事件监听、错误恢复、回溯纠错、轻量前瞻、Session Anchor 触发
+6. DMN 心跳整合 — 深度前瞻预测、pending_observations 维护、implicit 聚类合并
+7. **DMN Predictive（心跳整合核心）** — 基于历史模式主动激活脑区、发起 Thread、取消失效预测
    > 这是 AIMA 区别于其他框架的核心能力之一，不可作为"以后再加"处理
-8. Skill 系统 — reference / adapted / first-party 三层，DMN 固化机制
+8. Hippocampus — 每日记忆整理（清理/权重/semantic 提炼）+ 定期 Skill Review（固化候选暴露、失效检测）
+9. Skill 系统 — reference / adapted / first-party 三层，Hippocampus 固化机制
 
 ### 后期
 
@@ -86,5 +87,5 @@ workspace_read/write → ALLOW
 | DEFER 超时默认值与通道配置存储方式 | 需要 Limbic 实现后验证合理范围 | Limbic 上线前 |
 | Block 3/4 的 snapshot 隔离策略 | 需要 assembleContext() 实现时决定 | ThreadRunner 扩展前 |
 | intent=both 时 Limbic 失败后的回退流程 | 需要完整 Thread Runner 序列图 | intent=both 实现前 |
-| Skill adapted 版本更新机制 | 需要 DMN Consolidation 实现时设计 | DMN Consolidation 前 |
+| Skill adapted 版本更新机制 | 需要 Hippocampus Skill Review 实现时设计 | Hippocampus 实现前 |
 | 多租户 EventBus instance 级过滤 | 当前单 instance 开发不需要 | 多租户上线前 |

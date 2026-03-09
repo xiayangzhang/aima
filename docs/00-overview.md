@@ -128,7 +128,66 @@ AIMA 把一个认知个体的能力分为五个功能区：
       → 需要追问：Limbic DEFER → 等待用户补充 → 继续
 ```
 
-每次工具调用前，Amygdala 拦截检查。DMN 在后台持续整理记忆、发现错误、生成 Memory Bulletin。
+每次工具调用前，Amygdala 拦截检查。DMN 在后台持续发现错误、前瞻预测、维护 pending 观察项。Hippocampus 每天批量整理记忆权重、定期 review Skill 固化候选。
+
+### 完整系统图
+
+```
+                         外部输入
+            Teams · Email · Webhook · Scheduler
+                            │
+               ┌────────────▼────────────┐
+               │          Limbic         │  唯一人类接口
+               │      对话 · 路由        │
+               └────────────┬────────────┘
+                            │ ROUTE / DEFER
+               ┌────────────▼────────────┐
+               │          Cortex         │
+               │       推理 · 规划       │
+               └────────────┬────────────┘
+                            │ execute
+    ┌───────────┐  ┌────────▼────────────┐
+    │ Amygdala  │  │      Brainstem      │
+    │ 合规·拦截 ├──│      工具执行       │
+    │ 该不该做  │  │                     │
+    └───────────┘  └────────┬────────────┘
+                            │
+                       外部系统
+           Dataverse · Teams API · Email · ...
+
+ ─────────────────── 后台 ──────────────────────
+
+ ┌─────────────────────────────────────────────┐
+ │  DMN                                        │
+ │  ┌──────────────────┐  ┌─────────────────┐  │
+ │  │   事件响应        │  │   心跳整合       │  │
+ │  │   · 错误恢复     │  │   · 深度前瞻预测 │  │
+ │  │   · 回溯纠错     │  │   · pending 维护 │  │
+ │  │   · 信号捕获     │  │                 │  │
+ │  └──────────────────┘  └────────┬────────┘  │
+ └───────────────────────────────── │ ──────────┘
+                                    │ pending_observations
+                        ┌───────────▼───────────┐
+                        │     Thread Runner      │
+                        │   路由 → 目标脑区      │
+                        └───────────────────────┘
+
+ ┌─────────────────────────────────────────────┐
+ │  Hippocampus（每日 batch，不阻塞脑区）       │
+ │  记忆整理 · semantic 提炼 · Skill Review     │
+ └─────────────────────────────────────────────┘
+
+ ─────────────────── 数据层 ─────────────────────
+
+ ┌─────────────┐  ┌──────────────┐  ┌──────────────┐
+ │ Cognitive   │  │ Memory Pool  │  │ Event Bus    │
+ │ Workspace   │  │ semantic     │  │ COMPLIANCE   │
+ │ Thread·Slot │  │ episodic     │  │ ALERT · INFO │
+ │ (PostgreSQL)│  │ procedural   │  │ ↓ Audit WORM │
+ │             │  │ working      │  │ ↓ OTel       │
+ │             │  │ implicit     │  │ ↓ 其他实例   │
+ └─────────────┘  └──────────────┘  └──────────────┘
+```
 
 ---
 
@@ -144,7 +203,8 @@ AIMA 把一个认知个体的能力分为五个功能区：
 | **Skill** | Markdown 文件，Agent 读取后获得领域操作能力 |
 | **Event Bus** | 只读可观测性接口，五个级别（COMPLIANCE/ALERT/INFO/DEBUG/TRACE） |
 | **Amygdala** | 内置安全层，基于 `risk_level` 和 `implicit` 记忆做 pre-execution 检查 |
-| **DMN** | 工程上两个独立单元：Reactive（准实时事件监听）+ Consolidation（后台批处理） |
+| **DMN** | 纯分析者，从不直接激活脑区。事件响应（准实时，错误恢复+纠错+信号捕获）+ 心跳整合（30分钟-1小时，深度前瞻预测+pending维护）；所有输出写入 pending_observations，由 Thread Runner 路由执行 |
+| **Hippocampus** | 独立后台 batch job，每天整理记忆权重、提炼 semantic；定期（可配置）review Skill 固化候选 |
 
 ---
 
@@ -252,6 +312,6 @@ const session = await createAIMASession({ instance, sessionKey, tools, toolIndex
 
 **Context 精准注入**：Block 1/2 静态身份走 prompt cache，Block 3/4 每轮动态注入工作空间状态和记忆检索结果。不压缩 context 换 token 省钱。
 
-**最终一致性**：DMN Reactive 和 Consolidation 各自独立运行，不互相阻塞。任意时刻记忆库可能存在短暂冗余，Consolidation 定期收敛。
+**最终一致性**：DMN 事件响应和心跳整合各自独立运行，不互相阻塞。任意时刻记忆库可能存在短暂冗余，心跳整合定期收敛。
 
 **at-most-once 语义**：非幂等工具（发送消息、写数据）在崩溃歧义情况下不重试，escalate 给人工。宁可少做一次，不接受重复执行。
