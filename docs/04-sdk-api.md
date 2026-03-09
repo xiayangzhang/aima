@@ -365,15 +365,4 @@ AIMA 内部工具（`workspace_read/write`、`memory_search` 等）各脑区按�
 
 ## 九、版本说明
 
-`@aima/core` v0.1.0（已实现，18/18 测试通过）
-
-| 功能 | 状态 |
-|------|------|
-| `receive()` + 阻塞等待 complete/interrupted | ✅ |
-| EventBus 五级订阅（COMPLIANCE/ALERT/INFO/DEBUG/TRACE） | ✅ |
-| Thread / Slot 查询 + crash recovery | ✅ |
-| `continue()`（多轮对话续接） | ⏳ |
-| `memory.search()`（只读接口） | ⏳ |
-| `identityDir` 身份文件加载 | ⏳ |
-| ClaudeSDKAdapter（当前为 PiAgentAdapter） | ⏳ |
-| `@aima/crew`（OpenClaw fork） | ⏳ |
+当前实现状态与路线图见 [`05-status.md`](05-status.md)。

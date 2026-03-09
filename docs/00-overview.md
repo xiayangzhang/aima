@@ -49,7 +49,7 @@ AIMA 建立在 pi-mono 生态之上，但设计哲学有根本性差异。理解
 - 无内置记忆、无安全层、无审计
 - 极轻量，适合用作底层构件
 
-AIMA **统一使用 `pi-coding-agent`** 作为每个脑区的 LLM 对话引擎底层。当前实现暂时使用 `pi-agent-core`（已完成，18/18 测试通过），迁移到 `pi-coding-agent` 是已决定的下一步。
+AIMA **统一使用 `pi-coding-agent`** 作为每个脑区的 LLM 对话引擎底层（迁移进度见 `05-status.md`）。
 
 > **为什么统一用 pi-coding-agent 而不是 pi-agent-core？**
 > pi-coding-agent 的内置工具（bash、文件读写）与外部工具走同一 `AgentTool` 注册路径，Amygdala 可以通过 Extension API 的 `tool_call` 事件统一拦截。于是我们可以用一个 adapter，通过 Amygdala 策略控制工具权限——默认禁用危险工具，`role.md` 按需解锁——而不需要维护两个不同的 adapter。
@@ -228,28 +228,15 @@ const session = await createAIMASession({ instance, sessionKey, tools, toolIndex
 | **02-memory-architecture.md** | 五类记忆、MemoryService API、检索策略、数据库 schema | 后端工程师 |
 | **03-implementation-guide.md** | 实现状态、适配器选择、ThreadRunner、Context Assembly | 实现工程师 |
 | **04-sdk-api.md** | 公共 API（只记录 AIMA 在 pi 之上额外提供的接口） | 集成方、应用开发者 |
+| **05-status.md** | 实现进度、已决定未实现的方向、路线图、暂缓决策 | 所有人 |
 
-**阅读顺序建议**：00 → 01 → 04（快速了解能做什么）→ 02 + 03（深入实现）
+**阅读顺序建议**：00 → 01 → 04（快速了解能做什么）→ 02 + 03（深入实现）→ 05（当前状态）
 
 ---
 
-## 八、实现状态
+## 八、实现状态与路线图
 
-`@aima/core` v0.1.1（`main` 分支）
-
-| 模块 | 状态 |
-|---|---|
-| Thread/Slot 持久化（PostgreSQL） | ✅ |
-| ThreadRunner + 五脑路由 | ✅ |
-| PiAgentAdapter（pi-agent-core） | ✅ |
-| Event Bus（五级订阅） | ✅ |
-| 崩溃恢复 | ✅ |
-| 测试覆盖（39 个 unit + integration smoke） | ✅ |
-| `continue()`（多轮对话续接） | ⏳ |
-| `memory.search()`（只读接口） | ⏳ |
-| `identityDir` 身份文件加载 | ⏳ |
-| ClaudeSDKAdapter | ⏳ |
-| `@aima/crew`（OpenClaw fork） | ⏳ |
+详见 [`05-status.md`](05-status.md)，包含当前进度、已决定但未实现的方向、路线图和暂缓的设计决策。
 
 ---
 

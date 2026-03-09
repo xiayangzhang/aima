@@ -426,3 +426,5 @@ workspace_read/write → ALLOW
 | `@aima/crew`（pi 兼容 facade） | ⏳ 待实现（见 `04-sdk-api.md`） |
 
 实现代码位于 `aima-feature` 分支（独立 git repo，待 PR 合入）。
+
+整体路线图与暂缓的设计决策见 [`05-status.md`](05-status.md)。
