@@ -158,6 +158,25 @@ AIMA 实例不实现 Audit 逻辑。Audit 是外部关注点。取而代之的�
 
 AIMA 只保证事件的结构化发射，不关心谁在消费。
 
+### 事件字段规范
+
+每个事件必须包含：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `event_id` | UUID | 事件唯一标识 |
+| `event_type` | string | 如 `tool.pre_use`, `brain.complete`, `memory.write` |
+| `level` | Level | TRACE/DEBUG/INFO/COMPLIANCE/ALERT |
+| `occurred_at` | timestamp | 事件发生时间 |
+| `brain` | BrainType | 发射脑区 |
+| `thread_id` | string | 所属 Thread（横切信号时为 null） |
+| `session_id` | string | 当前脑区 Session ID |
+| `causation_id` | UUID \| null | 直接触发本事件的上一个事件 ID |
+| `schema_version` | string | 事件格式版本号 |
+| `payload` | object | 事件内容（工具名、参数、结果等） |
+
+`thread_id` 作为顶层关联 ID（一次外部输入触发的全部事件共享同一 `thread_id`）；`causation_id` 表达单步因果（哪个事件直接触发了本事件），两者独立，共同支撑可观测性和 replay。
+
 ---
 
 ## 四、认知工作空间
@@ -177,7 +196,10 @@ Workspace
 ├── session_id
 ├── threads[]
 │   ├── thread_id
-│   ├── trigger            // 触发事件（人类输入 / 系统事件 / DMN 通知）
+│   ├── source_channel     // "teams_dm" | "email" | "webhook" | "scheduler" | "internal" | ...
+│   ├── source_external_id // 外部系统的消息/请求 ID（null 表示内部触发）
+│   ├── initiated_by       // entity_id（发起方实体，人/系统/DMN 均可）
+│   ├── trigger            // 触发事件原始内容摘要
 │   ├── priority
 │   ├── state              // active | waiting | complete | interrupted
 │   └── slots
@@ -287,7 +309,7 @@ Thread 数量上限是配置项。
 
 DMN 是 AIMA 中**唯一能在没有外部触发的情况下自发启动行为**的脑区。Limbic 和 Brainstem 响应外部输入（人类消息、系统事件），DMN 通过心跳自发唤醒。
 
-DMN 运行在两个截然不同的模式下：
+DMN 在概念上是一个脑区，**工程上由两个独立运行单元实现**——Reactive 和 Consolidation 各自独立调度，不共享运行时，不互相阻塞：
 
 ### 模式一：Reactive（Event Bus 触发）
 
@@ -374,6 +396,23 @@ DMN 运行在两个截然不同的模式下：
 `episodic` 是认知衍生物——DMN 从 Event Bus 消费事件后写入的压缩表示，可以自由衰减和整理。外部审计系统直接订阅 Event Bus（`COMPLIANCE` 级），保证不可变的完整记录，不依赖 `episodic` 数据库记录。
 
 **五种记忆类型的划分依据是访问模式，不是内容类型**：`episodic` 时序读取、`implicit` 每次工具执行前查、`procedural` Context Assembly 时加载、`working` 不持久化——四种不同的读写频率和检索策略，合并进同一接口会互相干扰。详见 `02-memory-architecture.md`。
+
+### 实体模型与自我认知
+
+AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建模。实体分两个层级：
+
+| 层级 | 归属 | 保留 `entity_type` 值 | 示例 |
+|---|---|---|---|
+| **AIMA 内部实体** | 框架定义 | `brain` / `skill` / `instance` | `brain:cortex`、`skill:procurement-approval`、`instance:self` |
+| **应用层实体** | 上层应用定义 | 自由扩展 | 同事、供应商、内部系统、组织部门、其他 AIMA 实例 |
+
+**大脑是实体**：每个脑区（Limbic/Cortex/Brainstem/Amygdala/DMN）在 `semantic` 记忆中有对应的实体记录。DMN 将观察到的脑区行为模式写入 `implicit` 记忆（如"Cortex 在多步数学任务上的可靠性较低"），使路由和风险评估能从自身历史中学习。这是 AIMA 元认知能力的底层机制。
+
+**Skill 是实体**：每个 Skill 文件对应一个稳定的 `entity_id`（如 `skill:procurement-approval`）。Skill 实体（认知层）与 Skill 文件（操作层）分离：文件是 Agent 运行时读取的可执行知识，实体记录是 AIMA 对这个 Skill 的认知积累——使用历史、版本关系（`supersedes_ids`）、适用场景模式。DMN Consolidation 基于实体记录评估 Skill 的健康度和固化时机。
+
+**实例自身是实体**：`entity_id = "instance:self"` 保留给实例的整体自我描述（能力边界、当前工作状态、已知局限）。
+
+应用层在框架保留的三个 `entity_type` 值之外自由扩展，两者共存于同一记忆池，互不冲突。实体的具体属性模型（每类实体有哪些字段、关系）属于应用层定义，框架只提供 `entity_id` 和 `attribute` 两个索引字段。
 
 ### 涌现式文档结构
 

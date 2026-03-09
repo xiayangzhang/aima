@@ -182,6 +182,8 @@ DMN Reactive 每次看到的内容结构：
   content:          string（Markdown 格式）
   partition_id:     string（写入方脑区）
   session_id:       string
+  entity_id:        string | null（这条记录描述的实体，如 "brain:cortex" / "skill:procurement" / "colleague:alice"）
+  attribute:        string | null（实体的哪个属性，如 "reliability" / "owner" / "status"）
   base_importance:  float（内在价值，初始值见第二节）
   pinned:           boolean（true = 永不参与衰减/删除决策）
   source:           "brain" | "event_bus" | "dmn_consolidation"
@@ -195,6 +197,8 @@ DMN Reactive 每次看到的内容结构：
   created_at:       timestamp
 }
 ```
+
+**`entity_id` 和 `attribute` 是可选的轻量锚点**，不强制唯一约束。写入方尽力填写——尤其是 `semantic` 类型记录。当同一 `entity_id + attribute` 组合存在多条 `t_invalid=null` 记录时（如"当前项目 owner"有两个版本），检索方（LLM）基于 `created_at` 推断更新者，DMN Consolidation 定期清理矛盾记录并设置 `supersedes_ids`。这遵循"治理而非强约束"的原则：不要求写入时必须正确，但提供足够的结构信息让系统能在事后修复。
 
 **双时态字段说明**：`t_valid` / `t_invalid` 记录**事实在现实中的有效期**；`created_at` / `expires_at` 记录**系统中的存储生命周期**。两组字段独立，不互相推导。
 

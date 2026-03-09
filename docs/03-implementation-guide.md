@@ -289,8 +289,14 @@ Thread Runner 是 AIMA 框架层的核心编排器，与适配器无关。
 
 ```typescript
 class ThreadRunner {
-  private brainSessions: Map<BrainType, string>  // brain → sessionId
+  // Session key = brain + thread_id（二元组）
+  // 防止同一脑区同时处理多个 Thread 时 session 历史串线
+  private brainSessions: Map<string, string>  // `${brain}:${thread_id}` → sessionId
   private workspace: CognitiveWorkspace
+
+  private sessionKey(brain: BrainType, thread_id: string): string {
+    return `${brain}:${thread_id}`
+  }
 
   // Thread Runner 的主循环：监听工作空间变化，激活对应脑区
   async run() {
@@ -317,7 +323,7 @@ class ThreadRunner {
 
   private async activateBrain(brain: BrainType, thread_id: string) {
     const adapter = this.adapters.get(brain)    // pi-agent-core 或 Claude SDK adapter
-    const sessionId = this.brainSessions.get(brain)
+    const sessionId = this.brainSessions.get(this.sessionKey(brain, thread_id))
     const systemPrompt = await assembleContext(brain, this.workspace, thread_id)
 
     for await (const event of adapter.run({ brain, sessionId, systemPrompt, thread_id })) {
