@@ -1,7 +1,8 @@
 # AIMA 架构设计
 
 > **AIMA** = Artificial Intelligence: A Minded Architecture — 认知个体的核心框架
-> **版本**: 3.1
+> **版本**: 3.2
+> **记忆架构详见**: `02-memory-architecture.md`
 > **状态**: 当前权威文档
 > **上层应用**: secondfirst/employee（虚拟员工产品）基于 AIMA 构建
 
@@ -31,20 +32,23 @@
 
 ## 二、五脑架构
 
-| 脑区 | 神经科学对应 | 职责 | 模型 |
+神经学名字是代号，功能角色是抽象职责描述。两者同等重要。
+
+| 脑区 | 功能角色 | 神经科学对应 | 模型 |
 |---|---|---|---|
-| **Limbic** | 古哺乳脑 / 边缘系统 | 双向人类接口、社交、关系、对外人格 | Sonnet |
-| **Cortex** | 新哺乳脑 / 新皮层 | 推理、规划、抽象、复杂判断 | Opus |
-| **Brainstem** | 爬行脑 / 脑干 | 双向系统接口、规则路由、执行翻译 | Haiku |
-| **Amygdala** | 杏仁核 | 执行前风险中断 | 规则优先 / Haiku 降级 |
-| **DMN** | 默认模式网络 | 内省、纠错、预测、记忆管理 | Haiku |
+| **Limbic** | Communicator + Router | 古哺乳脑 / 边缘系统 | Sonnet |
+| **Cortex** | Planner + Reasoner | 新哺乳脑 / 新皮层 | Opus |
+| **Brainstem** | Executor + System Interface | 爬行脑 / 脑干 | Haiku |
+| **Amygdala** | GuardRail | 杏仁核 | 规则优先 / Haiku 降级 |
+| **DMN** | Reflector + Consolidator | 默认模式网络 | Haiku |
 
-### Limbic（古哺乳脑）
+### Limbic — Communicator + Router
 - 所有来自人类协作者的输入首先进入 Limbic；所有发向人类的输出由 Limbic 发出
+- **直接处理**简单对话（问候、确认、记忆中能直接回答的问题），不经过 Cortex
 - 维护关系上下文、语气调节、沟通节奏
-- 用 LLM 判断当前输入是否需要 Cortex 参与，或直接路由 Brainstem 完成简单操作
+- 用 LLM 判断复杂输入是否需要 Cortex 参与，或是否需要 Brainstem 执行操作
 
-### Cortex（新哺乳脑）
+### Cortex — Planner + Reasoner
 - 纯内部推理引擎，不直接与人类或系统交互
 - 负责复杂任务的分解、规划、判断和研究
 - 推理完成后，在 Cortex Slot 的 `intent` 字段标记结果归属：
@@ -52,7 +56,7 @@
   - `"execute"` → Brainstem 激活，执行具体操作
   - `"both"` → 两者均激活
 
-### Brainstem（爬行脑）
+### Brainstem — Executor + System Interface
 - **系统输入**：监听系统事件（Webhook、Dataverse 变更、定时触发）
 - **系统输出**：将抽象指令翻译为具体操作参数并执行（API 调用、CRUD、文件操作）
 - **规则路由**（非 LLM）：收到系统事件后，用配置化规则判断处理方式：
@@ -133,7 +137,16 @@ Workspace
 - **Cortex**：Limbic 或 Brainstem Slot 写入了 `"needs_analysis"` 标记，且 Cortex Slot 为空
 - **Brainstem**：Cortex Slot 的 `intent` 包含 `"execute"`，或 Limbic Slot 包含直接操作指令，或收到新系统事件
 
-各脑区读取自己关心的 Slot，处理后写回结果，触发下一个脑区激活。这是**认知接力**而非显式委派。
+各脑区读取自己关心的 Slot，处理后写回结果，触发下一个脑区激活。
+
+### 并发模型：Thread 间并行，Thread 内顺序
+
+这是避免共享可变状态竞态的核心设计决策：
+
+- **Thread 内**：任意时刻只有一个脑区持有写权限。流程沿 Slot 顺序推进（如 Limbic → Cortex → Brainstem），当前脑区写完并标记 `done` 后，下一个脑区才激活写入。读操作任意时刻均可进行。
+- **Thread 间**：不同 Thread 的 Slot 集完全独立，多个脑区可同时处理不同 Thread，无需协调。
+
+这意味着"Brain 级并行"的实质是：Cortex 处理 Thread-A，Brainstem 处理 Thread-B——并行发生在 Thread 维度，而非同一 Thread 内的多脑并发。无需锁，无需事务，竞态在设计层消除。
 
 ### 信号优先级
 
@@ -146,13 +159,16 @@ Signals 优先于 Thread 内的正常流程：
 
 ## 五、并行工作
 
-AIMA 支持三个层级的并行：
+AIMA 支持两个层级的并行（并发模型详见第四节）：
 
-### Level 1：Brain 级并行
-不同脑区可同时处理不同 Thread，各脑区的并发由工作空间中各自的 Slot 独立管理，互不阻塞。
+### Level 1：Thread 级并行（主要并行层）
+一个 AIMA 实例可同时维护多个活跃 Thread，不同脑区同时处理不同 Thread：
+- Cortex 分析 Thread-A，Brainstem 执行 Thread-B，Limbic 等待 Thread-C 的人类回复
+- 各 Thread 的 Slot 集完全独立，无竞态
 
-### Level 2：Thread 级并行
-一个 AIMA 实例可同时维护多个活跃 Thread。Thread 数量上限是配置项。
+Thread 数量上限是配置项。
+
+### Level 2：Instance 级并行（原 Level 3）
 
 ### Level 3：Instance 级并行
 当任务真正独立、需要深度并行时，可以临时生成**子 AIMA 实例**：
@@ -195,8 +211,11 @@ DMN 运行在两个截然不同的模式下：
 **触发**：`INFO` 级及以上事件写入 → 毫秒级响应
 
 **职责**（按优先级）：
-1. **回溯纠错**：读取最新 Action Log，判断刚刚发生的行为是否有误；如需纠错，向工作空间写入中断 Signal
-2. **前瞻预测**：基于近期 Action Log 预测接下来需要的行为，无预测则跳过
+1. **错误恢复**：脑区遇到 LLM 调用失败或工具执行错误时，发射 `ALERT` 事件 → DMN 立即介入，决策重试、换策略、还是上报。具体：
+   - 可重试错误（超时、限流）→ 写入 retry 指令到对应 Thread Slot
+   - 不可重试错误（权限拒绝、数据异常）→ 标记 Thread 为 `interrupted`，发射 `ALERT` 供外部处理
+2. **回溯纠错**：读取最新 Action Log，判断刚刚发生的行为是否有误；如需纠错，向工作空间写入中断 Signal
+3. **前瞻预测**：基于近期 Action Log 预测接下来需要的行为，无预测则跳过
 
 **资源消耗**：轻量，每次只读最新增量（历史已缓存，cache hit rate 随 Session 增长趋近 100%）
 
