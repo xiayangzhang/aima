@@ -1,6 +1,6 @@
 # AIMA 实现指南
 
-> **版本**: 1.0
+> **版本**: 1.1
 > **状态**: 当前权威文档
 > **关联**: `01-agent-architecture.md` 为架构概览，本文为面向开发者的实现参考
 
@@ -332,7 +332,8 @@ class ThreadRunner {
     const sessionId = this.brainSessions.get(`${brain}:${thread_id}`)
     const systemPrompt = await assembleContext(brain, this.workspace, thread_id)
 
-    for await (const event of adapter.run({ brain, sessionId, systemPrompt, thread_id })) {
+    const result = await adapter.run({ brain, sessionId, systemPrompt, thread_id })
+    for (const event of result.events) {
       this.workspace.emit(event)
     }
   }

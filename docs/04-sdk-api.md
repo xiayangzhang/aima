@@ -70,11 +70,13 @@ const thread = await aima.receive({
 
 `receive()` **阻塞直到 thread 离开 `active` 状态**，返回条件：
 
-| thread.state | 含义 | 上层行为 |
+| thread.state | 触发场景 | 上层行为 |
 |---|---|---|
-| `complete` | 正常结束 | 读取 `slots.limbic.output` 决定是否回复 |
-| `interrupted` | 脑区出错 | 读取 `error_reason`，记录日志，必要时通知人工 |
-| `waiting` | Limbic 输出 `DEFER`，等待更多输入 | 向用户发送 `output.content`（Agent 的追问），保留 thread_id，下条消息用 `continue()` 续接 |
+| `complete` | Limbic 输出 `RESPOND` / `NO_REPLY` / `ROUTE` / `EXECUTE` 且 Brainstem 已跑完 | 读取 `slots.limbic.output.mode` 决定是否向通道发送消息 |
+| `interrupted` | 任意脑区出错 | 读取 `error_reason`，记录日志，必要时通知人工 |
+| `waiting` | Limbic 输出 `DEFER` | 向用户发送 `output.content`（Agent 的追问），保留 thread_id，下条消息用 `continue()` 续接 |
+
+> **EXECUTE 说明**：Limbic 输出 `EXECUTE` 后 Brainstem 继续运行，`receive()` 仍然等待，直到 Brainstem 完成、Thread 进入 `complete` 才返回。不存在"Limbic 输出 EXECUTE 时 receive() 中途返回 active"的情况。
 
 > **注意**：DEFER 时 `receive()` 会返回（`thread.state = waiting`），而不是永久阻塞。
 > 不返回的话，调用方被挂起，Agent 等待输入却没有输入来源，会死锁。
@@ -116,10 +118,17 @@ async function onTeamsMessage(conversationId: string, text: string) {
         source_external_id: conversationId,
       })
   await db.saveThreadId(conversationId, thread.thread_id)
-  // 读取 Limbic 输出，决定是否回复
-  if (thread.slots.limbic.output?.mode === 'RESPOND') {
-    await teamsClient.reply(conversationId, thread.slots.limbic.output.content)
+
+  const output = thread.slots.limbic.output
+  if (thread.state === 'waiting') {
+    // DEFER：Agent 需要更多信息，发送追问文本，等待用户下一条消息
+    await teamsClient.reply(conversationId, output!.content)
+  } else if (output?.mode === 'RESPOND') {
+    // RESPOND：正常回复
+    await teamsClient.reply(conversationId, output.content)
   }
+  // NO_REPLY / EXECUTE 完成后：静默，不向通道发消息
+  // interrupted：记录日志，可选通知管理员
 }
 ```
 

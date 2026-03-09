@@ -1,7 +1,7 @@
 # AIMA 架构设计
 
 > **AIMA** = Artificial Intelligence: A Minded Architecture — 认知个体的核心框架
-> **版本**: 3.3
+> **版本**: 3.4
 > **记忆架构详见**: `02-memory-architecture.md`
 > **状态**: 当前权威文档
 > **上层应用**: secondfirst/employee（虚拟员工产品）基于 AIMA 构建
@@ -199,6 +199,20 @@ Cognitive Workspace **持久化到 PostgreSQL**（与 Memory 同库，独立表�
 
 Thread Runner 崩溃恢复流程：重启后加载所有 `state != complete` 的 Thread → 对每个 Thread 找到最后一个 `status = done` 的 Slot → 重新激活下一个应该激活的脑区 → 继续执行。这保证了 crash 不会导致 in-flight 工作丢失。
 
+**Brainstem 子执行的崩溃恢复（at-most-once 语义）**
+
+Brainstem 崩溃时，`execution_session_id` 为 non-null 且 `status ≠ done`。Thread Runner 重启后的判断流程：
+
+1. 查询 Event Bus：是否存在该 `execution_session_id` 对应的 COMPLIANCE 完成事件？
+   - **有** → 子执行已完成，Slot 状态未及时写入。标记 Slot 为 done，继续下一步骤。
+   - **没有** → 子执行中断，进入步骤 2。
+
+2. 判断操作幂等性（来自工具注册时声明的 `idempotent` 标志）：
+   - **幂等操作**（查询、读取、状态检查）→ 安全重试，生成新的 `execution_session_id` 重跑。
+   - **非幂等操作**（发送消息、写入数据、外部 API 调用）→ **不重试，标记 Thread 为 interrupted，escalate 给人工**。宁可中断，不接受重复执行。
+
+这是 at-most-once 语义的实现底线：非幂等操作在崩溃歧义情况下，系统选择"可能少做一次"而非"可能多做一次"。
+
 ### 模型：Thread + Slot
 
 工作空间是 AIMA 实例内部的共享状态，支持多任务并行。
@@ -222,7 +236,11 @@ Workspace
 │   └── slots
 │       ├── limbic:    { input, output, status }
 │       ├── cortex:    { input, output, status, intent }   // intent: communicate|execute|both
-│       ├── brainstem: { input, output, status, execution_session_id }  // 子执行 session ID 三态：null+status≠done→未开始；non-null+status≠done→执行中；null+status=done→已完成（完成后清除 ID）
+│       ├── brainstem: { input, output, status, execution_session_id }  // 子执行 session ID 四态：
+│       │              // null   + status≠done → 未开始
+│       │              // non-null + status≠done → 执行中（或崩溃中断，见下方崩溃恢复）
+│       │              // null   + status=done  → 已完成（完成后清除 ID，正常路径）
+│       │              // non-null + status=done → 已完成且保留 ID（审计需要时由 Slot 写入方主动保留，非默认）
 │       └── ...
 └── signals[]              // 横切信号（优先于任何 Thread）
     ├── Amygdala 中断信号
@@ -359,8 +377,12 @@ DMN 在概念上是一个脑区，**工程上由两个独立运行单元实现**
 ### implicit 记忆的写入权限
 
 `implicit` 记忆（风险模式）允许 Amygdala 和 DMN 共同写入：
-- Amygdala：在拦截新风险时写入
-- DMN：在 Reactive 模式发现行为错误模式后写入（同时也写 `episodic` 作为事件记录）
+- **Amygdala**：在拦截新风险时即时写入（provisional）
+- **DMN**：在 Reactive 模式发现行为错误模式后写入（同时也写 `episodic` 作为事件记录）；Consolidation 负责定期聚类合并（canonical）
+
+**写入语义与冲突解决**：Amygdala 写入是 provisional——即时生效，best-effort，不持锁，不等待 DMN。DMN Consolidation 是最终仲裁者，负责将语义重叠的条目合并为 canonical 记录。冲突合并规则：tag 取并集，`base_importance` 取较高值，被合并的旧记录通过 `supersedes_ids` 软删除。
+
+任意时刻库中可能存在 Amygdala 刚写入但尚未被 DMN 合并的冗余条目，这是设计选择——Amygdala 宁可多一条冗余记录也不能因等锁而延迟工具拦截决策。
 
 ---
 
