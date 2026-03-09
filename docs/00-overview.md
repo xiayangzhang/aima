@@ -255,6 +255,10 @@ const session = await createAIMASession({ instance, sessionKey, tools, toolIndex
 
 ## 九、设计哲学（一读必知）
 
+**分工使能协同**：五脑的价值不在单个脑区，而在分工产生的互相使能。Limbic 能大胆忽略无关消息，是因为有 Brainstem 托底执行、有 Cortex 处理复杂判断；DMN 的预测能精准送达正确的脑区，是因为每个脑区的职责边界清晰；Amygdala 能保持轻量，是因为有 DMN 在后台持续学习风险模式。单独拆出任何一个脑区，它的能力都会退化。
+
+**Agent 是自己的调度器**：DMN 向后整合过去（从 Event Bus 蒸馏 episodic 记忆、聚类风险模式、评估 Skill 健康度），向前预测未来（基于积累的模式主动激活脑区、发起 Thread、取消已失效的预测）。区别于 cron 或外部触发：是 Agent 自己决定什么时候该做什么，而不是系统时钟或外部事件决定。这是 AIMA 和其他框架最本质的分野之一。
+
 **治理而非约束**：给 Agent 目标和政策，不给操作手册。Amygdala 守住硬底线，其余信任 Agent 判断。
 
 **事后审计 > 事前拦截**：不追求零错误，追求完整可追溯。COMPLIANCE 事件 → WORM 存储是不可变的审计底座。
