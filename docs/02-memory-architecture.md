@@ -43,8 +43,10 @@
 | `semantic` | 长期知识 | 实体、关系、事实（人、组织、系统、项目） | Limbic / Cortex | Context Assembly |
 | `episodic` | 认知事件流 | DMN 从 Event Bus 派生的事件摘要，以及 Session 摘要锚点 | DMN | DMN Reactive |
 | `procedural` | 技能库 | Skill 化的流程模式（reference / adapted / first-party） | Cortex | Context Assembly + Skill 固化 |
-| `working` | 会话暂存 | 当前 Session 的临时状态，Session 结束清除 | 所有脑区 | 当前 Session |
+| `working` | 会话暂存 | 当前 Thread 的临时状态，Thread 完成时清除 | 所有脑区 | 当前 Thread |
 | `implicit` | 风险模式 | Amygdala 规则的动态补充，泛化后的风险行为模式 | Amygdala / DMN | Amygdala 检测 |
+
+**`working` 的清除粒度**：`working` 记忆的生命周期绑定到 **Thread**，而非单个脑区的 LLM session。同一 Thread 中 Limbic session 已结束而 Cortex 仍在运行时，Limbic 写入的 `working` 记录对 Cortex 仍然可见。Thread Runner 在 Thread 状态变为 `complete` 时调用 `clearWorkingMemory(thread_id)` 批量清除。`working` 记录的 `session_id` 字段保留写入时的脑区 session ID（供调试追溯），但清除逻辑不依赖此字段——依赖 `tags` 中的 `thread_id` 标签。
 
 **`episodic` 的审计边界**：`episodic` 记忆是认知衍生物，不是审计原始数据。它可以自由衰减和整理。审计完整性由 Event Bus → 外部不可变存储（WORM）保证，与 `episodic` 无关。
 

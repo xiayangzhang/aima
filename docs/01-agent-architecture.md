@@ -96,6 +96,7 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 |---|---|
 | `RESPOND(content)` | 直接回复，简单对话不经过 Cortex |
 | `ROUTE(needs_analysis)` | 写入工作空间，等待 Cortex 处理后再响应 |
+| `EXECUTE(intent)` | 操作意图明确且无需规划，Limbic 直接写入工作空间并激活 Brainstem。仅用于 Limbic 有足够信息编码操作意图的简单情况（如"发送你刚刚起草的邮件"）；有歧义或需要多步规划时应使用 `ROUTE` |
 | `NO_REPLY` | 接收但不响应——群聊场景、信息积累中、不需要当轮回复时 |
 | `DEFER` | 确认收到，等待更多输入再决策（必须携带超时时长，由 Thread Runner 计时） |
 
@@ -218,7 +219,7 @@ Workspace
 │   └── slots
 │       ├── limbic:    { input, output, status }
 │       ├── cortex:    { input, output, status, intent }   // intent: communicate|execute|both
-│       ├── brainstem: { input, output, status, execution_session_id }  // 当前子执行 session ID（null=未执行或已完成）
+│       ├── brainstem: { input, output, status, execution_session_id }  // 子执行 session ID 三态：null+status≠done→未开始；non-null+status≠done→执行中；null+status=done→已完成（完成后清除 ID）
 │       └── ...
 └── signals[]              // 横切信号（优先于任何 Thread）
     ├── Amygdala 中断信号
@@ -243,7 +244,7 @@ Thread Runner 自身需要处理若干边界情况：`intent=both` 时两个脑�
 |---|---|
 | **Limbic** | 有新的人类输入；或 Cortex Slot 的 `intent` 包含 `"communicate"` |
 | **Cortex** | 任意 Slot 写入了 `"needs_analysis"` 标记，且当前 Thread 的 Cortex Slot 为空 |
-| **Brainstem** | Cortex Slot 的 `intent` 包含 `"execute"`；或 Limbic Slot 包含直接操作指令；或新系统事件到达 |
+| **Brainstem** | Cortex Slot 的 `intent` 包含 `"execute"`；或 Limbic 输出 `EXECUTE(intent)`；或新系统事件到达 |
 
 ### 并发模型：Thread 间并行，Thread 内顺序
 
@@ -398,7 +399,7 @@ DMN 在概念上是一个脑区，**工程上由两个独立运行单元实现**
 | `semantic` | 事实、实体、关系 | Limbic / Cortex | Limbic / Cortex |
 | `episodic` | 事件序列（= Action Log） | DMN（消费 Event Bus） | DMN |
 | `procedural` | Skill 化的流程模式 | Cortex | Limbic / Brainstem |
-| `working` | 当前 Session 临时状态 | 所有脑区 | 所有脑区（Session 结束清除） |
+| `working` | 当前 Thread 临时状态 | 所有脑区 | 所有脑区（Thread 完成时清除） |
 | `implicit` | 风险模式、危险行为历史 | Amygdala / DMN | Amygdala |
 
 初始 `base_importance`：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6、`implicit` = 0.7。检索排序使用 `base_importance + recency_boost`（基于 `last_accessed_at` 动态计算）。详见 `02-memory-architecture.md`。

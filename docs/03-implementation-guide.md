@@ -307,7 +307,9 @@ class ThreadRunner {
   private async route(event: WorkspaceEvent) {
     const { thread_id, slot } = event
 
-    // 激活条件判断（见架构文档第四节）
+    // 示意性路由逻辑，仅覆盖核心路径。
+    // 完整路由规则（Limbic EXECUTE 直接激活 Brainstem、Brainstem 完成后触发 DMN Reactive 检查、
+    // 系统事件 needs_analysis → Cortex 等边界路径）见 01-agent-architecture.md 第四节激活触发条件表。
     if (slot.brain === 'limbic' && slot.status === 'done' && slot.needs_analysis) {
       await this.activateBrain('cortex', thread_id)
     }
@@ -387,7 +389,7 @@ Cache 以模型为边界。Limbic（Sonnet）和 Cortex（Opus）的 Block 1+2 �
 
 ---
 
-## 六、当前阶段状态
+## 七、当前阶段状态
 
 | 组件 | 状态 |
 |---|---|
