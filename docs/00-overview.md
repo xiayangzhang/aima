@@ -37,7 +37,68 @@ AIMA 不决定"解决什么问题"——那是上层应用的事。AIMA 负责"A
 
 ---
 
-## 三、五脑模型（60 秒版）
+## 三、与 pi / pi-coding-agent / OpenClaw 的关系
+
+AIMA 建立在 pi-mono 生态之上，但设计哲学有根本性差异。理解这些差异，才能知道 AIMA 加了什么、为什么这样加。
+
+### pi-agent-core
+
+**哲学**：最小化、可组合的 Agent 循环。给工具，跑起来，其他你自己搭。
+
+- 无状态：每个 session 从零开始，关闭即消失
+- 无内置记忆、无安全层、无审计
+- 极轻量，适合用作底层构件
+
+AIMA **统一使用 `pi-coding-agent`** 作为每个脑区的 LLM 对话引擎底层。当前实现暂时使用 `pi-agent-core`（已完成，18/18 测试通过），迁移到 `pi-coding-agent` 是已决定的下一步。
+
+> **为什么统一用 pi-coding-agent 而不是 pi-agent-core？**
+> pi-coding-agent 的内置工具（bash、文件读写）与外部工具走同一 `AgentTool` 注册路径，Amygdala 可以通过 Extension API 的 `tool_call` 事件统一拦截。于是我们可以用一个 adapter，通过 Amygdala 策略控制工具权限——默认禁用危险工具，`role.md` 按需解锁——而不需要维护两个不同的 adapter。
+
+### pi-coding-agent
+
+**哲学**：在 pi-agent-core 基础上，预置编程工具（bash、文件读写）。
+
+- 仍然无状态
+- 内置工具与外部工具走同一 `AgentTool` 注册路径，且 Extension API 提供 pre-tool hook（`tool_call` 事件，可返回 `{ block: true }` 阻断）
+- 这两点使 Amygdala 可以覆盖所有工具，无例外
+
+**AIMA 的工具权限模型**（基于 pi-coding-agent 单 adapter）：
+
+```
+虚拟员工（默认）     虚拟程序员（role.md 解锁）
+────────────────    ────────────────────────
+bash     → BLOCK    bash     → ALLOW（沙盒内）
+file_write→ BLOCK   file_write→ ALLOW（workspace 内）
+file_read → BLOCK   file_read → ALLOW
+memory_search→ALLOW memory_search→ ALLOW
+```
+
+Amygdala 读取 `role.md` 中的 `permissions` 字段决定放行策略，不需要切换 adapter。
+
+### OpenClaw
+
+**哲学**：多通道部署平台。一个 Agent，连通多个通道（Teams、Telegram、Discord...）。
+
+- 你把应用**部署进** OpenClaw，OpenClaw 是框架
+- Session 持久化靠文件（`SessionManager.open(sessionFile)`），本质上仍是每次请求重建 Agent
+- 通道插件机制设计良好（`ChannelPlugin`: agentTools / outbound / agentPrompt）
+- 无认知架构、无内置安全层、无合规审计
+
+**AIMA 与这三者的核心差异**：
+
+| 维度 | pi / pi-coding | OpenClaw | AIMA |
+|---|---|---|---|
+| 认知持久性 | 无（session 结束即忘） | 文件级 session 历史 | PostgreSQL Thread/Slot，跨 session 持续 |
+| 记忆系统 | 无 | 无 | 五类记忆，各自访问模式设计 |
+| 工具安全 | 无 | 无 | Amygdala 同步拦截，all tools 覆盖 |
+| 合规审计 | 无 | 无 | COMPLIANCE 事件 → WORM，内置 |
+| 认知结构 | 单一 Agent 循环 | 单一 Agent 循环 | 五脑路由，不同认知功能分区 |
+| 使用方式 | 库（你 build on top） | 框架（你 deploy into） | 库（你 build on top） |
+| 错误哲学 | 无内置处理 | 无内置处理 | DMN 错误恢复 + at-most-once 安全语义 |
+
+---
+
+## 四、五脑模型（60 秒版）
 
 AIMA 把一个认知个体的能力分为五个功能区：
 
@@ -71,7 +132,7 @@ AIMA 把一个认知个体的能力分为五个功能区：
 
 ---
 
-## 四、核心概念速查
+## 五、核心概念速查
 
 | 概念 | 一句话 |
 |---|---|
@@ -87,23 +148,78 @@ AIMA 把一个认知个体的能力分为五个功能区：
 
 ---
 
-## 五、上层应用
+## 六、上层应用
 
-AIMA 当前有两个主要上层：
-
-**secondfirst/employee**（私有，主线产品）
-- 虚拟员工，集成 Microsoft Power Platform / Dataverse
-- 直接依赖 `@aima/core`
-- 仓库：`/Volumes/leoyun/agentic/`
-
-**@aima/crew**（OpenClaw fork，规划中）
-- 将 OpenClaw 内部的 `pi-coding-agent` 替换为 AIMA 五脑
-- 面向希望获得 AIMA 认知能力的 OpenClaw 部署
-- 不影响 secondfirst/employee，两者独立
+AIMA 当前有两个主要上层，**相互独立，互不依赖**。
 
 ---
 
-## 六、文档地图
+### secondfirst/employee — 虚拟员工产品
+
+**定位**：面向政府和企业的虚拟员工平台，目标客户是使用 Microsoft Power Platform / Dynamics 365 的组织。虚拟员工像真实同事一样工作——在 Teams 里对话、处理 Dataverse 里的审批、生成报表、协调任务——而不是一个"AI 助手"。
+
+**典型员工角色**：
+
+| 角色 | 做什么 |
+|---|---|
+| 流程执行员 | 审批工作流、状态更新、异常路由（如采购审批、风险评审） |
+| 数据录入员 | Dataverse 数据录入、报表生成、数据核对 |
+| 项目协调员 | 进度跟踪、资源协调、状态汇报（如项目周报、变更请求） |
+
+**技术选型**：
+- 直接依赖 `@aima/core`，不经过 @aima/crew
+- 通道：Microsoft Teams（DM + 群组）+ 邮件 + Dataverse Webhook
+- 权限：Microsoft Entra Agent ID（员工级权限）
+- 审计：双层（Inboard + Outboard WORM + Confidential Ledger）
+
+**部署阶段**（每个客户的标准导入路径）：
+
+```
+Shadow Mode（只观察不执行）
+    → 协同模式（建议 + 人工确认）
+        → 自主模式（完整执行权限）
+```
+
+Shadow Mode 期间，Agent 观察人类如何处理同类任务，差异经人工标注后写入记忆。这是 Skill 积累的主要来源。
+
+**仓库**：`/Volumes/leoyun/agentic/`（私有）
+
+---
+
+### @aima/crew — OpenClaw Fork
+
+**定位**：OpenClaw 的 fork 版本，将 OpenClaw 内部的 `pi-coding-agent` 替换为 AIMA 五脑架构。面向已经在用 OpenClaw 的场景，让它无感获得 AIMA 的认知能力。
+
+**为什么是 fork 而不是兼容层**：我们需要控制演进路径，不受 OpenClaw 原版设计决策约束。替换是一次性的底层换芯，上层通道插件完全复用。
+
+**换芯后得到什么**：
+
+| OpenClaw 原版 | @aima/crew |
+|---|---|
+| 文件 session（每次重建 Agent） | PostgreSQL Thread/Slot（跨 session 持续） |
+| 无记忆系统 | AIMA 五类记忆（免费获得） |
+| 无安全拦截 | Amygdala 覆盖所有工具（含内置工具） |
+| 无合规审计 | COMPLIANCE 事件 + WORM |
+| pi-coding-agent 单循环 | 五脑路由 |
+
+**工具分工**：OpenClaw 传入的所有通道工具（sendMessage、addReaction 等）全部注册到 Brainstem。Cortex 通过 Block 3 注入的 `toolIndex`（Markdown 工具清单）理解可用工具并做规划。Amygdala 通过 `pi-coding-agent` Extension API 的 `tool_call` 事件拦截所有工具调用（含 bash、文件 I/O 等内置工具）。
+
+**OpenClaw gateway 改动量极小**：
+
+```typescript
+// 原来：
+const session = await createAgentSession({ sessionManager, tools, model })
+// 改为：
+const session = await createAIMASession({ instance, sessionKey, tools, toolIndex, channelContext })
+```
+
+返回值实现相同的 `Agent` 接口，OpenClaw 其余代码不变。
+
+**状态**：规划中，`@aima/core` 稳定后开始实现。
+
+---
+
+## 七、文档地图
 
 | 文档 | 内容 | 读者 |
 |---|---|---|
@@ -117,7 +233,7 @@ AIMA 当前有两个主要上层：
 
 ---
 
-## 七、实现状态
+## 八、实现状态
 
 `@aima/core` v0.1.1（`main` 分支）
 
@@ -137,7 +253,7 @@ AIMA 当前有两个主要上层：
 
 ---
 
-## 八、设计哲学（一读必知）
+## 九、设计哲学（一读必知）
 
 **治理而非约束**：给 Agent 目标和政策，不给操作手册。Amygdala 守住硬底线，其余信任 Agent 判断。
 

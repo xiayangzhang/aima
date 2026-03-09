@@ -378,23 +378,34 @@ Cache 以模型为边界。Limbic（Sonnet）和 Cortex（Opus）的 Block 1+2 �
 
 ---
 
-## 六、选择适配器的决策树
+## 六、适配器策略
+
+**已决定：统一使用 `pi-coding-agent` 作为单一 adapter。**
+
+原因：
+1. `pi-coding-agent` 的内置工具（bash、文件 I/O）与外部工具走同一 `AgentTool` 路径
+2. Extension API 的 `tool_call` 事件（pre-execution，可 block）让 Amygdala 覆盖所有工具
+3. 无需维护两套 adapter——工具权限由 Amygdala 策略（`role.md` 中的 `permissions`）控制
+
+**当前状态**：暂时使用 `pi-agent-core`（已实现，18/18 测试通过）。迁移到 `pi-coding-agent` 是下一个 adapter 任务。
+
+**默认工具权限（Amygdala 内置策略）**：
 
 ```
-构建 @aima/crew（OpenClaw 兼容层）？
-├── 是 → pi-coding-agent 适配器
-│         （与 OpenClaw 工具集对齐；需额外接入 Amygdala 覆盖内置工具）
-└── 否（secondfirst/employee 或其他直接基于 AIMA 的应用）
-    ├── 需要 Claude 以外的模型？
-    │   ├── 是 → pi-agent-core 适配器
-    │   └── 否
-    │       ├── 需要精细控制 token 和每一步调用？
-    │       │   ├── 是 → pi-agent-core 适配器
-    │       │   └── 否 → Claude Agent SDK 适配器
-    │       ├── 政府/企业合规要求：数据不出特定云？
-    │       │   └── Azure AI Foundry / Amazon Bedrock → Claude Agent SDK 适配器（支持）
-    │       └── 快速原型 / 开源贡献 / 最低阻力？
-    │           └── Claude Agent SDK 适配器
+bash          → BLOCK（默认）  可由 role.md permissions 解锁
+file_write    → BLOCK（默认）  可由 role.md 限定路径解锁
+file_delete   → BLOCK（默认）  可由 role.md 解锁
+file_read     → BLOCK（默认）  可由 role.md 解锁
+memory_search → ALLOW
+workspace_read/write → ALLOW
+```
+
+**是否还需要 Claude Agent SDK 适配器？**
+
+```
+需要 Claude 以外的模型，或数据不出特定云（Azure / Bedrock）？
+├── 是 → Claude Agent SDK 适配器（支持多云部署，待实现）
+└── 否 → pi-coding-agent 适配器（默认，已决定）
 ```
 
 ---
