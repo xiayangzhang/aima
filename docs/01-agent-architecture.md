@@ -54,7 +54,7 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 
 ### AIMA 实例是最小认知个体
 
-一个 AIMA 实例（如 Alex）是系统的最小可运行单元——一个完整的认知个体，有自己的职责、记忆和工作风格。它在组织中扮演什么角色是配置层的事，不是架构层的定义。架构中没有"用户"这个概念。
+一个 AIMA 实例（如 Alex）是系统的最小可运行单元——一个完整的认知个体，有自己的职责、记忆和工作风格。它在组织中扮演什么角色是配置层的事，不是架构层的定义。架构中没有"用户"这个概念，也没有预设输入来源的形态——来自 Teams 消息、邮件、Webhook、调度器或其他 AIMA 实例的刺激，在框架层面是等价的。
 
 ### Loop 是基础设施，不是业务逻辑
 
@@ -200,6 +200,10 @@ Thread Runner 崩溃恢复流程：重启后加载所有 `state != complete` 的
 
 工作空间是 AIMA 实例内部的共享状态，支持多任务并行。
 
+**Thread 是认知上下文的边界单元**：一个 Thread 对应一件正在处理的事（一段对话、一个任务、一次事件响应）。各脑区的 LLM session 以 Thread 为粒度——同一 Thread 内的多次脑区激活共享同一 session（对话历史得以延续）；不同 Thread 之间不共享 session（上下文完全隔离）。跨 Thread 的知识通过记忆系统（Block 4）流通，而非 session 历史。
+
+**Thread 的创建是应用层决策**：AIMA 提供 Thread 数据结构和调度机制，但"什么触发新 Thread、什么消息归并进已有 Thread"由上层（如 Alex）的配置规则决定。例如：同一 Teams 对话中的连续消息合并进同一 Thread；一封新邮件可能按邮件 thread-id 归入已有 Thread 或新建；Webhook 触发的操作通常是短生命周期的独立 Thread。AIMA 不预设这些规则。
+
 ```
 Workspace
 ├── session_id
@@ -322,6 +326,8 @@ DMN 在概念上是一个脑区，**工程上由两个独立运行单元实现**
 
 ### 模式一：Reactive（Event Bus 触发）
 
+**实现性质**：DMN Reactive 是**代码驱动的事件监听器**，不是持续运行的 LLM 对话 Agent。它订阅 Event Bus 事件，执行确定性逻辑；需要判断时发起**一次性** LLM 调用（非对话 session）。跨 Thread 的全局视野来自直接查询数据库（workspace 表、episodic 事件记录），而非 LLM context window。
+
 **触发**：`INFO` 级及以上事件写入 → 毫秒级响应
 
 **职责**（按优先级）：
@@ -331,7 +337,7 @@ DMN 在概念上是一个脑区，**工程上由两个独立运行单元实现**
 2. **回溯纠错**：读取最新 Action Log，判断刚刚发生的行为是否有误；如需纠错，向工作空间写入中断 Signal
 3. **前瞻预测**：基于近期 Action Log 预测接下来需要的行为，无预测则跳过
 
-**资源消耗**：轻量，每次只读最新增量（`created_at > last_anchor`），历史已在 LLM context 中
+**资源消耗**：轻量，每次只读最新增量（`created_at > last_anchor`）
 
 ### 模式二：Consolidation（心跳触发）
 

@@ -289,12 +289,12 @@ Thread Runner 是 AIMA 框架层的核心编排器，与适配器无关。
 
 ```typescript
 class ThreadRunner {
-  // Session key = brain type（每个脑区一个持续 session）
-  // 脑区 session 跨所有 Thread 持续存在，直到上下文到达上限（→ session_anchor + 新 session）
-  // 这是设计选择：Cortex 处理 Thread-A 后再处理 Thread-B，其 session 历史积累两次的推理——
-  // 类似人类分析师：不会因开始新任务就忘掉之前做过的分析。
-  // Block 3（工作空间状态）告诉脑区当前聚焦哪个 Thread，历史上下文提供跨 Thread 的认知连续性。
-  private brainSessions: Map<BrainType, string>  // brain → sessionId
+  // Session key = brain + thread_id（二元组）
+  // Thread 是认知上下文的边界单元：同一 Thread 内的多次脑区激活共享同一 session（对话历史延续）；
+  // 不同 Thread 之间 session 完全隔离（上下文不跨任务污染）。
+  // 跨 Thread 的知识通过记忆系统（Block 4）流通，不通过 session 历史。
+  // DMN Reactive / Consolidation / Amygdala 不使用 LLM session，不在此 Map 中。
+  private brainSessions: Map<string, string>  // `${brain}:${thread_id}` → sessionId
   private workspace: CognitiveWorkspace
 
   // Thread Runner 的主循环：监听工作空间变化，激活对应脑区
@@ -322,7 +322,7 @@ class ThreadRunner {
 
   private async activateBrain(brain: BrainType, thread_id: string) {
     const adapter = this.adapters.get(brain)    // pi-agent-core 或 Claude SDK adapter
-    const sessionId = this.brainSessions.get(brain)
+    const sessionId = this.brainSessions.get(`${brain}:${thread_id}`)
     const systemPrompt = await assembleContext(brain, this.workspace, thread_id)
 
     for await (const event of adapter.run({ brain, sessionId, systemPrompt, thread_id })) {
