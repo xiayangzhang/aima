@@ -334,7 +334,43 @@ class ThreadRunner {
 
 ---
 
-## 五、选择适配器的决策树
+## 五、Prompt Cache 实施规则
+
+实验验证（`scripts/test-cache.ts`）确认以下规则，实现时必须遵守：
+
+### 已验证结论
+
+| 场景 | 结果 |
+|---|---|
+| 不同 Thread 使用相同 Block 1+2 | ✅ 命中 cache（跨 Thread 共享） |
+| 同 Thread 续接激活 | ✅ 命中 cache |
+| Block 1+2 内容有任何改动 | ❌ cache miss，重新建 cache |
+| 时间戳放在 Block 1+2 内 | ❌ 永远 miss，每次建新 cache 浪费 token |
+| 时间戳放在 Block 3（不加 `cache_control`） | ✅ Block 1+2 cache 完好 |
+
+### 强制约束
+
+**Block 1+2 内禁止出现任何动态内容**，包括：
+- 当前日期 / 时间戳
+- Session 创建时间
+- Skill 文件的 `last_updated` 字段
+- 任何在两次调用之间可能变化的字符串
+
+Block 1+2 在同一 AIMA 实例运行期间必须是**字节完全相同**的字符串。即使是一个空格或换行符的差异也会导致 cache miss。
+
+**动态内容统一放 Block 3（workspace 状态）或 Block 4（记忆检索结果）**，这两个 block 不加 `cache_control`，每次调用自由变化。
+
+### 最低 token 门槛
+
+Anthropic prompt cache 要求 Block 1+2 **至少 2048 tokens** 才会触发。Block 1+2 过短则完全没有 cache 效果。实际的 identity + skill index 内容通常远超此门槛，但需在实现时验证。
+
+### per-model 隔离
+
+Cache 以模型为边界。Limbic（Sonnet）和 Cortex（Opus）的 Block 1+2 即使内容完全相同，也使用各自独立的 cache 桶，不共享。
+
+---
+
+## 六、选择适配器的决策树
 
 ```
 需要 Claude 以外的模型？
