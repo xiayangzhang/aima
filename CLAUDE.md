@@ -28,6 +28,10 @@ Occam's Razor: minimum complexity for the current problem.
 - Brain Event Bus is the only audit interface — AIMA does not implement audit internally
 - Cognitive Workspace (Thread + Slot) replaces explicit delegation
 
+## Git / GitHub Rules
+- **Before any `git push`: confirm GitHub account with Leo** — verify you are pushing to the correct remote (personal vs. org account) before executing
+- `docs/`, `research/`, `scripts/` are local-only (in `.gitignore`) — never add them back to tracking
+
 ## Open Source Guidelines
 - Public API surface must be stable and well-documented before tagging releases
 - Core framework is provider-agnostic; official adapters are provided for pi-agent-core and Claude Agent SDK
