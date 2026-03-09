@@ -119,6 +119,15 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
   - 复杂 / 未知事件 → 写入工作空间并标记 `"needs_analysis"` → Cortex 激活
 - 规则路由保持确定性和低延迟，与 Limbic 的 LLM 判断形成对称但不对等的设计
 
+**双层执行模型**：Brainstem 采用主 session + 子执行 session 的两层结构，类似 Claude Code 的主进程/子进程模式：
+
+| 层 | 模型 | 职责 | Session |
+|---|---|---|---|
+| **主 session** | Haiku | 任务协调、结果 review、写 Brainstem Slot | 持续，per-brain |
+| **子执行 session** | Opus / Sonnet | 复杂多步执行的完整推理链 | 按任务独立，有自己的 session_id |
+
+主 session 只看子执行 session 返回的结构化结果摘要，不将执行细节载入自身上下文，避免污染主 session 的 cache prefix。子执行 session 的完整推理链通过 Event Bus（`COMPLIANCE` 事件携带 `session_id`）保留，供审计和 DMN 学习使用——不写入 episodic 记忆，episodic 是认知衍生物，不存基础设施标识符。
+
 ### 两个接口原则
 
 ```
@@ -175,7 +184,7 @@ AIMA 只保证事件的结构化发射，不关心谁在消费。
 | `schema_version` | string | 事件格式版本号 |
 | `payload` | object | 事件内容（工具名、参数、结果等） |
 
-`thread_id` 作为顶层关联 ID（一次外部输入触发的全部事件共享同一 `thread_id`）；`causation_id` 表达单步因果（哪个事件直接触发了本事件），两者独立，共同支撑可观测性和 replay。
+`thread_id` 作为顶层关联 ID（一次外部输入触发的全部事件共享同一 `thread_id`）；`causation_id` 表达单步因果（哪个事件直接触发了本事件），两者独立，共同支撑可观测性和 replay。链条起点（外部输入触发的第一个事件、DMN 心跳自发触发的事件）`causation_id = null`。
 
 ---
 
@@ -205,7 +214,7 @@ Workspace
 │   └── slots
 │       ├── limbic:    { input, output, status }
 │       ├── cortex:    { input, output, status, intent }   // intent: communicate|execute|both
-│       ├── brainstem: { input, output, status }
+│       ├── brainstem: { input, output, status, execution_session_id }  // 当前子执行 session ID（null=未执行或已完成）
 │       └── ...
 └── signals[]              // 横切信号（优先于任何 Thread）
     ├── Amygdala 中断信号
@@ -334,6 +343,8 @@ DMN 在概念上是一个脑区，**工程上由两个独立运行单元实现**
 3. **跨 Session 跟进**：检查上一 Session 未完成的 Thread
 
 **资源消耗**：较重，逐行处理（非大批量事务），低优先级，应调度在低负载时段。PostgreSQL MVCC 保证 Consolidation 写操作不阻塞 Reactive 的读路径；I/O 压力层面的竞争通过调度时段隔离而非锁机制解决
+
+**最终一致性声明**：Reactive 和 Consolidation 各自在 PostgreSQL MVCC 的一致性快照下工作，互不阻塞，但两者不协调写入顺序。任意时刻记忆库中可能存在短暂冗余（如 Reactive 刚写入的 implicit 记录尚未被 Consolidation 归并）。这是设计选择，不是缺陷——Consolidation 定期收敛，系统最终一致。
 
 ### implicit 记忆的写入权限
 
