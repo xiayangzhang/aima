@@ -18,7 +18,7 @@
 | 五脑路由（Limbic→Cortex→Brainstem） | ❌ | ✅ |
 | 身份配置（SOUL/IDENTITY/ROLE） | ❌ | ✅ identityDir |
 | 记忆系统 | ❌ | ✅ semantic/episodic/procedural |
-| 合规事件总线 | ❌ | ✅ COMPLIANCE/INFO/ALERT/TRACE |
+| 合规事件总线 | ❌ | ✅ COMPLIANCE/ALERT/INFO/DEBUG/TRACE |
 | 安全底线（Amygdala） | ❌ | ✅ 内置，不对外暴露 |
 
 ---
@@ -68,7 +68,18 @@ const thread = await aima.receive({
 }): Promise<Thread>
 ```
 
-`receive()` **阻塞直到 thread 进入终态**（`complete` 或 `interrupted`）。
+`receive()` **阻塞直到 thread 离开 `active` 状态**，返回条件：
+
+| thread.state | 含义 | 上层行为 |
+|---|---|---|
+| `complete` | 正常结束 | 读取 `slots.limbic.output` 决定是否回复 |
+| `interrupted` | 脑区出错 | 读取 `error_reason`，记录日志，必要时通知人工 |
+| `waiting` | Limbic 输出 `DEFER`，等待更多输入 | 向用户发送 `output.content`（Agent 的追问），保留 thread_id，下条消息用 `continue()` 续接 |
+
+> **注意**：DEFER 时 `receive()` 会返回（`thread.state = waiting`），而不是永久阻塞。
+> 不返回的话，调用方被挂起，Agent 等待输入却没有输入来源，会死锁。
+> DEFER 超时降级行为（群聊 → NO_REPLY，DM → RESPOND 说明）由 ThreadRunner 按通道配置执行。
+
 适合 CLI / 调度任务场景。Teams 等需要即时 ACK 的通道，上层应先回复 typing indicator，再等待结果。
 
 ### 3.2 多轮对话：continue()
@@ -82,6 +93,15 @@ const thread = await aima.continue(
 
 续接已有 Thread，Limbic 从现有 session history 继续，无需重新加载记忆。
 **上层应用负责**维护 `外部对话ID → thread_id` 的映射。
+
+**前置条件：**
+
+| Thread 当前状态 | continue() 行为 |
+|---|---|
+| `complete` | ✅ 正常续接，追加新输入 |
+| `waiting` | ✅ 正常续接，提供 Agent 等待的输入 |
+| `active` | ❌ 抛出错误（Thread 正在运行，不能并发输入） |
+| `interrupted` | ❌ 抛出错误（Thread 已失败，需要人工介入，不能续接） |
 
 **示例（Teams 多轮对话）：**
 
@@ -135,11 +155,15 @@ interface Thread {
 const output = thread.slots.limbic.output
 
 // output.mode 决定上层应用的行为：
-// 'RESPOND'  → output.content 是给对方的回复文本
-// 'NO_REPLY' → 静默处理（如纯内部操作），不需要向通道发送消息
-// 'ROUTE'    → 已路由 Cortex，thread.state=complete 后再读结果
-// 'EXECUTE'  → 已触发 Brainstem 执行工具链
-// 'DEFER'    → 等待更多上下文（Agent 主动挂起）
+// 'RESPOND'        → output.content 是给对方的回复文本
+// 'NO_REPLY'       → 静默处理（如纯内部操作），不需要向通道发送消息
+// 'ROUTE'          → 已路由 Cortex，thread.state=complete 后再读结果
+// 'EXECUTE(intent)'→ Limbic 将操作意图写入工作空间并激活 Brainstem 直接执行；
+//                    intent 包含结构化操作描述（如 {action:'send_email', draft_id:'...'}）；
+//                    仅用于 Limbic 有足够信息且无需规划的简单情况；
+//                    有歧义或多步骤时 Limbic 应使用 ROUTE 而非 EXECUTE
+// 'DEFER'          → Agent 主动挂起，等待更多输入；output.content 是追问文本；
+//                    thread.state = waiting，调用方应发送 output.content 后等待用户回复
 ```
 
 ---
@@ -153,7 +177,9 @@ const output = thread.slots.limbic.output
 interface MemorySearchOptions {
   types?: Array<'semantic' | 'episodic' | 'procedural' | 'working'>
   limit?: number          // 默认 20
-  min_relevance?: number  // 0-1，默认 0.5
+  // min_relevance 预留给向量检索阶段（0-1 相关度过滤）
+  // 当前实现为 ILIKE 全文搜索，无相关度分数，此参数暂不生效
+  // min_relevance?: number
 }
 
 const results = await aima.memory.search(
@@ -165,7 +191,7 @@ interface MemoryEntry {
   memory_id: string
   type: 'semantic' | 'episodic' | 'procedural' | 'working'
   content: string
-  relevance: number
+  relevance: number | null  // 全文搜索时为 null；向量检索上线后填充 0-1 分数
   created_at: Date
   tags: string[]
 }
@@ -201,10 +227,11 @@ unsub()
 
 | 级别 | 用途 |
 |------|------|
-| `COMPLIANCE` | 工具调用前后、Limbic 输出 — 审计必须 |
-| `INFO` | 脑区激活、路由决策 — 运营监控 |
-| `TRACE` | 内部状态变化 — 调试 |
-| `ALERT` | 错误和异常 — 报警 |
+| `COMPLIANCE` | 有真实外部效果的动作（发送消息、修改数据）— 审计必须 |
+| `ALERT` | Amygdala 中断、Escalation、脑区失败 — 报警 |
+| `INFO` | 工具调用、记忆写入、Skill 调用 — 运营监控 |
+| `DEBUG` | Cortex 推理步骤、Skill 加载 — 详细认知过程 |
+| `TRACE` | 工作空间 Slot 写入、脑区激活/完成 — 内部状态调试 |
 
 ### 关键事件类型
 
@@ -287,7 +314,19 @@ const session = await createAIMASession({
 })
 ```
 
-返回值实现 pi-agent-core `Agent` 接口，OpenClaw 其余代码不变。
+返回 `AIMAAgent`，对外实现 pi-agent-core `Agent` 接口（供 OpenClaw gateway 调用），
+内部持有 `AIMAInstance` 并将调用转换为 AIMA 的 Thread/Slot 语义。
+OpenClaw 其余代码不变。
+
+```
+OpenClaw gateway
+    ↓  调用 pi-agent-core Agent 接口（prompt / subscribe / abort）
+AIMAAgent（facade）
+    ↓  转换为 Thread 操作
+AIMAInstance（@aima/core）
+    ↓  五脑路由
+CognitiveWorkspace（PostgreSQL）
+```
 
 ### 8.3 工具分工
 
@@ -309,7 +348,7 @@ AIMA 内部工具（`workspace_read/write`、`memory_search` 等）各脑区按�
 
 **EventBus 隔离**：`AIMAAgent.subscribe()` 内部按 `thread_id` 自动过滤，只转发当前 session 事件给 OpenClaw 的 WebSocket 广播层。
 
-**Amygdala 覆盖缺口**：`pi-coding-agent` 内置工具（bash、文件 I/O）不经过 AIMA 工具注册流程，Amygdala 的 `tool.pre_use` 事件无法覆盖。`@aima/crew` 需要通过 `pi-coding-agent` 的 pre-tool hook 补入 Amygdala 检测。
+**Amygdala 覆盖**：`pi-coding-agent` 内置工具（bash、文件 I/O）与外部工具走同一 `AgentTool` 注册路径。`@aima/crew` 通过 pi-coding-agent Extension API 的 `tool_call` 事件（在工具执行前触发，可返回 `{ block: true }` 阻断）接入 Amygdala，实现对全部工具的统一拦截，无覆盖缺口。
 
 **Streaming**：当前不实现 token 级流式输出。Teams 等通道先发 typing indicator ACK，`receive()` 完成后发完整回复。
 
@@ -322,7 +361,7 @@ AIMA 内部工具（`workspace_read/write`、`memory_search` 等）各脑区按�
 | 功能 | 状态 |
 |------|------|
 | `receive()` + 阻塞等待 complete/interrupted | ✅ |
-| EventBus 四级订阅 | ✅ |
+| EventBus 五级订阅（COMPLIANCE/ALERT/INFO/DEBUG/TRACE） | ✅ |
 | Thread / Slot 查询 + crash recovery | ✅ |
 | `continue()`（多轮对话续接） | ⏳ |
 | `memory.search()`（只读接口） | ⏳ |
