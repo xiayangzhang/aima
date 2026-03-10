@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: CognitiveWorkspace — Pending Observations
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks:
 - T022
@@ -10,8 +10,8 @@ subtasks:
 - T025
 phase: Phase 2 - Core DAO
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude"
+shell_pid: "14255"
 review_status: ''
 reviewed_by: ''
 history:
@@ -284,3 +284,4 @@ bun test tests/unit/workspace/pending.test.ts
 ## Activity Log
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T10:19:08Z – claude – shell_pid=14255 – lane=doing – Started implementation via workflow command
