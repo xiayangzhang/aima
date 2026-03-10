@@ -93,6 +93,10 @@ describeWithDb('DMN integration — DEFER scheduling (T033)', () => {
 
     const thread = await workspace.createThread({ initiatedBy: 'integration-test-T033' })
     const timeoutMs = 60_000
+    // Use thread.id as unique marker so we don't pick up stale records from prior runs
+    const uniqueReason = `channel_unavailable_${thread.id}`
+
+    const triggerAtLowerBound = Date.now() + timeoutMs - 500
 
     eventBus.emit({
       event_type: 'slot.done',
@@ -103,18 +107,16 @@ describeWithDb('DMN integration — DEFER scheduling (T033)', () => {
         output: {
           mode: 'DEFER',
           timeout_ms: timeoutMs,
-          defer_reason: 'channel_unavailable',
+          defer_reason: uniqueReason,
         },
       },
     })
-
-    const triggerAtLowerBound = Date.now() + timeoutMs - 500
 
     await waitForHandlers()
 
     const pending = await workspace.getPendingObservations()
     const deferPending = pending.filter(
-      (p) => p.targetBrain === 'limbic' && p.note.includes('channel_unavailable'),
+      (p) => p.targetBrain === 'limbic' && p.note.includes(uniqueReason),
     )
     expect(deferPending.length).toBeGreaterThan(0)
 
