@@ -72,3 +72,7 @@ export { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
 
 // ── MCP Server ────────────────────────────────────────────────────────────────
 export { createAimaMcpServer } from './mcp/index'
+
+// ── AIMAInstance ──────────────────────────────────────────────────────────────
+export type { AIMAInstanceConfig, AdapterType } from './instance'
+export { AIMAInstance, createAIMAInstance } from './instance'
