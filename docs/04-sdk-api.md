@@ -186,6 +186,10 @@ const output = thread.slots.limbic.output
 interface MemorySearchOptions {
   types?: Array<'semantic' | 'episodic' | 'procedural' | 'working'>
   limit?: number          // 默认 20
+  entity_id?: string      // 过滤指定实体的记录（如 "colleague:alice"）
+  entity_depth?: number   // 实体关联展开深度（1-2），搭配 entity_id 使用
+  situation?: string      // 情境描述，触发情境匹配模式（Cortex 场景 E）
+  segment_id?: string     // 过滤指定事件段内的记录
   // min_relevance 预留给向量检索阶段（0-1 相关度过滤）
   // 当前实现为 ILIKE 全文搜索，无相关度分数，此参数暂不生效
   // min_relevance?: number
@@ -197,12 +201,15 @@ const results = await aima.memory.search(
 ): Promise<MemoryEntry[]>
 
 interface MemoryEntry {
-  memory_id: string
-  type: 'semantic' | 'episodic' | 'procedural' | 'working'
-  content: string
-  relevance: number | null  // 全文搜索时为 null；向量检索上线后填充 0-1 分数
-  created_at: Date
-  tags: string[]
+  memory_id:   string
+  type:        'semantic' | 'episodic' | 'procedural' | 'working'
+  content:     string
+  entity_id:   string | null   // 这条记录描述的实体（如 "colleague:alice" / "segment:{uuid}"）
+  segment_id:  string | null   // 所属事件段（episodic 专用；上层应用通常不需要直接使用）
+  relevance:   number | null   // 全文搜索时为 null；向量检索上线后填充 0-1 分数
+  created_at:  Date
+  tags:        string[]
+  // 注意：base_importance 和 usage_outcomes 是记忆系统内部字段，不暴露到公共 API
 }
 ```
 

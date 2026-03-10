@@ -357,7 +357,10 @@ DMN 在概念上是一个脑区，**工程上由两种触发方式实现**——
    - 可重试错误（超时、限流）→ 写入 retry 指令到对应 Thread Slot
    - 不可重试错误（权限拒绝、数据异常）→ 标记 Thread 为 `interrupted`，发射 `ALERT` 供外部处理
 2. **回溯纠错**：读取最新 Action Log，判断刚刚发生的行为是否有误；如需纠错，向工作空间写入中断 Signal
-3. **信号捕获**：检测到已知的触发信号（确定性规则 + Haiku fallback）→ 写入 `pending_observations`，由 Thread Runner 下次扫描时路由执行
+3. **段分配**：写 episodic 事件时，根据 Thread 边界/目标变更/错误恢复/话题切换等触发条件分配 `segment_id` 和 `segment_seq`；每条 episodic 事件都标注所属事件段（粗分，Hippocampus 精修）
+4. **显著性处理**：若事件携带 Amygdala 发射的 `significance_boost`，写 episodic 时对应增加 `base_importance`，使风险相关经历编码更深
+5. **记忆使用反馈**：脑区完成（`brain.complete` 事件）后，评估执行结果，调用 `markUsed(injected_memory_ids, outcome)`，将反馈写入对应记忆条目的 `usage_outcomes` 计数器；`injected_memory_ids` 来自 `BrainRunResult`
+6. **信号捕获**：检测到已知的触发信号（确定性规则 + Haiku fallback）→ 写入 `pending_observations`，由 Thread Runner 下次扫描时路由执行
 
 **资源消耗**：轻量，每次只读最新增量（`created_at > last_processed`）
 
@@ -445,8 +448,11 @@ Amygdala 宁可多一条冗余记录也不能因等锁而延迟工具拦截决�
 Hippocampus 是 AIMA 的**长期记忆管理者**，独立于五脑实时运作，每天定时批量执行，不参与实时决策，不阻塞任何脑区。
 
 **职责**（每次运行均执行）：
-1. **记忆整理**：清理低权重 `episodic` 条目，调整 `importance` 权重（基于访问频率和时间衰减），将高价值 episodic 模式提炼为 `semantic` 记忆
-2. **预测反馈**：评估 DMN 心跳整合上轮预测的准确度，更新对应记忆条目权重（准确 → 强化，偏差 → 修正或标记低可信度）
+1. **段精修**：回顾近期 episodic 段序列，对 DMN Reactive 粗分的段做因果分析，必要时拆分或合并——更新相关记录的 `segment_id` 字段（不新增记录）
+2. **段序列回放**：按重要度/时效性/风险标注排序，对 top-K 段运行 `getSegmentSequence()`，LLM 分析事件序列，提取跨段模式 → 写入 semantic（事实）/ procedural（可操作规程）/ implicit（风险模式）；详见 `02-memory-architecture.md` 第七节
+3. **使用反馈收敛**：批量读取 `usage_outcomes` 计数器（由 DMN Reactive 递增），根据正负比例小幅调整 `base_importance`；单次反馈不直接修改权重，Hippocampus 批量收敛
+4. **记忆整理**：清理低权重 `episodic` 条目（`last_accessed_at` 超过阈值），将高价值 episodic 模式提炼为 `semantic` 记忆
+5. **预测反馈**：评估 DMN 心跳整合上轮预测的准确度，更新对应记忆条目权重（准确 → 强化对应 `semantic`/`procedural`，偏差 → 修正或标记低可信度）
 
 **Skill Review**（条件执行，距上次运行超过 N 天时触发）：
 1. 分析 `procedural` Skill 的使用频率和成功率
@@ -480,9 +486,35 @@ Hippocampus 是 AIMA 的**长期记忆管理者**，独立于五脑实时运作�
 
 初始 `base_importance`：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6、`implicit` = 0.7。检索排序使用 `base_importance + recency_boost`（基于 `last_accessed_at` 动态计算）。详见 `02-memory-architecture.md`。
 
+### 三轴组织
+
+记忆通过三种轴进行组织，靠检索策略实现（不改变底层数据模型）：
+
+| 轴 | 概念 | 实现方式 |
+|---|---|---|
+| **因果链** | 段内事件因果序列 | `segment_id` + `segment_seq` 字段 |
+| **时间容器** | Thread → Segment → Epoch 层级 | `thread_id` + `segment_id` + Hippocampus 提取的 epoch 写入 semantic |
+| **实体驱动** | 以实体为中心的星形拓扑 | `entity_id` + `getEntityContext()` 深度展开 |
+
+底层存储永远保持扁平完整——审计系统直接读扁平表，不需要理解认知层抽象。
+
+### 脑区专属检索（Context Assembly Block 4）
+
+各脑区使用专属检索方法，通用 `search()` 保留为兜底：
+
+| 脑区 | 主检索方法 | 生物学类比 |
+|---|---|---|
+| **Limbic** | `getEntityContext(entityId)` | 语义网络扩散激活 |
+| **Cortex** | `findSimilarSituations(situation)` | 前额叶经验检索 |
+| **Brainstem** | `getProcedure(taskType)` | 程序性记忆直接调取 |
+| **Amygdala** | `getByTags(tags, timeRange)` | 杏仁核危险识别 |
+| **DMN** | `getSessionContext(sessionId)` | 海马体工作记忆 |
+| **所有脑区（兜底）** | `search(query)` | 非特异性联想激活 |
+
 ### 检索
 
-当前：全文搜索（ILIKE），按 `base_importance DESC, last_accessed_at DESC` 排序。
+场景 A（通用兜底）：全文搜索（ILIKE），按 `base_importance DESC, last_accessed_at DESC` 排序。
+场景 D-G：脑区专属方法，见 `02-memory-architecture.md` 第四节。
 演进方向：向量嵌入 + 语义相似度，两者并存后 RRF 融合重排。
 
 ### Episodic 与审计的分离

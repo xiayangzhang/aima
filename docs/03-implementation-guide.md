@@ -28,11 +28,14 @@ interface BrainRunParams {
 }
 
 interface BrainRunResult {
-  session_id:  string             // 本次 Loop 使用的 session ID
-  output:      Record<string, unknown>
-  stop_reason: 'done' | 'interrupted' | 'error'
-  events:      WorkspaceEvent[]   // 本次 Loop 产生的工作空间事件（Slot 写入、Signal 写入等）
-                                  // Thread Runner 在 activateBrain() 后遍历并 emit 到 workspace
+  session_id:            string             // 本次 Loop 使用的 session ID
+  output:                Record<string, unknown>
+  stop_reason:           'done' | 'interrupted' | 'error'
+  events:                WorkspaceEvent[]   // 本次 Loop 产生的工作空间事件（Slot 写入、Signal 写入等）
+                                           // Thread Runner 在 activateBrain() 后遍历并 emit 到 workspace
+  injected_memory_ids:   string[]          // Context Assembly Block 4 本次注入的记忆 IDs
+                                           // activateBrain() 完成后传给 DMN Reactive，
+                                           // 由 DMN 在评估执行结果后调用 markUsed(ids, outcome)
 }
 ```
 
@@ -72,7 +75,13 @@ function createBrainAgent(brain: BrainType, workspace: CognitiveWorkspace): Agen
     }
   })
 
-  // Block 3/4 每轮注入：工作空间状态 + 记忆检索
+  // Block 3/4 每轮注入：工作空间状态 + 脑区专属记忆检索
+  // Block 4 按脑区调用专属方法：
+  //   Limbic    → memory_entity_context（关联实体中心检索）
+  //   Cortex    → memory_similar_situations（情境匹配）
+  //   Brainstem → memory_procedure（任务过程检索）
+  //   兜底（无专属结果）→ memory_search（通用语义检索）
+  // 注入的记忆 IDs 记录到 injected_memory_ids，随 BrainRunResult 返回
   const hooks = {
     transformContext: async (messages) => {
       const block34 = await assembleContext(brain, workspace)
@@ -301,11 +310,41 @@ server.tool('spawn_execution_session', '启动子执行 session（Brainstem 专�
 })
 
 // 记忆读写
-server.tool('memory_search', '语义检索记忆', {
+server.tool('memory_search', '通用语义检索记忆（Block 4 兜底）', {
   query: z.string(),
   types: z.array(z.enum(['semantic', 'procedural', 'implicit'])).optional(),
 }, async ({ query, types }) => {
   const results = await memoryService.search(query, { types })
+  return { content: [{ type: 'text', text: renderMemoryResults(results) }] }
+})
+
+// Limbic 专用：实体中心检索（场景 D）
+server.tool('memory_entity_context', 'Limbic 专用 — 以实体为中心检索关联知识', {
+  entity_id: z.string(),         // 如 "colleague:alice" / "project:procurement-2026"
+  depth:     z.number().min(1).max(2).default(1),
+  types:     z.array(z.enum(['semantic', 'episodic', 'procedural'])).optional(),
+  limit:     z.number().default(20),
+}, async ({ entity_id, depth, types, limit }) => {
+  const results = await memoryService.getEntityContext(entity_id, { depth, types, limit })
+  return { content: [{ type: 'text', text: renderMemoryResults(results) }] }
+})
+
+// Cortex 专用：情境匹配（场景 E）
+server.tool('memory_similar_situations', 'Cortex 专用 — 检索类似历史情境和处理流程', {
+  situation: z.string(),         // 当前任务/情境描述
+  limit:     z.number().default(10),
+}, async ({ situation, limit }) => {
+  const results = await memoryService.findSimilarSituations(situation, { limit })
+  const text = `## 历史情节\n${renderMemoryResults(results.episodes)}\n\n## 相关流程\n${renderMemoryResults(results.procedures)}`
+  return { content: [{ type: 'text', text }] }
+})
+
+// Brainstem 专用：任务过程检索（场景 F）
+server.tool('memory_procedure', 'Brainstem 专用 — 检索任务类型对应的执行规程', {
+  task_type: z.string(),         // 如 "send_email" / "create_purchase_order"
+  limit:     z.number().default(5),
+}, async ({ task_type, limit }) => {
+  const results = await memoryService.getProcedure(task_type, { limit })
   return { content: [{ type: 'text', text: renderMemoryResults(results) }] }
 })
 ```
