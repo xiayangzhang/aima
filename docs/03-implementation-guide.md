@@ -276,6 +276,28 @@ server.tool('workspace_write_slot', '写入认知工作空间 Slot', {
   return { content: [{ type: 'text', text: 'Slot updated.' }] }
 })
 
+// Brainstem 子执行 session（opt-in，仅 Brainstem 可用）
+// 主 session（Haiku）自主决定是否调用：简单任务直接执行，复杂/多步任务 spawn 子 session。
+// 子 session（Opus/Sonnet）完整运行 LLM 循环后，结果作为 tool_result 注入回主 session。
+// 主 session 只见结构化摘要，完整推理链保留在 Event Bus（COMPLIANCE 事件携带子 session_id）。
+server.tool('spawn_execution_session', '启动子执行 session（Brainstem 专用）', {
+  task:      z.string(),                                  // 任务描述，子 session 的初始 prompt
+  model:     z.enum(['opus', 'sonnet']).default('sonnet'),// 子 session 使用的模型
+  tools:     z.array(z.string()).optional(),              // 子 session 可用工具列表（默认继承 Brainstem 工具集）
+}, async ({ task, model, tools }) => {
+  const childSessionId = crypto.randomUUID()
+  // 将子 session ID 写入 Brainstem Slot，供崩溃恢复使用（at-most-once 语义）
+  await workspace.updateBrainstemSlot(currentThreadId, { execution_session_id: childSessionId })
+
+  const result = await runChildExecutionSession({ task, model, tools, sessionId: childSessionId })
+
+  // 子 session 完成后清除 execution_session_id（正常路径）
+  await workspace.updateBrainstemSlot(currentThreadId, { execution_session_id: null })
+
+  // 返回结构化结果摘要，作为 tool_result 注入主 session
+  return { content: [{ type: 'text', text: JSON.stringify(result.structured_output) }] }
+})
+
 // 记忆读写
 server.tool('memory_search', '语义检索记忆', {
   query: z.string(),
@@ -303,9 +325,16 @@ class ThreadRunner {
   private workspace: CognitiveWorkspace
 
   // Thread Runner 的主循环：监听工作空间变化，激活对应脑区
+  // workspace.changes() 覆盖两类写入：
+  //   1. 脑区写 Slot（brain complete）→ 路由到下一个脑区
+  //   2. DMN 写 pending_observations（pending 是 workspace 状态的 JSONB 字段）→ routePending()
   async run() {
     for await (const event of this.workspace.changes()) {
-      await this.route(event)
+      if (event.type === 'slot_update') {
+        await this.route(event)
+      } else if (event.type === 'pending_update') {
+        await this.routePending()
+      }
     }
   }
 
@@ -324,6 +353,20 @@ class ThreadRunner {
         await this.activateBrain('limbic', thread_id)
       if (intent === 'execute' || intent === 'both')
         await this.activateBrain('brainstem', thread_id)
+    }
+  }
+
+  // DMN 写入 pending_observations 时触发。
+  // 取出所有 target_brain 对应的成熟 pending 项，创建新 Thread 并激活目标脑区。
+  // "成熟"的判断由 pending 的 added_at + note 中的时间提示决定（DMN 写入时已标注预期触发时间）。
+  private async routePending() {
+    const pending = await this.workspace.getPendingObservations()
+    for (const item of pending) {
+      if (this.isMature(item)) {
+        const thread = await this.workspace.createThread({ trigger: item.note, initiated_by: 'dmn' })
+        await this.activateBrain(item.target_brain, thread.thread_id)
+        await this.workspace.removePending(item.id)
+      }
     }
   }
 

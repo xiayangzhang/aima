@@ -260,8 +260,8 @@ interface MemoryService {
   getByTags(tags: string[], timeRange?: TimeRange, limit?: number): Promise<MemoryEntry[]>
 
   // 反向查询：给定一条旧记录的 ID，返回所有取代它的新记录
-  // 即查询 supersedes_ids 数组中包含 oldRecordId 的记录（反向索引查询，非读取字段）
-  // 注意方向：调用方传入旧记录 ID，返回的是新记录；反方向（给定新记录查其取代了什么）直接读取 entry.supersedes_ids 即可
+  // TODO: 待定——当前无明确使用场景。Hippocampus 直接读 supersedes_ids 字段即可完成清理，
+  //        无需反向索引。保留接口定义，等有具体需求时实现。
   getSupersededBy(oldRecordId: string): Promise<MemoryEntry[]>
 
   markAccessed(ids: string[]): Promise<void>

@@ -117,19 +117,21 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 ### Brainstem — Executor + System Interface
 - **系统输入**：监听系统事件（Webhook、Dataverse 变更、定时触发）
 - **系统输出**：将抽象指令翻译为具体操作参数并执行（API 调用、CRUD、文件操作）
-- **规则路由**（非 LLM）：收到系统事件后，用配置化规则判断处理方式：
-  - 已知事件类型 → Brainstem 直接处理
-  - 复杂 / 未知事件 → 写入工作空间并标记 `"needs_analysis"` → Cortex 激活
-- 规则路由保持确定性和低延迟，与 Limbic 的 LLM 判断形成对称但不对等的设计
+- **规则路由**（非 LLM）：收到系统事件后，用 `event-routing.md` Skill 中的事件类型对照表判断处理方式：
+  - 已知事件类型（在对照表中）→ Brainstem 按 Skill 指令直接处理
+  - 未知 / 复杂事件（不在对照表中）→ 写入工作空间并标记 `"needs_analysis"` → Cortex 激活
+- 规则路由保持确定性和低延迟，与 Limbic 的 LLM 判断形成对称但不对等的设计。事件类型对照表放 Skill 而非 hardcode，符合"判断=Skill"原则——新事件类型无需改代码，只需更新 `event-routing.md`
 
-**双层执行模型**：Brainstem 采用主 session + 子执行 session 的两层结构，类似 Claude Code 的主进程/子进程模式：
+**执行模型**：大多数情况 Brainstem 主 session（Haiku）直接执行任务（单层，默认）。对于大型复杂任务（多步骤、需要深度推理、可并行的子操作），主 session 调用 `spawn_execution_session` 工具，启动独立的子执行 session（Opus / Sonnet），获得完整推理链后以结构化结果返回——类比 Claude Code 的 Task 工具：
 
 | 层 | 模型 | 职责 | Session |
 |---|---|---|---|
-| **主 session** | Haiku | 任务协调、结果 review、写 Brainstem Slot | 持续，per-brain |
-| **子执行 session** | Opus / Sonnet | 复杂多步执行的完整推理链 | 按任务独立，有自己的 session_id |
+| **主 session**（默认+协调） | Haiku | 任务判断、简单任务直接执行、复杂任务按需 spawn、结果写 Brainstem Slot | 持续，per-brain |
+| **子执行 session**（opt-in） | Opus / Sonnet | 复杂多步执行的完整推理链 | 按任务独立，有自己的 session_id |
 
-主 session 只看子执行 session 返回的结构化结果摘要，不将执行细节载入自身上下文，避免污染主 session 的 cache prefix。子执行 session 的完整推理链通过 Event Bus（`COMPLIANCE` 事件携带 `session_id`）保留，供审计和 DMN 学习使用——不写入 episodic 记忆，episodic 是认知衍生物，不存基础设施标识符。
+子执行 session 的结果作为 **tool_result** 注入回主 session（主 session 只看结构化摘要，不见完整推理链），保护主 session 的 cache prefix 不被污染。子执行 session 的完整推理链通过 Event Bus（`COMPLIANCE` 事件携带子 `session_id`）保留，供审计和 DMN 学习使用。子执行结果不写入 episodic 记忆——episodic 是认知衍生物，不存基础设施标识符。
+
+"主 session 自己判断是否 spawn"：Haiku 在看到任务描述后决定——单步 API 调用直接执行，多步推理任务调用 spawn 工具。不需要外部预判。
 
 ### 两个接口原则
 
@@ -298,12 +300,7 @@ Thread 数量上限是配置项。
 
 ### Level 2：Instance 级并行
 
-当任务真正独立、需要深度并行时，可以临时生成**子 AIMA 实例**：
-- 子实例有完整五脑结构
-- 与父实例共享同一记忆池（通过 `parent_session_id` 标签隔离 `working` 记忆）
-- 子实例完成后，结果写回父实例的工作空间，子实例销毁
-
-**子实例生命周期约束**：创建时必须声明 `timeout_ms`（无默认值，强制显式）。父实例持有 cancellation token，超时后调用 abort。子实例的 working Slot 标记为 `timed_out`，父 DMN 决定重试或上报。没有 timeout 的子实例是资源泄漏源，不允许创建。
+暂缓。Level 1 Thread 并行覆盖绝大多数场景；跨 AIMA 实例的协调（如 @aima/crew 中多个 OpenClaw 实例）在应用层处理，不是 AIMA 框架内的子实例。
 
 ---
 
@@ -402,7 +399,7 @@ anchor 事件记录触发原因（`reason: "context_limit" | "explicit_reset" | 
    - `procedural`：已知流程结构（"采购审批在 PO 创建后进入等待审核状态"）
    - `semantic`：领域知识（"这类申请通常需要 48 小时处理"）
 
-   预测写入 `pending_observations`，极简结构（`entity_ref` + `note` + `target_brain` + `added_at`）。Thread Runner 定期扫描 pending 列表，将成熟的项路由给对应脑区执行。
+   预测写入 `pending_observations`，极简结构（`entity_ref` + `note` + `target_brain` + `added_at`）。`pending_observations` 是 `CognitiveWorkspace` 状态的一部分（JSONB 字段），写入时触发 `workspace.changes()` 事件，Thread Runner 的事件循环感知后将成熟的项路由给对应脑区执行。
 
    | 预测内容 | pending 的 target_brain | Thread Runner 路由后的动作 |
    |---|---|---|
