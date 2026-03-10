@@ -66,7 +66,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 **目标**：实现 DmnConsolidation 的心跳框架及前两项批处理职责。
 
 子任务：
-- [ ] T015: DmnConsolidation 类结构 + setInterval 心跳 + lastRunAt 增量追踪
+- [x] T015: DmnConsolidation 类结构 + setInterval 心跳 + lastRunAt 增量追踪
 - [ ] T016: 读 episodic 增量（created_at > lastRunAt，分页读取）
 - [ ] T017: 前瞻预测（职责1）— 读 episodic+procedural+semantic 模式 + Haiku 判断 → pending 写入
 - [ ] T018: Pending 维护（职责2）— 读当前 pending + 增量 + Haiku 重评估 → 移除/保留/更新
