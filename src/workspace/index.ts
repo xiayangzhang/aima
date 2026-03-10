@@ -448,4 +448,12 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
       .delete(memories)
       .where(and(eq(memories.type, 'working'), eq(memories.threadId, threadId)))
   }
+
+  /** Mark a memory entry as invalid (soft delete). Used by DMN Consolidation. */
+  async invalidateMemory(id: string): Promise<void> {
+    await this.db
+      .update(memories)
+      .set({ tInvalid: new Date(), updatedAt: new Date() })
+      .where(eq(memories.id, id))
+  }
 }

@@ -3,8 +3,18 @@ import { DmnService, createDmnService } from '../../../src/dmn/index'
 import { parseLlmJson } from '../../../src/dmn/llm'
 
 // Minimal mock workspace and eventBus stubs
-const mockWorkspace = {} as Parameters<typeof createDmnService>[0]['workspace']
-const mockEventBus = {} as NonNullable<Parameters<typeof createDmnService>[0]['eventBus']>
+const mockWorkspace = {
+  searchMemory: async () => [],
+  writePending: async () => ({} as never),
+  getPendingObservations: async () => [],
+  removePending: async () => {},
+  invalidateMemory: async () => {},
+} as unknown as Parameters<typeof createDmnService>[0]['workspace']
+
+const mockEventBus = {
+  subscribe: () => () => {},
+  emit: () => ({} as never),
+} as unknown as NonNullable<Parameters<typeof createDmnService>[0]['eventBus']>
 
 const baseConfig = {
   workspace: mockWorkspace,

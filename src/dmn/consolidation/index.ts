@@ -154,10 +154,90 @@ export class DmnConsolidation {
     }
   }
 
-  // ── Responsibility 3: Implicit clustering — implemented in WP05 ────────────
+  // ── Responsibility 3: Implicit clustering ────────────────────────────────
 
-  // biome-ignore lint/suspicious/useAwait: stub — WP05 will fill in
-  protected async runImplicitClustering(): Promise<void> {}
+  protected async runImplicitClustering(): Promise<void> {
+    const provisional = await this.config.workspace.searchMemory({
+      type: 'implicit',
+      tags: ['provisional'],
+      excludeInvalid: true,
+      createdAfter: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      limit: 100,
+    })
+
+    if (provisional.length < 2) return
+
+    await this.clusterAndMerge(provisional)
+  }
+
+  private async clusterAndMerge(entries: MemoryEntry[]): Promise<void> {
+    const batch = entries.slice(0, 20)
+
+    const prompt = `You are clustering implicit memory entries to merge semantically similar ones.
+
+Memory entries:
+${batch.map((e, i) => `[${i}] id="${e.id}" content="${e.content.slice(0, 200)}" tags=[${e.tags?.join(',')}]`).join('\n')}
+
+Identify groups of semantically similar entries that should be merged into one.
+Two entries are similar if they describe the same risk pattern or behavior pattern.
+
+Respond with JSON:
+{
+  "clusters": [
+    {
+      "indices": [0, 2, 5],
+      "canonical_content": "merged description of the pattern",
+      "merged_tags": ["tag1", "tag2"]
+    }
+  ]
+}
+
+Only include clusters with 2+ entries. Entries not in any cluster should not appear.`
+
+    const response = await callLlm(prompt, this.config.llm, { maxTokens: 1024 })
+    const result = parseLlmJson<{
+      clusters: Array<{ indices: number[]; canonical_content: string; merged_tags: string[] }>
+    }>(response, { clusters: [] })
+
+    for (const cluster of result.clusters) {
+      if (cluster.indices.length < 2) continue
+      const toMerge = cluster.indices
+        .filter((i) => i >= 0 && i < batch.length)
+        .map((i) => batch[i])
+        .filter((e): e is MemoryEntry => e !== undefined)
+
+      await this.mergeCluster(toMerge, cluster.canonical_content, cluster.merged_tags)
+    }
+  }
+
+  private async mergeCluster(
+    entries: MemoryEntry[],
+    canonicalContent: string,
+    mergedTags: string[],
+  ): Promise<void> {
+    const workspace = this.config.workspace
+
+    // Idempotency: skip if all entries are already invalid (merged in a previous run)
+    const allInvalid = entries.every((e) => e.tInvalid !== null)
+    if (allInvalid) return
+
+    const maxImportance = Math.max(...entries.map((e) => e.baseImportance ?? 0.5))
+
+    // Write canonical record
+    await workspace.writeMemory({
+      type: 'implicit',
+      content: canonicalContent,
+      tags: [...new Set([...mergedTags, 'canonical'])],
+      baseImportance: Math.min(1.0, maxImportance),
+    })
+
+    // Soft-delete all provisional entries
+    for (const entry of entries) {
+      if (entry.tInvalid === null) {
+        await workspace.invalidateMemory(entry.id)
+      }
+    }
+  }
 }
 
 // ─── Prompt builders ──────────────────────────────────────────────────────────

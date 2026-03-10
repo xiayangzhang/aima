@@ -165,4 +165,5 @@ export interface ICognitiveWorkspace {
   searchMemory(filters: MemorySearchFilters): Promise<MemoryEntry[]>
   markMemoryUsed(ids: string[], outcome: UsageOutcome): Promise<void>
   clearWorkingMemory(threadId: string): Promise<void>
+  invalidateMemory(id: string): Promise<void>
 }

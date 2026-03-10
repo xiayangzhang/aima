@@ -8,6 +8,7 @@ function makeConfig(overrides: Partial<DmnConfig> = {}) {
     writePending: mock(async () => ({} as never)),
     getPendingObservations: mock(async () => []),
     removePending: mock(async () => {}),
+    invalidateMemory: mock(async () => {}),
   }
   return {
     config: {
@@ -61,11 +62,15 @@ describe('DmnConsolidation', () => {
       const c = new DmnConsolidation(config)
       const before = Date.now()
       await c.runOnce()
-      // lastRunAt is private but we can verify via searchMemory call
-      // Second runOnce should use the updated lastRunAt
-      const firstCreatedAfter = (ws.searchMemory as ReturnType<typeof mock>).mock.calls[0][0].createdAfter as Date
+      // Filter episodic calls (those with type=episodic, used for increment)
+      const episodicCalls = () =>
+        (ws.searchMemory as ReturnType<typeof mock>).mock.calls
+          .map((c) => c[0] as { type: string; createdAfter?: Date })
+          .filter((c) => c.type === 'episodic' && c.createdAfter !== undefined)
+
+      const firstCreatedAfter = episodicCalls()[0]?.createdAfter as Date
       await c.runOnce()
-      const secondCreatedAfter = (ws.searchMemory as ReturnType<typeof mock>).mock.calls[1][0].createdAfter as Date
+      const secondCreatedAfter = episodicCalls()[1]?.createdAfter as Date
       expect(secondCreatedAfter.getTime()).toBeGreaterThanOrEqual(before)
       expect(secondCreatedAfter.getTime()).toBeGreaterThan(firstCreatedAfter.getTime())
     })
