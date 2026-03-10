@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: 核心类型定义
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks:
 - T007
@@ -11,8 +11,8 @@ subtasks:
 - T011
 phase: Phase 1 - Foundation
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude"
+shell_pid: "90215"
 review_status: ''
 reviewed_by: ''
 history:
@@ -342,3 +342,4 @@ biome check src/types/index.ts
 ## Activity Log
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T10:03:19Z – claude – shell_pid=90215 – lane=doing – Started implementation via workflow command
