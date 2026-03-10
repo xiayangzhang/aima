@@ -333,7 +333,7 @@ Thread 数量上限是配置项。
 
 | | Amygdala | DMN |
 |---|---|---|
-| 时序 | 执行**前**（pre-execution） | 执行**后**（post-action） |
+| 时序 | 执行**前**（pre-execution） | 执行**后**（事件响应）/ 定期前瞻（心跳整合） |
 | 关注点 | 这个行为**该不该做** | 这个行为**做没做成** |
 | 性质 | 同步阻断 | 异步回顾 |
 | 覆盖范围 | 工具调用风险 | 决策错误、行为偏差、长期模式 |
@@ -381,10 +381,11 @@ anchor 事件记录触发原因（`reason: "context_limit" | "explicit_reset" | 
 
 **与 @aima/crew 的衔接**：OpenClaw 层有 `clear()` / `flush()` / `new()` 操作，@aima/crew 在 fork 层重写这些方法，不 call super，转换为 AIMA anchor 语义：
 
-| @aima/crew 调用 | AIMA 实际执行 |
-|---|---|
-| `clear()` / `flush()` | anchor 当前状态 → 新 LLM session，精准重建 context（历史保留，session 重置） |
-| `new()` | anchor 当前 Thread → 创建新 Thread，新 session 空白启动 |
+| @aima/crew 调用 | OpenClaw 原意 | AIMA 实际执行 |
+|---|---|---|
+| `clear()` | 清空 LLM context window | anchor 当前状态 → 新 LLM session，精准重建 context（历史保留，session 重置） |
+| `flush()` | 提交 pending 消息并清空队列 | 同 `clear()`——在 AIMA 语义下等价，区别在 OpenClaw 底层，@aima/crew 统一转换为 anchor |
+| `new()` | 新建一个全新 Agent session | anchor 当前 Thread → 创建新 Thread，新 session 空白启动 |
 
 对调用方效果一致，Thread 状态和 episodic 记录不丢失。
 
@@ -425,7 +426,7 @@ DMN pending：合同 C-2847 在第 28 天需要付款核查
 这是 cron 做不到的——cron 不能感知上下文，不能取消自己。
 
 **预测反馈闭环**：预测执行后，Hippocampus 在每日记忆整理时评估预测准确度：
-- 准确 → 强化对应 `episodic` 模式的 `base_importance`
+- 准确 → 强化对应 `semantic` / `procedural` 记忆的 `base_importance`（预测来源是这两类，episodic 是原始事件流，不调整）
 - 偏差 → 修正模式，更新 `procedural` 记忆或标记该模式为"低可信度"
 
 **最终一致性**：事件响应和心跳整合各自在 PostgreSQL MVCC 的一致性快照下工作，互不阻塞。任意时刻记忆库中可能存在短暂冗余（如事件响应刚写入的 implicit 记录尚未被归并）。这是设计选择，不是缺陷——心跳整合定期收敛，系统最终一致。

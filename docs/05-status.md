@@ -62,17 +62,16 @@ workspace_read/write → ALLOW
 
 ### 中期（认知能力核心）
 
-5. DMN 事件响应 — 事件监听、错误恢复、回溯纠错、轻量前瞻、Session Anchor 触发
-6. DMN 心跳整合 — 深度前瞻预测、pending_observations 维护、implicit 聚类合并
-7. **DMN Predictive（心跳整合核心）** — 基于历史模式主动激活脑区、发起 Thread、取消失效预测
-   > 这是 AIMA 区别于其他框架的核心能力之一，不可作为"以后再加"处理
-8. Hippocampus — 每日记忆整理（清理/权重/semantic 提炼）+ 定期 Skill Review（固化候选暴露、失效检测）
-9. Skill 系统 — reference / adapted / first-party 三层，Hippocampus 固化机制
+5. DMN 事件响应 — 事件监听、错误恢复、回溯纠错、信号捕获（写 pending）、Session Anchor 触发
+6. **DMN 心跳整合（含 Predictive Activation）** — 深度前瞻预测、pending_observations 维护（写/更新/清除）、implicit 聚类合并；基于历史模式主动发起 Thread、取消失效预测
+   > Predictive Activation 是 AIMA 区别于其他框架的核心能力之一，不可作为"以后再加"处理
+7. Hippocampus — 每日记忆整理（清理/权重/semantic 提炼）+ 预测反馈评估 + 定期 Skill Review（固化候选暴露、失效检测）
+8. Skill 系统 — reference / adapted / first-party 三层，Hippocampus 固化机制
 
 ### 后期
 
 9. `@aima/crew` — OpenClaw fork，换芯实现
-10. ClaudeSDKAdapter — 多云部署支持
+10. ClaudeSDKAdapter — 多云部署支持（Azure / Bedrock）
 11. 向量检索 — MemoryService 后端升级（pgvector 或 Qdrant）
 12. `subscribeInstance(instanceId, fn)` — 多租户 EventBus 便利方法
 

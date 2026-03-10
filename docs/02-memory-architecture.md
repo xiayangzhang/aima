@@ -185,7 +185,7 @@ DMN Reactive 每次看到的内容结构：
   type:             semantic | episodic | procedural | working | implicit
   content:          string（Markdown 格式）
   partition_id:     string（写入方脑区）
-  session_id:       string
+  session_id:       string | null（`episodic` 记录通常为 null——DMN 从 Event Bus 消费写入，不关联特定脑区 session；`working` 记录填写写入时的脑区 session ID 供调试追溯）
   entity_id:        string | null（这条记录描述的实体，如 "brain:cortex" / "skill:procurement" / "colleague:alice"）
   attribute:        string | null（实体的哪个属性，如 "reliability" / "owner" / "status"）
   base_importance:  float（内在价值，初始值见第二节）
@@ -273,7 +273,7 @@ interface MemoryService {
 
 原型阶段后端：PostgreSQL + 全文搜索。演进路径：加 pgvector 支持向量检索，必要时迁移至 Qdrant 或 Graphiti（支持实体关系图 + 双时态查询）。接口不变，后端替换对上层透明。
 
-**失败处理**：记忆读写失败不中断认知主流程——记忆是辅助系统，不在控制流关键路径上。写入失败由调用方决定是否重试，不应抛出未处理异常。具体的容错策略属于实现层决策，不在本文范围内。
+**失败处理**：记忆读写失败不中断认知主流程——记忆是辅助系统，不在控制流关键路径上。`write()` 返回的 Promise 可以 reject，调用方必须 catch 并自行决定是否重试；不得让 reject 变为未捕获的异常传播到认知主流程。具体的重试策略属于实现层决策，不在本文范围内。
 
 ---
 
