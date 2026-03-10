@@ -81,7 +81,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 **目标**：实现 implicit 记忆聚类合并职责，完成 DmnService 集成，更新公共导出。
 
 子任务：
-- [ ] T020: 读近期 provisional implicit 记忆（tag 过滤，时间窗口）
+- [x] T020: 读近期 provisional implicit 记忆（tag 过滤，时间窗口）
 - [ ] T021: Haiku 语义相似度判断 + 聚类分组
 - [ ] T022: canonical 写入 + supersedes_ids 软删除旧记录（幂等性检查）
 - [ ] T023: DmnService 注入 AIMAInstance + 完整 start/stop 流程测试（手动验证）
