@@ -24,7 +24,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 子任务：
 - [x] T001: DmnConfig 类型（consolidationInterval, maxRetries, llmModel, apiKey）
 - [x] T002: callHaiku(prompt, config) 一次性 LLM 调用封装（@anthropic-ai/sdk 直调，无对话历史）
-- [ ] T003: DmnService 类骨架（start/stop/runConsolidationNow，组合 Reactive + Consolidation）
+- [x] T003: DmnService 类骨架（start/stop/runConsolidationNow，组合 Reactive + Consolidation）
 - [ ] T004: AIMAInstance 集成（config.enableDmn，start() 时条件启动 DmnService）
 
 **Prompt**: WP01-dmn-service-skeleton.md
