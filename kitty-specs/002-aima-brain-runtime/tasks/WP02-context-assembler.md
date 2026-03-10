@@ -5,6 +5,7 @@ lane: "done"
 dependencies: []
 subtasks: [T007, T008, T009, T010, T011]
 agent: "claude"
+assignee: "claude"
 shell_pid: "5022"
 reviewed_by: "XIAYANG ZHANG"
 review_status: "approved"
