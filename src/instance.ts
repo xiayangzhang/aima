@@ -5,6 +5,8 @@ import type { BrainAdapter } from './adapters/index'
 import { PiCodingAgentAdapter } from './adapters/pi-agent/index'
 import { Amygdala } from './amygdala/index'
 import type { BrainIdentity, ContextAssemblerConfig } from './context/index'
+import type { DmnConfig } from './dmn/index'
+import { DmnService } from './dmn/index'
 import { getEventBus } from './eventbus/index'
 import type { BrainEventBus } from './eventbus/index'
 import { ThreadRunner } from './runner/index'
@@ -35,6 +37,10 @@ export interface AIMAInstanceConfig {
     cortex?: string
     brainstem?: string
   }
+  /** Enable DMN (Default Mode Network). Defaults to false. */
+  enableDmn?: boolean
+  /** DMN configuration overrides. Requires enableDmn: true. */
+  dmnConfig?: Partial<Pick<DmnConfig, 'consolidationIntervalMs' | 'maxRetries' | 'llm'>>
 }
 
 // ─── AIMAInstance ─────────────────────────────────────────────────────────────
@@ -55,6 +61,7 @@ export class AIMAInstance {
   private readonly eventBus: BrainEventBus
   private readonly threadRunner: ThreadRunner
   private pgClient: ReturnType<typeof postgres> | null = null
+  private dmnService?: DmnService
 
   constructor(config: AIMAInstanceConfig) {
     // Database
@@ -82,15 +89,35 @@ export class AIMAInstance {
       adapters,
       assemblerConfig,
     })
+
+    // DMN (optional)
+    if (config.enableDmn) {
+      const resolvedApiKey = config.apiKey ?? process.env.ANTHROPIC_API_KEY
+      this.dmnService = new DmnService({
+        workspace: this.workspace,
+        eventBus: this.eventBus,
+        llm: {
+          ...(resolvedApiKey !== undefined ? { apiKey: resolvedApiKey } : {}),
+          ...config.dmnConfig?.llm,
+        },
+        ...config.dmnConfig,
+      })
+    }
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────
 
   async start(): Promise<void> {
     await this.threadRunner.start()
+    if (this.dmnService) {
+      await this.dmnService.start()
+    }
   }
 
   async stop(): Promise<void> {
+    if (this.dmnService) {
+      await this.dmnService.stop()
+    }
     this.threadRunner.stop()
     await this.pgClient?.end()
     this.pgClient = null

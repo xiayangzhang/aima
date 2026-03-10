@@ -73,6 +73,10 @@ export { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
 // ── MCP Server ────────────────────────────────────────────────────────────────
 export { createAimaMcpServer } from './mcp/index'
 
+// ── DMN ───────────────────────────────────────────────────────────────────────
+export type { DmnConfig, DmnLlmConfig } from './dmn/index'
+export { DmnService, createDmnService } from './dmn/index'
+
 // ── AIMAInstance ──────────────────────────────────────────────────────────────
 export type { AIMAInstanceConfig, AdapterType } from './instance'
 export { AIMAInstance, createAIMAInstance } from './instance'
