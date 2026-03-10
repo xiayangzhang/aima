@@ -1,7 +1,7 @@
 ---
 work_package_id: WP06
 title: CognitiveWorkspace — Memory
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks:
 - T026
@@ -372,3 +372,4 @@ bun test tests/unit/workspace/memory.test.ts
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 - 2026-03-10T10:19:10Z – claude – shell_pid=14517 – lane=doing – Started implementation via workflow command
+- 2026-03-10T10:48:40Z – claude – shell_pid=14517 – lane=for_review – Ready for review: writeMemory (supersedes tx), searchMemory (tags @> AND, excludeInvalid), markMemoryUsed (batch SELECT+UPDATE in tx), clearWorkingMemory (physical DELETE). 25 unit tests, all passing.
