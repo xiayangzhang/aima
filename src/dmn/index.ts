@@ -2,6 +2,7 @@ import type { BrainEventBus } from '../eventbus/index'
 import { getEventBus } from '../eventbus/index'
 import type { CognitiveWorkspace } from '../workspace/index'
 import { DmnConsolidation } from './consolidation/index'
+import type { SignalRule } from './reactive/index'
 import { DmnReactive } from './reactive/index'
 
 // ─── Config Types ─────────────────────────────────────────────────────────────
@@ -28,6 +29,8 @@ export interface DmnConfig {
   maxRetries?: number
   /** Retroaction window: read last N events. Default: 20 */
   retroactionWindowSize?: number
+  /** Custom signal capture rules. Defaults to built-in rules. */
+  signalRules?: SignalRule[]
 }
 
 // ─── DmnService ───────────────────────────────────────────────────────────────
