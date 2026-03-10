@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: DmnConsolidation — Implicit 聚类 + 集成
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T020, T021, T022, T023, T024]
 agent: "claude"
@@ -220,3 +220,4 @@ spec-kitty implement WP05 --base WP04
 ## Activity Log
 
 - 2026-03-10T15:04:48Z – claude – shell_pid=83334 – lane=doing – Started implementation via workflow command
+- 2026-03-10T15:08:07Z – claude – shell_pid=83334 – lane=for_review – Ready for review: implicit 聚类+软删除, invalidateMemory, 导出更新, 30 tests
