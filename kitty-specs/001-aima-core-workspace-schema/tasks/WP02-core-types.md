@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: 核心类型定义
-lane: "for_review"
+lane: "doing"
 dependencies: []
 subtasks:
 - T007
@@ -12,7 +12,7 @@ subtasks:
 phase: Phase 1 - Foundation
 assignee: ''
 agent: "claude"
-shell_pid: "90215"
+shell_pid: "9371"
 review_status: ''
 reviewed_by: ''
 history:
@@ -344,3 +344,4 @@ biome check src/types/index.ts
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 - 2026-03-10T10:03:19Z – claude – shell_pid=90215 – lane=doing – Started implementation via workflow command
 - 2026-03-10T10:05:20Z – claude – shell_pid=90215 – lane=for_review – Ready for review: src/types/index.ts — all enums (BrainType/CognitiveBrainType/ThreadState/SlotStatus/Intent/ComplexityHint/MemoryType/UsageOutcome), entity interfaces (Thread/Slot/UsageOutcomes/MemoryEntry/PendingObservation), input types, ICognitiveWorkspace. typecheck ✓, biome ✓, no any
+- 2026-03-10T10:15:51Z – claude – shell_pid=9371 – lane=doing – Started review via workflow command
