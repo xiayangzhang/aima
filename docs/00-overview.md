@@ -130,6 +130,8 @@ AIMA 把一个认知个体的能力分为五个功能区：
 
 每次工具调用前，Amygdala 拦截检查。DMN 在后台持续发现错误、前瞻预测、维护 pending 观察项。Hippocampus 每天批量整理记忆权重、定期 review Skill 固化候选。
 
+> **DMN 与 Hippocampus 的预测分工**：前瞻预测的**产生**在 DMN（写 pending_observations，心跳整合每 30 分钟-1 小时运行）；预测的**评估与反馈**在 Hippocampus（每日 batch，判断预测是否准确，调整对应记忆权重）。
+
 ### 完整系统图
 
 ```
@@ -204,7 +206,7 @@ AIMA 把一个认知个体的能力分为五个功能区：
 | **Event Bus** | 只读可观测性接口，五个级别（COMPLIANCE/ALERT/INFO/DEBUG/TRACE） |
 | **Amygdala** | 内置安全层，基于 `risk_level` 和 `implicit` 记忆做 pre-execution 检查 |
 | **DMN** | 纯分析者，从不直接激活脑区。事件响应（准实时，错误恢复+纠错+信号捕获）+ 心跳整合（30分钟-1小时，深度前瞻预测+pending维护）；所有输出写入 pending_observations，由 Thread Runner 路由执行 |
-| **Hippocampus** | 独立后台 batch job，每天整理记忆权重、提炼 semantic；定期（可配置）review Skill 固化候选 |
+| **Hippocampus** | 独立后台 batch job，每天整理记忆权重、提炼 semantic、评估 DMN 预测准确度（准确→强化 semantic/procedural，偏差→修正）；定期（可配置）review Skill 固化候选 |
 
 ---
 

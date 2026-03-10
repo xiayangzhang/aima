@@ -462,31 +462,6 @@ Hippocampus 是 AIMA 的**长期记忆管理者**，独立于五脑实时运作�
 
 ---
 
-## 十、习惯形成与技能内化
-
-### Skill 三层分类
-
-| 类型 | 来源 | 可修改 | 说明 |
-|---|---|---|---|
-| `reference` | 外部提供 | 否 | 只读参考书，外部方维护 |
-| `adapted` | 基于 `reference` 改编 | 是 | 保留原始引用，融入实例自己的上下文 |
-| `first-party` | 从实践中生成 | 是 | 纯实例经验，无外部来源 |
-
-学习原则：观察→理解→在自己的上下文中重新表达，而非复制。
-
-### Skill 生命周期
-
-```
-外部 reference ──→ Cortex 学习 ──→ adapted Skill
-新任务经验 ──→ Cortex 推理 ──→ first-party Skill
-                                  ↓ 重复使用、稳定
-                           Hippocampus Skill Review 固化
-                                  ↓ 环境变化、失效
-                           Hippocampus 检测 → Cortex 重新学习
-```
-
----
-
 ## 九、记忆架构
 
 ### 统一记忆模型
@@ -539,7 +514,32 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 
 ---
 
-## 十、Context Assembly（面向五脑）
+## 十、习惯形成与技能内化
+
+### Skill 三层分类
+
+| 类型 | 来源 | 可修改 | 说明 |
+|---|---|---|---|
+| `reference` | 外部提供 | 否 | 只读参考书，外部方维护 |
+| `adapted` | 基于 `reference` 改编 | 是 | 保留原始引用，融入实例自己的上下文 |
+| `first-party` | 从实践中生成 | 是 | 纯实例经验，无外部来源 |
+
+学习原则：观察→理解→在自己的上下文中重新表达，而非复制。
+
+### Skill 生命周期
+
+```
+外部 reference ──→ Cortex 学习 ──→ adapted Skill
+新任务经验 ──→ Cortex 推理 ──→ first-party Skill
+                                  ↓ 重复使用、稳定
+                           Hippocampus Skill Review 固化
+                                  ↓ 环境变化、失效
+                           Hippocampus 检测 → Cortex 重新学习
+```
+
+---
+
+## 十一、Context Assembly（面向五脑）
 
 | Block | Limbic | Cortex | Brainstem |
 |---|---|---|---|
@@ -570,7 +570,7 @@ Block 1（身份）和 Block 2（Skill Index）内容稳定，构成 LLM prompt 
 
 ---
 
-## 十一、Runtime 边界
+## 十二、Runtime 边界
 
 ```
 ┌─────────────────────────────────── AIMA 实例 ───────────────┐

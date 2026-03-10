@@ -31,6 +31,8 @@ interface BrainRunResult {
   session_id:  string             // 本次 Loop 使用的 session ID
   output:      Record<string, unknown>
   stop_reason: 'done' | 'interrupted' | 'error'
+  events:      WorkspaceEvent[]   // 本次 Loop 产生的工作空间事件（Slot 写入、Signal 写入等）
+                                  // Thread Runner 在 activateBrain() 后遍历并 emit 到 workspace
 }
 ```
 
