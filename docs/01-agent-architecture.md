@@ -76,6 +76,10 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 
 判断标准：这是一个**动作**（执行）还是一个**判断**（推理）？动作留在代码，判断留在 Skill。
 
+### 分工的代价
+
+五脑分工带来的互相使能是真实的，但代价也是真实的：一条消息从输入到最终动作，经过 Thread Runner 路由、Context Assembly 重组、Amygdala 拦截、DMN 异步观察、Hippocampus 读写——每一步的 LLM 偏差都可能被下游放大。Event Bus 的 `causation_id` 提供单步因果链，全链追溯需要应用层自行重建。**这个架构适合"需要深度推理且对可观测性有要求"的场景，不适合"需要极低延迟的简单操作"**——后者应该用 Limbic EXECUTE 直通或 Brainstem 规则路由绕过 Cortex。分工的目的是让复杂情况不退化，不是让所有情况都复杂。
+
 ---
 
 ## 二、五脑架构
@@ -163,7 +167,14 @@ AIMA 实例不实现 Audit 逻辑。Audit 是外部关注点。取而代之的�
 - **Amygdala** 订阅：`tool.pre_use`（`INFO` 级）— 拦截时序依赖适配器实现，见下方 ⚠️
 - **DMN** 订阅：`INFO` 及以上（作为 Action Log 来源）
 
-> ⚠️ **P0 已知限制（Amygdala 拦截时序）**：Amygdala 的"执行前拦截"设计假设适配器在工具**执行前**同步回调（如 `pi-coding-agent` Extension API 的 `tool_call` 事件，可返回 `{ block: true }`）。当前暂用的 `pi-agent-core` 适配器的 `getSteeringMessages` 在工具调用**之间**触发，不是执行前同步——Amygdala 的阻断可能晚到一步，工具已开始执行。**在迁移到 `pi-coding-agent` 之前，Amygdala 对单次工具调用的实时拦截不可依赖**；风险决策应在 Context Assembly 阶段（pre-activation）完成，而非依赖 `tool.pre_use` 时序。迁移优先级：P0。
+> ⚠️ **P0 已知限制（Amygdala 拦截时序）**：Amygdala 的"执行前拦截"设计假设适配器在工具**执行前**同步回调（如 `pi-coding-agent` Extension API 的 `tool_call` 事件，可返回 `{ block: true }`）。当前暂用的 `pi-agent-core` 适配器的 `getSteeringMessages` 在工具调用**之间**触发，不是执行前同步——Amygdala 的阻断可能晚到一步，工具已开始执行。**在迁移到 `pi-coding-agent` 之前，Amygdala 对单次工具调用的实时拦截不可依赖**。迁移优先级：P0。
+>
+> **过渡期临时缓解措施（迁移完成前强制执行）**：
+> 1. 高风险工具（`bash`、`file_write`、`file_delete`、任何有真实外部效果的 API 工具）**默认 BLOCK**，且不允许 `role.md` 解锁——必须等到 `pi-coding-agent` 迁移完成后才可配置为 ALLOW。
+> 2. 中等风险工具（`file_read` 等）可通过 `role.md` 解锁，但需在 Skill 中写明使用约束，由 Limbic/Cortex 在 Context Assembly 阶段判断是否适合发起操作。
+> 3. 只有无外部效果的只读工具（`memory_search`、`workspace_read`）默认 ALLOW。
+>
+> 实质：在 `pi-agent-core` 下，Amygdala 的"执行前拦截"退化为"启动前静态配置"——用工具注册白名单替代运行时动态判断。
 
 ### 外部订阅（由集成方实现）
 
@@ -255,8 +266,13 @@ Workspace
   target_brain: BrainType
   note:         string           // LLM 生成的自然语言描述，供 Cortex 理解上下文
   trigger_at:   timestamp | null // null = 立即路由；non-null = 不早于此时刻路由
+  expires_at:   timestamp        // 必填。DMN 写入时设置 TTL（如 trigger_at + 7天）；
+                                 // Thread Runner routePending() 自动跳过并删除已过期条目。
+                                 // 防止冷启动阶段低质量预测无限积累，也防止全量扫描退化
   added_at:     timestamp
 }
+// 容量保护：JSONB 字段中的 pending 条目数应有上限（上层配置项）。
+// 超出时 DMN 按 trigger_at 最远的条目优先淘汰，保留最近期的预测。
 ```
 
 ### 脑区间通信：Thread Runner 路由
@@ -474,6 +490,10 @@ Hippocampus 是 AIMA 的**完整记忆实体**，不是"记忆数据库旁边的
 
 **Consolidation 执行顺序约束**：段精修必须先于段序列回放——精修更新 `segment_id`，回放依赖正确的段边界读数据。
 
+**Consolidation 的 LLM 调用模型**：段序列回放需要 LLM 做因果分析和模式提取。Consolidation 不是脑区，不持有持久 LLM session，不走 BrainAdapter——每次回放任务发起**一次性 LLM 调用**（Haiku，无对话历史，独立请求），与 DMN Reactive 的"偶发 LLM 调用"性质相同。调用结果直接写入 Hippocampus，不经过 Thread Runner。
+
+**不走 BrainAdapter 的进程**：DMN Reactive（事件处理器）、DMN Consolidation（心跳 batch）、Hippocampus Consolidation（每日 batch）均不走 BrainAdapter，不在 Thread/Slot 体系内，不持有持久 session。BrainAdapter 只服务于持有 LLM session 的三个认知脑区：Limbic、Cortex、Brainstem。
+
 **Skill Review 归属 Cortex**：评估 Skill 质量需要认知判断，不属于记忆基础设施。Hippocampus 只维护 Skill 的索引元数据（`entity_id`、使用统计）。DMN 心跳整合检测到固化模式后写 `pending_observations` 给 Cortex，由 Cortex 决定是否固化、更新或废弃 Skill。
 
 **SDK 暴露参数**：
@@ -492,17 +512,9 @@ Hippocampus 是 AIMA 的**完整记忆实体**，不是"记忆数据库旁边的
 
 ### 记忆类型
 
-| 类型 | 内容 | 写入方 | 读取方 |
-|---|---|---|---|
-| `semantic` | 事实、实体、关系 | Limbic / Cortex / Consolidation¹ | Limbic / Cortex |
-| `episodic` | 事件序列（= Action Log） | DMN（消费 Event Bus） | DMN |
-| `procedural` | Skill 化的流程模式 | Cortex | Limbic / Brainstem |
-| `working` | 当前 Thread 临时状态 | 所有脑区 | 所有脑区（Thread 完成时清除） |
-| `implicit` | 风险模式、危险行为历史 | Amygdala / DMN | Amygdala（主） |
+五类记忆（semantic / episodic / procedural / working / implicit）的完整定义、写入方、读取方、初始权重详见 `02-memory-architecture.md` §二/§三（权威来源）。
 
-¹ Consolidation（Hippocampus 批处理子系统）在序列回放后将跨段模式提炼写入 `semantic`。完整写入方列表见 `02-memory-architecture.md` §三。
-
-初始 `base_importance`：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6、`implicit` = 0.7。检索排序使用 `base_importance + recency_boost`（基于 `last_accessed_at` 动态计算）。详见 `02-memory-architecture.md`。
+本文仅列与架构路由相关的要点：episodic 由 DMN 写入，procedural 由 Cortex 写入供 Limbic/Brainstem 读取，implicit 由 Amygdala 写入供 Amygdala 读取，working 是所有脑区的临时状态（Thread 完成时清除）。
 
 ### 三轴组织
 
@@ -571,10 +583,10 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 | 类型 | 来源 | 可修改 | 说明 |
 |---|---|---|---|
 | `reference` | 外部提供 | 否 | 只读参考书，外部方维护 |
-| `adapted` | 基于 `reference` 改编 | 是 | 保留原始引用，融入实例自己的上下文 |
+| `adapted` | 基于 `reference` 改编 | 是 | 保留原始引用，融入实例自己的上下文；文件头必须声明 `derived_from: <reference_skill_id>` |
 | `first-party` | 从实践中生成 | 是 | 纯实例经验，无外部来源 |
 
-学习原则：观察→理解→在自己的上下文中重新表达，而非复制。
+学习原则：观察→理解→在自己的上下文中重新表达，而非复制。`adapted` Skill 在 Cortex Skill Review 时应与原始 `reference` 对照，检查边界条件是否完整保留（LLM 改写容易引入语义漂移，如"超过 50 万需二级审批"变成"大额采购需二级审批"）。`derived_from` 引用是对照的锚点。
 
 ### Skill 生命周期
 

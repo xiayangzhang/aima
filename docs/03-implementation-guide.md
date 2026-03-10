@@ -43,7 +43,11 @@ interface BrainRunResult {
 
 ## 二、pi-agent-core 适配器
 
-### 适用场景
+> **当前状态**：过渡期实现（18/18 测试通过）。目标是迁移到 §六 决定的 `pi-coding-agent` 单适配器。本节代码作为过渡期参考保留；迁移完成后，§二将退化为"备选参考（多模型 / 非 Anthropic 部署场景）"。
+>
+> **P0 限制**：见 §一 BrainAdapter 接口定义下方的说明——`getSteeringMessages` 不是真正的执行前同步拦截，Amygdala 的安全承诺在此适配器下不完整。
+
+### 适用场景（迁移后）
 
 - 需要使用 Claude 以外的模型（GPT-4、Gemini、本地模型）
 - 需要精细控制 agent loop 的每一步
