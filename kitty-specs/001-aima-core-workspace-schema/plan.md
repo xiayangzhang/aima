@@ -1,108 +1,136 @@
-# Implementation Plan: [FEATURE]
-*Path: [templates/plan-template.md](templates/plan-template.md)*
+# Implementation Plan: AIMA Core — Workspace & Schema
 
+**Branch**: `001-aima-core-workspace-schema` | **Date**: 2026-03-10 | **Spec**: [spec.md](./spec.md)
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/kitty-specs/[###-feature-name]/spec.md`
-
-**Note**: This template is filled in by the `/spec-kitty.plan` command. See `.kittify/templates/commands/plan.md` for the execution workflow.
-
-The planner will not begin until all planning questions have been answered—capture those answers in this document before progressing to later phases.
+---
 
 ## Summary
 
-[Extract from feature spec: primary requirement + technical approach from research]
+建立 `@aima/core` 包的数据基础层：Drizzle ORM schema（4 张表）、CognitiveWorkspace DAO 类，以及完整的单元 + 集成测试。`pending_observations` 采用独立表而非 JSONB 字段，消除并发热点，使用 advisory lock 序列化写入。
+
+---
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
+**Language/Version**: TypeScript 5.7+, strict mode, ESM-only
+**Runtime**: Bun v1.x
+**Primary Dependencies**: drizzle-orm, drizzle-kit, postgres (porsager driver), vitest
+**Linting/Formatting**: Biome
+**Build**: tsup (ESM + CJS dual output)
+**Storage**: PostgreSQL 16+ — 4 tables: `threads`, `slots`, `memories`, `pending_observations`
+**Testing**: bun test (unit, no DB) + vitest (integration, real PostgreSQL via `AIMA_TEST_DATABASE_URL`)
+**Target Platform**: Node.js 20+ / Bun 1.x 兼容 library
+**Constraints**: 无 `any`，无 default exports，TypeScript strict，集成测试用事务回滚隔离
+**Key Decision**: `pending_observations` 独立表 + advisory lock，不用 JSONB 字段
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+---
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+- ✅ 单包结构 (`@aima/core`)
+- ✅ 无过度抽象——CognitiveWorkspace 直接包装 Drizzle，无 Repository 层
+- ✅ 无 `any`，TypeScript strict
+- ✅ 类型权威来源单一：`src/types/index.ts`
+- ✅ 测试覆盖率目标 ≥ 80%
 
-[Gates determined based on constitution file]
+---
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```
-kitty-specs/[###-feature]/
-├── plan.md              # This file (/spec-kitty.plan command output)
-├── research.md          # Phase 0 output (/spec-kitty.plan command)
-├── data-model.md        # Phase 1 output (/spec-kitty.plan command)
-├── quickstart.md        # Phase 1 output (/spec-kitty.plan command)
-├── contracts/           # Phase 1 output (/spec-kitty.plan command)
-└── tasks.md             # Phase 2 output (/spec-kitty.tasks command - NOT created by /spec-kitty.plan)
+kitty-specs/001-aima-core-workspace-schema/
+├── plan.md              ← 本文件
+├── research.md          ← Phase 0 技术决策记录
+├── data-model.md        ← Phase 1 数据模型详细设计
+├── quickstart.md        ← 开发环境启动指南
+├── contracts/
+│   └── workspace.ts     ← CognitiveWorkspace TypeScript 接口定义
+└── tasks.md             ← /spec-kitty.tasks 生成（本命令不创建）
 ```
 
-### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
+### Source Code
 
 ```
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
 src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+  types/
+    index.ts             ← 全部核心枚举和接口（单一权威来源）
+  schema/
+    threads.ts           ← threads 表 Drizzle 定义
+    slots.ts             ← slots 表 Drizzle 定义
+    memories.ts          ← memories 表 Drizzle 定义
+    pending.ts           ← pending_observations 表 Drizzle 定义
+    index.ts             ← re-export 所有表
+  workspace/
+    index.ts             ← CognitiveWorkspace class（主入口）
+    pending.ts           ← pending 专属操作（含 advisory lock 并发保护）
+    memory.ts            ← memory 专属操作
+  index.ts               ← 包公共导出
 
 tests/
-├── contract/
-├── integration/
-└── unit/
+  unit/
+    workspace/           ← 纯逻辑测试（mock DB，bun test）
+  integration/
+    workspace/           ← 真实 PostgreSQL 测试（vitest）
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
+drizzle/
+  migrations/            ← drizzle-kit generate 输出，不手动编辑
 
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+biome.json
+drizzle.config.ts
+package.json
+tsconfig.json
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+---
 
-## Complexity Tracking
+## Work Package Breakdown
 
-*Fill ONLY if Constitution Check has violations that must be justified*
+| WP | 标题 | 依赖 | 可并行 |
+|---|---|---|---|
+| WP01 | 包初始化 + 工具链 | — | 否（基础） |
+| WP02 | 核心类型定义 | WP01 | 否（被所有后续 WP 依赖） |
+| WP03 | Drizzle Schema + Migration | WP02 | 否（被 WP04-06 依赖） |
+| WP04 | CognitiveWorkspace — Thread & Slot | WP03 | ✅ 可与 WP05/06 并行 |
+| WP05 | CognitiveWorkspace — Pending Observations | WP03 | ✅ 可与 WP04/06 并行 |
+| WP06 | CognitiveWorkspace — Memory | WP03 | ✅ 可与 WP04/05 并行 |
+| WP07 | 集成测试套件 | WP04-06 | 否（依赖全部 DAO） |
+| WP08 | 公共 API 导出 + 构建验证 | WP04-06 | 否（最终整合） |
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+---
+
+## Key Design Decisions
+
+### pending_observations 并发保护
+
+读路径无锁。写路径使用 PostgreSQL advisory lock 序列化：
+
+```sql
+BEGIN;
+SELECT pg_advisory_xact_lock(hashtext('aima_pending_write'));
+-- 查当前行数，超限则按 base_importance ASC, added_at ASC 淘汰最低优先级条目
+-- INSERT 新条目
+COMMIT;
+```
+
+Advisory lock 随事务自动释放，无需手动 unlock。
+
+### supersedes_id 原子失效
+
+`writeMemory` 在同一事务内完成两步：
+1. INSERT 新记忆条目
+2. `UPDATE memories SET t_invalid = now() WHERE id = supersedes_id`
+
+### updated_at 维护策略
+
+不用数据库触发器。所有 UPDATE 操作由 CognitiveWorkspace 方法显式设置 `updated_at: new Date()`，保持 schema 简单。
+
+### 集成测试隔离
+
+```typescript
+beforeEach(() => db.execute(sql`BEGIN`))
+afterEach(() => db.execute(sql`ROLLBACK`))
+```
+
+每个测试用例在事务内运行，afterEach 回滚，无状态污染，无需清空表。
