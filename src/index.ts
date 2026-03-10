@@ -59,3 +59,7 @@ export type {
   AmygdalaConfig,
 } from './amygdala/index'
 export { Amygdala } from './amygdala/index'
+
+// ── ThreadRunner ──────────────────────────────────────────────────────────────
+export type { ThreadRunnerConfig } from './runner/index'
+export { ThreadRunner } from './runner/index'
