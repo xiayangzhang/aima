@@ -1,5 +1,18 @@
 import { EventEmitter } from 'node:events'
-import { and, arrayContains, asc, desc, eq, gte, inArray, isNull, lt, not, sql } from 'drizzle-orm'
+import {
+  and,
+  arrayContains,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  not,
+  sql,
+} from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { BrainSignal, BrainSignalType } from '../adapters/index'
 import { memories, pendingObservations, slots, threads } from '../schema/index'
@@ -387,6 +400,10 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
 
     if (filters.excludeInvalid !== false) {
       conditions.push(isNull(memories.tInvalid))
+    }
+
+    if (filters.createdAfter !== undefined) {
+      conditions.push(gt(memories.createdAt, filters.createdAfter))
     }
 
     const rows = await this.db

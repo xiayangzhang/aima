@@ -129,6 +129,7 @@ export interface MemorySearchFilters {
   segmentId?: string
   excludeInvalid?: boolean // default true (filter WHERE t_invalid IS NULL)
   limit?: number // default 20
+  createdAfter?: Date // filter WHERE created_at > createdAfter
 }
 
 export interface CreatePendingParams {
