@@ -44,7 +44,7 @@
 ### Included Subtasks
 - [x] T007 定义全部核心枚举（BrainType、CognitiveBrainType、ThreadState、SlotStatus、MemoryType、Intent、ComplexityHint、UsageOutcome、EventLevel、RiskLevel、SkillType）
 - [x] T008 定义实体接口（Thread、Slot、MemoryEntry、PendingObservation、UsageOutcomes）
-- [ ] T009 定义输入/参数类型（CreateThreadParams、WriteSlotParams、CreateMemoryParams、MemorySearchFilters、CreatePendingParams）
+- [x] T009 定义输入/参数类型（CreateThreadParams、WriteSlotParams、CreateMemoryParams、MemorySearchFilters、CreatePendingParams）
 - [ ] T010 定义 ICognitiveWorkspace 接口（与 contracts/workspace.ts 完全对齐）
 - [ ] T011 [P] 验证类型：tsc --noEmit 零错误，无 `any`
 
