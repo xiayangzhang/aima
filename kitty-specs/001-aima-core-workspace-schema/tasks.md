@@ -76,7 +76,7 @@
 - [x] T014 `src/schema/memories.ts`：memories 表 + memoryType pgEnum + GIN index on tags
 - [x] T015 `src/schema/pending.ts`：pending_observations 表 + 3 个索引
 - [x] T016 `src/schema/index.ts`：re-export 所有表和 enum，供 workspace 模块使用
-- [ ] T017 执行 `bun run db:generate` 验证迁移生成，`bun run db:migrate` 验证在测试库上执行成功
+- [x] T017 执行 `bun run db:generate` 验证迁移生成，`bun run db:migrate` 验证在测试库上执行成功
 
 ### Implementation Notes
 - pgEnum 定义与 `src/types/index.ts` 中的 TypeScript 类型值保持完全一致
