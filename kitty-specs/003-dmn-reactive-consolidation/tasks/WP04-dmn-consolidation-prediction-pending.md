@@ -1,9 +1,11 @@
 ---
 work_package_id: WP04
 title: DmnConsolidation — 前瞻预测 + Pending 维护
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T015, T016, T017, T018, T019]
+agent: "claude"
+shell_pid: "79231"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -276,3 +278,7 @@ Respond with JSON array with one entry per pending task in the same order:
 ```bash
 spec-kitty implement WP04 --base WP01
 ```
+
+## Activity Log
+
+- 2026-03-10T15:01:28Z – claude – shell_pid=79231 – lane=doing – Started implementation via workflow command
