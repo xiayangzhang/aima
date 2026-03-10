@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: PiCodingAgentAdapter
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T025, T026, T027, T028, T029, T030]
 agent: "claude"
@@ -353,3 +353,4 @@ spec-kitty implement WP05 --base WP03
 ## Activity Log
 
 - 2026-03-10T13:13:22Z – claude – shell_pid=52619 – lane=doing – Started implementation via workflow command
+- 2026-03-10T13:16:05Z – claude – shell_pid=52619 – lane=for_review – Ready for review: PiCodingAgentAdapter implemented using actual pi-agent-core API (setSystemPrompt, setModel, steer/followUp with UserMessage, EventBus bridge). 4 unit tests passing.
