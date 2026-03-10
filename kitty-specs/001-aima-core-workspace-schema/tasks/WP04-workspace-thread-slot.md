@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: CognitiveWorkspace — Thread & Slot
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks:
 - T018
@@ -12,8 +12,8 @@ phase: Phase 2 - Core DAO
 assignee: ''
 agent: "claude"
 shell_pid: "64216"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-10T00:00:00Z'
   lane: planned
@@ -442,3 +442,4 @@ bun test tests/unit/workspace/thread-slot.test.ts
 - 2026-03-10T10:19:03Z – claude – shell_pid=13938 – lane=doing – Started implementation via workflow command
 - 2026-03-10T10:25:01Z – claude – shell_pid=13938 – lane=for_review – 20/20 unit tests passing, tsc clean, biome clean. Thread & Slot DAO complete with upsert semantics.
 - 2026-03-10T10:49:59Z – claude – shell_pid=64216 – lane=doing – Started review via workflow command
+- 2026-03-10T10:50:48Z – claude – shell_pid=64216 – lane=done – Review passed: all 4 DoD items satisfied, 20/20 tests, tsc+biome clean. updateThreadState/writeSlot updatedAt explicit, getActiveThreads uses NOT IN. Minor: slot mock uses type cast but runtime correct.
