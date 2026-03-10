@@ -1,9 +1,11 @@
 ---
 work_package_id: WP05
 title: DmnConsolidation — Implicit 聚类 + 集成
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T020, T021, T022, T023, T024]
+agent: "claude"
+shell_pid: "83334"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -214,3 +216,7 @@ spec-kitty implement WP05 --base WP04
 ```
 
 注意：WP05 同时依赖 WP01（通过 WP04 的依赖链传递），--base 指定 WP04。
+
+## Activity Log
+
+- 2026-03-10T15:04:48Z – claude – shell_pid=83334 – lane=doing – Started implementation via workflow command
