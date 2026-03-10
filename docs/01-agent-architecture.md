@@ -283,6 +283,10 @@ Workspace
 // 容量保护：JSONB 字段中的 pending 条目数应有上限（上层配置项）。
 // 超出时按 base_importance 最低的条目优先淘汰——长期预测（trigger_at 远）往往是
 // 最有价值的，不应因时间距离远而被优先丢弃。time-to-trigger 不是价值的代理指标。
+//
+// 并发写：DMN Reactive（事件驱动）和 DMN Consolidation（心跳 batch）可能同时写入。
+// 实现层使用 SELECT FOR UPDATE 锁定 workspace 行后再追加/删除条目，避免 JSONB 覆写竞态。
+// 实际冲突频率极低（单实例 DMN 写频率有限），加锁开销可接受。
 ```
 
 ### 脑区间通信：Thread Runner 路由
@@ -573,14 +577,14 @@ Hippocampus 是 AIMA 的**完整记忆实体**，不是"记忆数据库旁边的
 
 各脑区使用专属检索方法，通用 `search()` 保留为兜底：
 
-| 脑区 | 主检索方法 | 生物学类比 |
-|---|---|---|
-| **Limbic** | `getEntityContext(entityId)` | 语义网络扩散激活 |
-| **Cortex** | `findSimilarSituations(situation)` | 前额叶经验检索 |
-| **Brainstem** | `getProcedure(taskType)` | 程序性记忆直接调取 |
-| **Amygdala** | `getByTags(tags, timeRange)` | 杏仁核危险识别 |
-| **DMN** | `getSessionContext(sessionId)` | 海马体工作记忆 |
-| **所有脑区（兜底）** | `search(query)` | 非特异性联想激活 |
+| 脑区 | 主检索方法 |
+|---|---|
+| **Limbic** | `getEntityContext(entityId)` |
+| **Cortex** | `findSimilarSituations(situation)` |
+| **Brainstem** | `getProcedure(taskType)` |
+| **Amygdala** | `getByTags(tags, timeRange)` |
+| **DMN** | `getSessionContext(sessionId)` |
+| **所有脑区（兜底）** | `search(query)` |
 
 ### 检索
 
