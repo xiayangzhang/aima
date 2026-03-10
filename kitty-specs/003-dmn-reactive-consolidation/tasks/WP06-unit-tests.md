@@ -1,9 +1,11 @@
 ---
 work_package_id: WP06
 title: 单元测试
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T025, T026, T027, T028, T029, T030]
+agent: "claude"
+shell_pid: "87885"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -526,3 +528,7 @@ bun test tests/unit/dmn/
 ```bash
 spec-kitty implement WP06 --base WP05
 ```
+
+## Activity Log
+
+- 2026-03-10T15:08:13Z – claude – shell_pid=87885 – lane=doing – Started implementation via workflow command
