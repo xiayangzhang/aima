@@ -1,7 +1,7 @@
 ---
 work_package_id: WP07
 title: 集成测试套件
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks:
 - T031
@@ -10,8 +10,8 @@ subtasks:
 - T034
 phase: Phase 3 - Verification
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude"
+shell_pid: "36246"
 review_status: ''
 reviewed_by: ''
 history:
@@ -555,3 +555,4 @@ describeWithDb('Memory operations (integration)', () => {
 ## Activity Log
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T11:35:00Z – claude – shell_pid=36246 – lane=doing – Started implementation via workflow command
