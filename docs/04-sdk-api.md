@@ -179,8 +179,9 @@ const output = thread.slots.limbic.output
 
 ## 五、记忆只读接口
 
-> 记忆由 Agent 自己写入和管理，上层应用**不能直接写**。
+> 记忆由 Agent 自己通过 Hippocampus 写入和管理，上层应用**不能直接写**。
 > 但以下场景需要只读访问：Shadow Mode 审计、外部合规检查、调试。
+> 内部实现为 `Hippocampus.Recall.search()`，公共 API 隐藏 Hippocampus 子模块细节。
 
 ```typescript
 interface MemorySearchOptions {

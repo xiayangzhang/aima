@@ -443,28 +443,25 @@ Amygdala 宁可多一条冗余记录也不能因等锁而延迟工具拦截决�
 
 ---
 
-## 八、Hippocampus（海马体）
+## 八、记忆系统 — Hippocampus
 
-Hippocampus 是 AIMA 的**长期记忆管理者**，独立于五脑实时运作，每天定时批量执行，不参与实时决策，不阻塞任何脑区。
+Hippocampus 是 AIMA 的**完整记忆实体**，不是"记忆数据库旁边的一个批处理进程"。它统一拥有数据、读写接口和巩固逻辑，内含三个子模块：
 
-**职责**（每次运行均执行，有执行顺序约束）：
-1. **段精修**（必须先于段序列回放执行）：回顾近期 episodic 段序列，对 DMN Reactive 粗分的段做因果分析，必要时拆分或合并——更新相关记录的 `segment_id` 字段（不新增记录）。精修完成前不得开始段序列回放，否则回放会读到旧的段边界。
-2. **段序列回放**（在段精修完成后执行）：按重要度/时效性/风险标注排序，对 top-K 段运行 `getSegmentSequence()`，LLM 分析事件序列，提取跨段模式 → 写入 semantic（事实）/ procedural（可操作规程）/ implicit（风险模式）；详见 `02-memory-architecture.md` 第七节
-3. **使用反馈收敛**：批量读取 `usage_outcomes` 计数器（由 DMN Reactive 递增），根据正负比例小幅调整 `base_importance`；单次反馈不直接修改权重，Hippocampus 批量收敛
-4. **记忆整理**：清理低权重 `episodic` 条目（`last_accessed_at` 超过阈值），将高价值 episodic 模式提炼为 `semantic` 记忆
-5. **预测反馈**：评估 DMN 心跳整合上轮预测的准确度，更新对应记忆条目权重（准确 → 强化对应 `semantic`/`procedural`，偏差 → 修正或标记低可信度）
+| 子模块 | 性质 | 职责 |
+|---|---|---|
+| **Encoding** | 实时同步 | 所有记忆写入的唯一入口；segment 分配；significance_boost 应用 |
+| **Recall** | 实时同步 | 所有记忆读取的唯一入口；脑区专属检索策略（见§九） |
+| **Consolidation** | 批量异步 | 每日低负载时段运行；段精修 → 段序列回放 → 使用反馈收敛 → 过期清理 |
 
-**Skill Review**（条件执行，距上次运行超过 N 天时触发）：
-1. 分析 `procedural` Skill 的使用频率和成功率
-2. 识别固化候选：重复执行、结果高度一致的 Cortex 推理路径 → 生成 Skill Draft，暴露给人工确认
-3. 固化路径：确认后写入 `first-party` Skill 文件，路由变更为 Brainstem 直接执行（绕过 Cortex，成本从 Opus 降至 Haiku）
-4. 检测失效 Skill：执行出错率上升或语义漂移 → 标记为待更新，触发 Cortex 重新学习
+**Consolidation 执行顺序约束**：段精修必须先于段序列回放——精修更新 `segment_id`，回放依赖正确的段边界读数据。
+
+**Skill Review 归属 Cortex**：评估 Skill 质量需要认知判断，不属于记忆基础设施。Hippocampus 只维护 Skill 的索引元数据（`entity_id`、使用统计）。DMN 心跳整合检测到固化模式后写 `pending_observations` 给 Cortex，由 Cortex 决定是否固化、更新或废弃 Skill。
 
 **SDK 暴露参数**：
-- `hippocampus.runAt`：每天运行的时间窗口（默认低负载时段）
-- `hippocampus.skillReviewIntervalDays`：Skill Review 间隔天数（默认 7 天）
+- `hippocampus.runAt`：Consolidation 每天运行的时间窗口
+- `hippocampus.consolidation.*`：段回放 top-K、usage_outcomes 收敛阈值等（上层配置，框架不锁定默认值）
 
-**资源消耗**：较重，逐条处理，低优先级。PostgreSQL MVCC 保证写操作不阻塞其他脑区的读路径；通过调度时段隔离 I/O 压力。
+详见 `02-memory-architecture.md`。
 
 ---
 
@@ -534,7 +531,7 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 
 **大脑是实体**：每个脑区（Limbic/Cortex/Brainstem/Amygdala/DMN）在 `semantic` 记忆中有对应的实体记录。DMN 将观察到的脑区行为模式写入 `implicit` 记忆（如"Cortex 在多步数学任务上的可靠性较低"），使路由和风险评估能从自身历史中学习。这是 AIMA 元认知能力的底层机制。
 
-**Skill 是实体**：每个 Skill 文件对应一个稳定的 `entity_id`（如 `skill:procurement-approval`）。Skill 实体（认知层）与 Skill 文件（操作层）分离：文件是 Agent 运行时读取的可执行知识，实体记录是 AIMA 对这个 Skill 的认知积累——使用历史、版本关系（`supersedes_ids`）、适用场景模式。Hippocampus 基于实体记录评估 Skill 的健康度和固化时机。
+**Skill 是实体**：每个 Skill 文件对应一个稳定的 `entity_id`（如 `skill:procurement-approval`）。Skill 实体（认知层）与 Skill 文件（操作层）分离：文件是 Agent 运行时读取的可执行知识，实体记录是 AIMA 对这个 Skill 的认知积累——使用历史、版本关系（`supersedes_ids`）、适用场景模式。Hippocampus 维护这些实体记录（Skill Index）；Cortex 基于实体记录评估 Skill 的健康度和固化时机（DMN 触发，见§十）。
 
 **实例自身是实体**：`entity_id = "instance:self"` 保留给实例的整体自我描述（能力边界、当前工作状态、已知局限）。
 
@@ -564,10 +561,14 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 外部 reference ──→ Cortex 学习 ──→ adapted Skill
 新任务经验 ──→ Cortex 推理 ──→ first-party Skill
                                   ↓ 重复使用、稳定
-                           Hippocampus Skill Review 固化
+                    DMN 心跳整合检测到固化模式
+                    → pending_observations 给 Cortex
+                    → Cortex Skill Review：评估、固化或废弃
                                   ↓ 环境变化、失效
-                           Hippocampus 检测 → Cortex 重新学习
+                    DMN 检测漂移 → Cortex 重新学习
 ```
+
+Skill Review 由 **Cortex** 执行——评估 Skill 质量是认知判断，不是数据维护。Hippocampus 维护 Skill 实体记录（Index），提供 `usage_outcomes` 等统计数据供 Cortex 判断；Cortex 读这些数据并决策。
 
 ---
 
@@ -578,7 +579,7 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 | **身份** | 人格 + 人际关系 + 沟通风格 | 推理角色 + 当前任务 | 系统权限 + API 清单 |
 | **Skill** | Skill Index + 固化/适配 Skill | 分析方法论 | 操作 Skill + 执行参数模板 |
 | **状态** | 工作空间状态 + 待处理 Thread | 当前分析任务 + 中间结论 | 待执行队列 + 系统状态 |
-| **记忆** | `semantic` + `episodic` + `procedural` | `semantic` + `procedural` | `implicit` + `procedural` |
+| **记忆** | `semantic` + `episodic` + `procedural` | `semantic` + `episodic` + `procedural` | `procedural` |
 
 Block 4 使用原始消息/任务描述作为检索 query，无结果时省略。
 

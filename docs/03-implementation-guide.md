@@ -314,42 +314,46 @@ server.tool('spawn_execution_session', '启动子执行 session（Brainstem 专�
   return { content: [{ type: 'text', text: JSON.stringify(result.structured_output) }] }
 })
 
-// 记忆读写
-server.tool('memory_search', '通用语义检索记忆（Block 4 兜底）', {
+// 记忆读写（通过 Hippocampus.Recall 接口）
+server.tool('memory_search', '通用语义检索（Recall 场景 A，Block 4 兜底）', {
   query: z.string(),
   types: z.array(z.enum(['semantic', 'procedural', 'implicit'])).optional(),
 }, async ({ query, types }) => {
-  const results = await memoryService.search(query, { types })
+  const results = await hippocampus.recall.search(query, { types })
   return { content: [{ type: 'text', text: renderMemoryResults(results) }] }
 })
 
-// Limbic 专用：实体中心检索（场景 D）
-server.tool('memory_entity_context', 'Limbic 专用 — 以实体为中心检索关联知识', {
-  entity_id: z.string(),         // 如 "colleague:alice" / "project:procurement-2026"
+// Limbic 专用：实体中心复合检索（Recall 场景 D）
+server.tool('memory_entity_context', 'Limbic 专用 — 实体中心复合检索（semantic + episodic + procedural）', {
+  entity_id: z.string(),
   depth:     z.number().min(1).max(2).default(1),
   types:     z.array(z.enum(['semantic', 'episodic', 'procedural'])).optional(),
   limit:     z.number().default(20),
 }, async ({ entity_id, depth, types, limit }) => {
-  const results = await memoryService.getEntityContext(entity_id, { depth, types, limit })
+  const results = await hippocampus.recall.getEntityContext(entity_id, { depth, types, limit })
   return { content: [{ type: 'text', text: renderMemoryResults(results) }] }
 })
 
-// Cortex 专用：情境匹配（场景 E）
-server.tool('memory_similar_situations', 'Cortex 专用 — 检索类似历史情境和处理流程', {
-  situation: z.string(),         // 当前任务/情境描述
+// Cortex 专用：情境匹配复合检索（Recall 场景 E）
+server.tool('memory_similar_situations', 'Cortex 专用 — 情境匹配复合检索（episodes + procedures + facts）', {
+  situation: z.string(),
   limit:     z.number().default(10),
 }, async ({ situation, limit }) => {
-  const results = await memoryService.findSimilarSituations(situation, { limit })
-  const text = `## 历史情节\n${renderMemoryResults(results.episodes)}\n\n## 相关流程\n${renderMemoryResults(results.procedures)}`
+  const results = await hippocampus.recall.findSimilarSituations(situation, { limit })
+  const text = [
+    `## 历史情节\n${renderMemoryResults(results.episodes)}`,
+    `## 相关流程\n${renderMemoryResults(results.procedures)}`,
+    `## 相关事实\n${renderMemoryResults(results.facts)}`,
+  ].join('\n\n')
   return { content: [{ type: 'text', text }] }
 })
 
-// Brainstem 专用：任务过程检索（场景 F）
-server.tool('memory_procedure', 'Brainstem 专用 — 检索任务类型对应的执行规程', {
-  task_type: z.string(),         // 如 "send_email" / "create_purchase_order"
+// Brainstem 专用：任务过程单项检索（Recall 场景 F）
+server.tool('memory_procedure', 'Brainstem 专用 — procedural 单项检索', {
+  task_type: z.string(),
   limit:     z.number().default(5),
 }, async ({ task_type, limit }) => {
-  const results = await memoryService.getProcedure(task_type, { limit })
+  const results = await hippocampus.recall.getProcedure(task_type, { limit })
   return { content: [{ type: 'text', text: renderMemoryResults(results) }] }
 })
 ```
