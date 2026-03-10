@@ -71,7 +71,7 @@
 **Prompt**: `tasks/WP03-drizzle-schema-migration.md`
 
 ### Included Subtasks
-- [ ] T012 `src/schema/threads.ts`：threads 表 + threadState pgEnum
+- [x] T012 `src/schema/threads.ts`：threads 表 + threadState pgEnum
 - [ ] T013 `src/schema/slots.ts`：slots 表 + brainType pgEnum + slotStatus pgEnum + UNIQUE(thread_id, brain)
 - [ ] T014 `src/schema/memories.ts`：memories 表 + memoryType pgEnum + GIN index on tags
 - [ ] T015 `src/schema/pending.ts`：pending_observations 表 + 3 个索引
