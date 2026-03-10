@@ -2,10 +2,10 @@
 work_package_id: "WP01"
 title: "包初始化 + 工具链"
 phase: "Phase 1 - Foundation"
-lane: "for_review"
+lane: "doing"
 assignee: ""
 agent: "claude"
-shell_pid: "86638"
+shell_pid: "7871"
 review_status: ""
 reviewed_by: ""
 subtasks:
@@ -301,3 +301,4 @@ touch drizzle/migrations/.gitkeep
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 - 2026-03-10T10:00:35Z – claude – shell_pid=86638 – lane=doing – Started implementation via workflow command
 - 2026-03-10T10:02:26Z – claude – shell_pid=86638 – lane=for_review – Ready for review: package.json (@aima/core), tsconfig.json (strict/ESM/NodeNext), biome.json (scripts/ added to ignore), drizzle.config.ts, vitest.integration.config.ts, directory skeleton. bun install ✓, typecheck ✓, biome check ✓
+- 2026-03-10T10:14:49Z – claude – shell_pid=7871 – lane=doing – Started review via workflow command
