@@ -1,6 +1,6 @@
-import { eq, inArray, not } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, not, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import { slots, threads } from '../schema/index'
+import { memories, slots, threads } from '../schema/index'
 import type * as schema from '../schema/index'
 import type {
   BrainType,
@@ -51,6 +51,32 @@ function mapSlotRow(row: typeof slots.$inferSelect): Slot {
     intent: (row.intent as Intent | null) ?? null,
     complexityHint: (row.complexityHint as ComplexityHint | null) ?? null,
     executionSessionId: row.executionSessionId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }
+}
+
+function mapMemoryRow(row: typeof memories.$inferSelect): MemoryEntry {
+  const outcomes = row.usageOutcomes as { positive: number; negative: number; neutral: number }
+  return {
+    id: row.id,
+    type: row.type,
+    content: row.content,
+    entityId: row.entityId,
+    segmentId: row.segmentId,
+    segmentSeq: row.segmentSeq,
+    tags: row.tags,
+    baseImportance: row.baseImportance,
+    usageOutcomes: outcomes,
+    sourceBrain: (row.sourceBrain as BrainType) ?? null,
+    threadId: row.threadId,
+    sessionId: row.sessionId,
+    supersedesId: row.supersedesId,
+    tInvalid: row.tInvalid,
+    lastAccessedAt: row.lastAccessedAt,
+    pinned: row.pinned,
+    forgotten: row.forgotten,
+    expiresAt: row.expiresAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -165,21 +191,108 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     throw new Error('Not implemented')
   }
 
-  // ── Memory — implemented in WP06 ────────────────────────────────────────────
+  // ── Memory ──────────────────────────────────────────────────────────────────
 
-  async writeMemory(_params: CreateMemoryParams): Promise<MemoryEntry> {
-    throw new Error('Not implemented')
+  async writeMemory(params: CreateMemoryParams): Promise<MemoryEntry> {
+    const performInsert = async (tx: DrizzleDB) => {
+      const [row] = await tx
+        .insert(memories)
+        .values({
+          type: params.type,
+          content: params.content,
+          entityId: params.entityId ?? null,
+          segmentId: params.segmentId ?? null,
+          segmentSeq: params.segmentSeq ?? null,
+          tags: params.tags ?? [],
+          baseImportance: params.baseImportance ?? 0.5,
+          sourceBrain: params.sourceBrain ?? null,
+          threadId: params.threadId ?? null,
+          sessionId: params.sessionId ?? null,
+          supersedesId: params.supersedesId ?? null,
+          expiresAt: params.expiresAt ?? null,
+          pinned: params.pinned ?? false,
+        })
+        .returning()
+
+      if (!row) throw new Error('Insert returned no rows')
+      return row
+    }
+
+    if (params.supersedesId) {
+      const row = await this.db.transaction(async (tx) => {
+        const newRow = await performInsert(tx)
+        await tx
+          .update(memories)
+          .set({ tInvalid: new Date(), updatedAt: new Date() })
+          .where(eq(memories.id, params.supersedesId as string))
+        return newRow
+      })
+      return mapMemoryRow(row)
+    }
+
+    const row = await performInsert(this.db)
+    return mapMemoryRow(row)
   }
 
-  async searchMemory(_filters: MemorySearchFilters): Promise<MemoryEntry[]> {
-    throw new Error('Not implemented')
+  async searchMemory(filters: MemorySearchFilters): Promise<MemoryEntry[]> {
+    const conditions = []
+
+    if (filters.type !== undefined) {
+      conditions.push(eq(memories.type, filters.type))
+    }
+
+    if (filters.tags && filters.tags.length > 0) {
+      conditions.push(sql`${memories.tags} @> ${sql.array(filters.tags, 'text')}`)
+    }
+
+    if (filters.entityId !== undefined) {
+      conditions.push(eq(memories.entityId, filters.entityId))
+    }
+
+    if (filters.segmentId !== undefined) {
+      conditions.push(eq(memories.segmentId, filters.segmentId))
+    }
+
+    if (filters.excludeInvalid !== false) {
+      conditions.push(isNull(memories.tInvalid))
+    }
+
+    const rows = await this.db
+      .select()
+      .from(memories)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(memories.baseImportance))
+      .limit(filters.limit ?? 20)
+
+    return rows.map(mapMemoryRow)
   }
 
-  async markMemoryUsed(_ids: string[], _outcome: UsageOutcome): Promise<void> {
-    throw new Error('Not implemented')
+  async markMemoryUsed(ids: string[], outcome: UsageOutcome): Promise<void> {
+    if (ids.length === 0) return
+
+    const rows = await this.db
+      .select({ id: memories.id, usageOutcomes: memories.usageOutcomes })
+      .from(memories)
+      .where(inArray(memories.id, ids))
+
+    await this.db.transaction(async (tx) => {
+      for (const row of rows) {
+        const outcomes = row.usageOutcomes as { positive: number; negative: number; neutral: number }
+        const updated = {
+          ...outcomes,
+          [outcome]: (outcomes[outcome] ?? 0) + 1,
+        }
+        await tx
+          .update(memories)
+          .set({ usageOutcomes: updated, updatedAt: new Date() })
+          .where(eq(memories.id, row.id))
+      }
+    })
   }
 
-  async clearWorkingMemory(_threadId: string): Promise<void> {
-    throw new Error('Not implemented')
+  async clearWorkingMemory(threadId: string): Promise<void> {
+    await this.db
+      .delete(memories)
+      .where(and(eq(memories.type, 'working'), eq(memories.threadId, threadId)))
   }
 }
