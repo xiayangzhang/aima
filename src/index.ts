@@ -42,3 +42,11 @@ export type {
   EventLevel,
 } from './adapters/index'
 export { BrainEventBus, getEventBus } from './eventbus/index'
+
+// ── Context Assembler ─────────────────────────────────────────────────────────
+export type {
+  BrainIdentity,
+  ContextAssemblerConfig,
+  AssembledContext,
+} from './context/index'
+export { assembleBlock12, assembleBlock3, assembleBlock4, assembleContext } from './context/index'
