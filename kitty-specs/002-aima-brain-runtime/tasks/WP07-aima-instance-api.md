@@ -1,11 +1,13 @@
 ---
 work_package_id: WP07
 title: AIMAInstance + 公共 API 导出
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks: [T039, T040, T041, T042, T043, T044]
 agent: "claude"
 shell_pid: "8447"
+reviewed_by: "XIAYANG ZHANG"
+review_status: "approved"
 history:
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -317,3 +319,4 @@ spec-kitty implement WP07 --base WP06
 - 2026-03-10T13:27:23Z – unknown – lane=doing – Moved to doing
 - 2026-03-10T13:31:58Z – unknown – lane=for_review – Moved to for_review
 - 2026-03-10T13:49:58Z – claude – shell_pid=8447 – lane=doing – Started review via workflow command
+- 2026-03-10T13:50:06Z – claude – shell_pid=8447 – lane=done – Review passed: AIMAInstance top-level entry point implemented (T044-T048: constructor wiring, start/stop lifecycle, receive() creates thread + triggers limbic + awaits completion, createAIMAInstance factory). 102 unit tests passing, typecheck + biome clean.
