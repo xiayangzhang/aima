@@ -1,7 +1,7 @@
 ---
 work_package_id: "WP01"
 title: "DmnService 骨架 + Haiku 封装"
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: ["T001", "T002", "T003", "T004"]
 agent: "claude"
@@ -234,3 +234,4 @@ spec-kitty implement WP01
 ## Activity Log
 
 - 2026-03-10T14:35:38Z – claude – shell_pid=51994 – lane=doing – Started implementation via workflow command
+- 2026-03-10T14:39:43Z – claude – shell_pid=51994 – lane=for_review – Ready for review: DmnService skeleton, DmnLlmConfig/DmnConfig types, callLlm/parseLlmJson helpers, stub DmnReactive/DmnConsolidation, AIMAInstance integration, 7 unit tests passing, typecheck and biome clean
