@@ -4,8 +4,6 @@ title: 集成测试 + smoke test
 lane: "for_review"
 dependencies: []
 subtasks: [T031, T032, T033, T034, T035]
-agent: "claude"
-shell_pid: "94414"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -283,4 +281,6 @@ spec-kitty implement WP07 --base WP06
 
 ## Activity Log
 
-- 2026-03-10T15:14:19Z – claude – shell_pid=94414 – lane=doing – Started implementation via workflow command
+- 2026-03-10T15:17:16Z – unknown – lane=for_review – Ready for review: DMN integration tests (T032-T035) for error recovery, DEFER scheduling, brain.complete episodic writes, and consolidation smoke test. Skip gracefully without DB/API key.
+- 2026-03-10T15:17:56Z – unknown – lane=for_review – Ready for review: DMN integration tests (T032-T035) — graceful skip without DB/API key
+- 2026-03-10T15:25:15Z – unknown – lane=for_review – Known pre-existing issue: tests/integration/brain-runtime/thread-lifecycle.test.ts has 2 tests timing out ('Limbic ROUTE → Cortex → Limbic path completes thread' and 'Crash recovery: start() re-activates thread with done limbic ROUTE slot'). Confirmed these timeout on main branch before Feature 003 changes — not introduced by DMN work. T035 smoke test skips without ANTHROPIC_API_KEY (expected). DMN integration tests T032-T034 all pass against real DB (postgresql://aima:aima@localhost:5434/aima_test).
