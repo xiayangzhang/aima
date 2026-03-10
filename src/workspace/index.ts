@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNull, lt, not, sql } from 'drizzle-orm'
+import { and, arrayContains, asc, desc, eq, gte, inArray, isNull, lt, not, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { memories, pendingObservations, slots, threads } from '../schema/index'
 import type * as schema from '../schema/index'
@@ -303,7 +303,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     }
 
     if (filters.tags && filters.tags.length > 0) {
-      conditions.push(sql`${memories.tags} @> ${sql.array(filters.tags, 'text')}`)
+      conditions.push(arrayContains(memories.tags, filters.tags))
     }
 
     if (filters.entityId !== undefined) {
@@ -338,7 +338,11 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
 
     await this.db.transaction(async (tx) => {
       for (const row of rows) {
-        const outcomes = row.usageOutcomes as { positive: number; negative: number; neutral: number }
+        const outcomes = row.usageOutcomes as {
+          positive: number
+          negative: number
+          neutral: number
+        }
         const updated = {
           ...outcomes,
           [outcome]: (outcomes[outcome] ?? 0) + 1,

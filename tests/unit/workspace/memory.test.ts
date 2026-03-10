@@ -32,7 +32,10 @@ type MemoryRow = {
 interface MockDbConfig {
   memoryInsertResult?: MemoryRow
   memorySelectResult?: MemoryRow[]
-  memorySelectFieldsResult?: Array<{ id: string; usageOutcomes: { positive: number; negative: number; neutral: number } }>
+  memorySelectFieldsResult?: Array<{
+    id: string
+    usageOutcomes: { positive: number; negative: number; neutral: number }
+  }>
 }
 
 interface CallRecord {
@@ -63,28 +66,19 @@ function makeMockDb(config: MockDbConfig = {}): { db: DrizzleDB; calls: CallReco
         calls.deletes++
       },
     }),
-    select: (_cols?: unknown) => ({
+    select: (cols?: unknown) => ({
       from: () => ({
         where: (_cond?: unknown) => {
+          if (cols !== undefined) {
+            // markMemoryUsed path: select({ id, usageOutcomes }).from().where() — directly awaitable
+            return Promise.resolve(config.memorySelectFieldsResult ?? [])
+          }
+          // searchMemory path: select().from().where().orderBy().limit()
           const fullRows = config.memorySelectResult ?? []
-          const fieldRows = config.memorySelectFieldsResult ?? []
-          // Return a thenable that also has .orderBy() for searchMemory
           return {
             orderBy: () => ({
               limit: async () => fullRows,
             }),
-            then: (
-              resolve: (v: unknown[]) => void,
-              reject?: (e: unknown) => void,
-            ) =>
-              Promise.resolve(fieldRows.length > 0 ? fieldRows : fullRows).then(
-                resolve,
-                reject,
-              ),
-            catch: (rej: (e: unknown) => void) =>
-              Promise.resolve(fieldRows.length > 0 ? fieldRows : fullRows).catch(rej),
-            finally: (cb: () => void) =>
-              Promise.resolve(fieldRows.length > 0 ? fieldRows : fullRows).finally(cb),
           }
         },
       }),
@@ -388,8 +382,16 @@ describe('markMemoryUsed', () => {
     await ws.markMemoryUsed(['mem-1', 'mem-2'], 'positive')
 
     expect(calls.updates).toHaveLength(2)
-    expect(calls.updates[0]?.setFields.usageOutcomes).toEqual({ positive: 1, negative: 0, neutral: 0 })
-    expect(calls.updates[1]?.setFields.usageOutcomes).toEqual({ positive: 6, negative: 0, neutral: 0 })
+    expect(calls.updates[0]?.setFields.usageOutcomes).toEqual({
+      positive: 1,
+      negative: 0,
+      neutral: 0,
+    })
+    expect(calls.updates[1]?.setFields.usageOutcomes).toEqual({
+      positive: 6,
+      negative: 0,
+      neutral: 0,
+    })
   })
 
   test('wraps updates in a transaction', async () => {

@@ -318,4 +318,3 @@ describe('Slot operations', () => {
     expect(slots).toHaveLength(0)
   })
 })
-
