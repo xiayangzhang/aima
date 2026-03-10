@@ -128,7 +128,7 @@ Encoding 是所有记忆写入的唯一入口，五脑不直接操作 PostgreSQL
 
 **核心职责：**
 - 接收写入请求，验证，持久化
-- episodic 写入时分配 `segment_id` / `segment_seq`（见第四节）
+- episodic 写入时持久化 DMN 传入的 `segment_id` / `segment_seq`，**不自行决定段边界**（段边界由 DMN 事件响应决定，见第四节）
 - 携带 `significance_boost` 的事件：`base_importance = 初始值 + significance_boost`
 - `supersedes_id` 非空时在事务内同时失效旧记录（设置 `t_invalid`）
 - Thread 完成时执行 `clearWorkingMemory(thread_id)`

@@ -394,7 +394,11 @@ class ThreadRunner {
     // 示意性路由逻辑，仅覆盖核心路径。
     // 完整路由规则（Limbic EXECUTE 直接激活 Brainstem、Brainstem 完成后触发 DMN Reactive 检查、
     // 系统事件 needs_analysis → Cortex 等边界路径）见 01-agent-architecture.md 第四节激活触发条件表。
-    if (slot.brain === 'limbic' && slot.status === 'done' && slot.needs_analysis) {
+    if (slot.brain === 'limbic' && slot.status === 'done' && slot.mode === 'EXECUTE') {
+      // Limbic EXECUTE：操作意图明确，跳过 Cortex 直达 Brainstem
+      await this.activateBrain('brainstem', thread_id)
+    }
+    else if (slot.brain === 'limbic' && slot.status === 'done' && slot.needs_analysis) {
       await this.activateBrain('cortex', thread_id)
     }
     else if (slot.brain === 'cortex' && slot.status === 'done') {

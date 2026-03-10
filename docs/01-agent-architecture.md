@@ -3,8 +3,12 @@
 > **AIMA** = Artificial Intelligence: A Minded Architecture — 认知个体的核心框架
 > **版本**: 3.4
 > **记忆架构详见**: `02-memory-architecture.md`
+> **实现细节详见**: `03-implementation-guide.md`
+> **公共 API 详见**: `04-sdk-api.md`
 > **状态**: 当前权威文档
 > **上层应用**: secondfirst/employee（虚拟员工产品）基于 AIMA 构建
+>
+> **跨文档同步**：01/02/03/04 作为一个文档集合维护。修改任一文档中的接口、脑区职责或数据模型时，需同步检查其他三份文档。以 git commit hash 作为同步基准点。
 
 ---
 
@@ -98,7 +102,7 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 |---|---|
 | `RESPOND(content)` | 直接回复，简单对话不经过 Cortex |
 | `ROUTE(needs_analysis)` | 写入工作空间，等待 Cortex 处理后再响应 |
-| `EXECUTE(intent)` | 操作意图明确且无需规划，Limbic 直接写入工作空间并激活 Brainstem。仅用于 Limbic 有足够信息编码操作意图的简单情况（如"发送你刚刚起草的邮件"）；有歧义或需要多步规划时应使用 `ROUTE` |
+| `EXECUTE(intent)` | 操作意图明确且无需规划，Limbic 写入工作空间 Slot（EXECUTE 模式），Thread Runner 检测到后路由至 Brainstem。仅用于 Limbic 有足够信息编码操作意图的简单情况（如"发送你刚刚起草的邮件"）；有歧义或需要多步规划时应使用 `ROUTE` |
 | `NO_REPLY` | 接收但不响应——群聊场景、信息积累中、不需要当轮回复时 |
 | `DEFER` | 确认收到，等待更多输入再决策（必须携带超时时长，由 Thread Runner 计时） |
 
@@ -342,7 +346,14 @@ Thread 数量上限是配置项。
 
 DMN 是 AIMA 中**唯一能在没有外部触发的情况下主动分析并写入状态**的脑区。Limbic 和 Brainstem 响应外部输入（人类消息、系统事件），DMN 通过两种机制自发运作。
 
-**核心原则：DMN 从不直接激活脑区。** DMN 只写状态（Thread Slot、中断 Signal、`pending_observations`）；Thread Runner 负责读取 pending 并路由给目标脑区执行。DMN 是分析者，不是执行者。
+**核心原则：DMN 从不调用 `activateBrain()`。** DMN 只写状态，路由始终由 Thread Runner 发起。DMN 有两条写入路径，对应不同的响应时效：
+
+| 路径 | 写入目标 | 触发时效 | 典型场景 |
+|---|---|---|---|
+| **即时路由**（Slot Write） | 直接写目标 Thread 的 Slot | Thread Runner 下次轮询（毫秒级） | 错误恢复、Brainstem 重试、中断 Signal |
+| **延迟路由**（Pending Write） | 写 `pending_observations` | Thread Runner 判断"成熟"时路由 | 前瞻预测、跨 Thread 任务创建、Skill Review 触发 |
+
+两条路径都经过 Thread Runner 执行实际激活，DMN 是分析者，不是执行者。
 
 DMN 在概念上是一个脑区，**工程上由两种触发方式实现**——事件响应和心跳整合各自独立调度，不共享运行时，不互相阻塞：
 
@@ -475,11 +486,13 @@ Hippocampus 是 AIMA 的**完整记忆实体**，不是"记忆数据库旁边的
 
 | 类型 | 内容 | 写入方 | 读取方 |
 |---|---|---|---|
-| `semantic` | 事实、实体、关系 | Limbic / Cortex | Limbic / Cortex |
+| `semantic` | 事实、实体、关系 | Limbic / Cortex / Consolidation¹ | Limbic / Cortex |
 | `episodic` | 事件序列（= Action Log） | DMN（消费 Event Bus） | DMN |
 | `procedural` | Skill 化的流程模式 | Cortex | Limbic / Brainstem |
 | `working` | 当前 Thread 临时状态 | 所有脑区 | 所有脑区（Thread 完成时清除） |
-| `implicit` | 风险模式、危险行为历史 | Amygdala / DMN | Amygdala（主）/ Brainstem（Block 4 辅） |
+| `implicit` | 风险模式、危险行为历史 | Amygdala / DMN | Amygdala（主） |
+
+¹ Consolidation（Hippocampus 批处理子系统）在序列回放后将跨段模式提炼写入 `semantic`。完整写入方列表见 `02-memory-architecture.md` §三。
 
 初始 `base_importance`：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6、`implicit` = 0.7。检索排序使用 `base_importance + recency_boost`（基于 `last_accessed_at` 动态计算）。详见 `02-memory-architecture.md`。
 
