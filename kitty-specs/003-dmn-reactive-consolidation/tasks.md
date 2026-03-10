@@ -40,7 +40,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 - [x] T006: 错误恢复 handler（职责1）— ALERT 事件 → retry Slot 或 Thread interrupted
 - [x] T007: DEFER 调度 handler（职责6）— Limbic Slot DEFER → pending 写入
 - [x] T008: 信号捕获 handler（职责7）— 规则匹配 + Haiku fallback → pending 写入
-- [ ] T009: 重试计数追踪（working 记忆存 retryCount，超限降级）
+- [x] T009: 重试计数追踪（working 记忆存 retryCount，超限降级）
 
 **Prompt**: WP02-dmn-reactive-error-defer.md
 
