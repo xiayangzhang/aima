@@ -1,7 +1,7 @@
 ---
 work_package_id: WP08
 title: 单元测试（ThreadRunner / EventBus / ContextAssembler）
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T045, T046, T047, T048, T049, T050, T051]
 history:
@@ -525,3 +525,7 @@ spec-kitty implement WP08 --base WP04
 ```
 
 注意：WP08 依赖 WP01-WP04，用 WP04 作为 --base（WP04 已合并 WP01/WP02 的内容）。
+
+## Activity Log
+
+- 2026-03-10T13:32:02Z – unknown – lane=doing – Moved to doing
