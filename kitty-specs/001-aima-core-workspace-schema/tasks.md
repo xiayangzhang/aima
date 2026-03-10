@@ -14,7 +14,7 @@
 ### Included Subtasks
 - [x] T001 创建 package.json（@aima/core，Bun 配置，全部依赖声明）
 - [x] T002 创建 tsconfig.json（strict，ESM，NodeNext）
-- [ ] T003 [P] 创建 biome.json（lint + format 规则）
+- [x] T003 [P] 创建 biome.json（lint + format 规则）
 - [ ] T004 [P] 创建 drizzle.config.ts
 - [ ] T005 [P] 创建 vitest.integration.config.ts
 - [ ] T006 [P] 建立目录骨架（src/types/ src/schema/ src/workspace/ tests/unit/ tests/integration/ drizzle/migrations/）
