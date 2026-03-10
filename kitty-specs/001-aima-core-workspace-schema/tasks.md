@@ -16,7 +16,7 @@
 - [x] T002 创建 tsconfig.json（strict，ESM，NodeNext）
 - [x] T003 [P] 创建 biome.json（lint + format 规则）
 - [x] T004 [P] 创建 drizzle.config.ts
-- [ ] T005 [P] 创建 vitest.integration.config.ts
+- [x] T005 [P] 创建 vitest.integration.config.ts
 - [ ] T006 [P] 建立目录骨架（src/types/ src/schema/ src/workspace/ tests/unit/ tests/integration/ drizzle/migrations/）
 
 ### Implementation Notes
