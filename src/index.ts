@@ -43,14 +43,15 @@ export type {
 } from './adapters/index'
 export { BrainEventBus, getEventBus } from './eventbus/index'
 
-// ── Context Assembler ─────────────────────────────────────────────────────────
+// ── Amygdala ──────────────────────────────────────────────────────────────────
 export type {
-  BrainIdentity,
-  ContextAssemblerConfig,
-  AssembledContext,
-} from './context/index'
-export { assembleBlock12, assembleBlock3, assembleBlock4, assembleContext } from './context/index'
+  ToolRiskLevel,
+  AmygdalaDecision,
+  AmygdalaRule,
+  AmygdalaConfig,
+} from './amygdala/index'
+export { Amygdala } from './amygdala/index'
 
-// ── ThreadRunner ──────────────────────────────────────────────────────────────
-export type { ThreadRunnerConfig } from './runner/index'
-export { ThreadRunner } from './runner/index'
+// ── Adapters ──────────────────────────────────────────────────────────────────
+export type { PiCodingAgentAdapterConfig } from './adapters/pi-agent/index'
+export { PiCodingAgentAdapter } from './adapters/pi-agent/index'
