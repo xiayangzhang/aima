@@ -1,9 +1,11 @@
 ---
 work_package_id: "WP01"
 title: "DmnService 骨架 + Haiku 封装"
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks: ["T001", "T002", "T003", "T004"]
+agent: "claude"
+shell_pid: "51994"
 history:
   - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -228,3 +230,7 @@ if (this.dmnService) {
 ```bash
 spec-kitty implement WP01
 ```
+
+## Activity Log
+
+- 2026-03-10T14:35:38Z – claude – shell_pid=51994 – lane=doing – Started implementation via workflow command
