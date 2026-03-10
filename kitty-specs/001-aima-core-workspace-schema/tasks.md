@@ -72,7 +72,7 @@
 
 ### Included Subtasks
 - [x] T012 `src/schema/threads.ts`：threads 表 + threadState pgEnum
-- [ ] T013 `src/schema/slots.ts`：slots 表 + brainType pgEnum + slotStatus pgEnum + UNIQUE(thread_id, brain)
+- [x] T013 `src/schema/slots.ts`：slots 表 + brainType pgEnum + slotStatus pgEnum + UNIQUE(thread_id, brain)
 - [ ] T014 `src/schema/memories.ts`：memories 表 + memoryType pgEnum + GIN index on tags
 - [ ] T015 `src/schema/pending.ts`：pending_observations 表 + 3 个索引
 - [ ] T016 `src/schema/index.ts`：re-export 所有表和 enum，供 workspace 模块使用
