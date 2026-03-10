@@ -164,7 +164,7 @@
 **Prompt**: `tasks/WP06-workspace-memory.md`
 
 ### Included Subtasks
-- [ ] T026 `src/workspace/memory.ts`：writeMemory（含 supersedes_id 事务原子失效）
+- [x] T026 `src/workspace/memory.ts`：writeMemory（含 supersedes_id 事务原子失效）
 - [ ] T027 实现 searchMemory（type + tags GIN 过滤 + entityId + segmentId + excludeInvalid + limit，按 base_importance DESC 排序）
 - [ ] T028 实现 markMemoryUsed（UPDATE usage_outcomes 的对应计数器 +1，用 jsonb_set 或应用层 merge）
 - [ ] T029 实现 clearWorkingMemory（DELETE WHERE type='working' AND thread_id=$threadId）
