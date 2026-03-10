@@ -1,7 +1,7 @@
 ---
 work_package_id: WP08
 title: 公共 API 导出 + 构建验证
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks:
 - T035
@@ -10,8 +10,8 @@ subtasks:
 - T038
 phase: Phase 3 - Verification
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude"
+shell_pid: "54243"
 review_status: ''
 reviewed_by: ''
 history:
@@ -255,3 +255,4 @@ head -20 dist/index.d.ts  # 应有 export declare class CognitiveWorkspace
 ## Activity Log
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T11:48:39Z – claude – shell_pid=54243 – lane=doing – Started implementation via workflow command
