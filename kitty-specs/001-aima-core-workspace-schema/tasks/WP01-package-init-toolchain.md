@@ -2,10 +2,10 @@
 work_package_id: "WP01"
 title: "包初始化 + 工具链"
 phase: "Phase 1 - Foundation"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude"
+shell_pid: "86638"
 review_status: ""
 reviewed_by: ""
 subtasks:
@@ -299,3 +299,4 @@ touch drizzle/migrations/.gitkeep
 ## Activity Log
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T10:00:35Z – claude – shell_pid=86638 – lane=doing – Started implementation via workflow command
