@@ -37,7 +37,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 
 子任务：
 - [x] T005: DmnReactive 类结构 + Event Bus 订阅（start/stop）+ 异步 handler 隔离
-- [ ] T006: 错误恢复 handler（职责1）— ALERT 事件 → retry Slot 或 Thread interrupted
+- [x] T006: 错误恢复 handler（职责1）— ALERT 事件 → retry Slot 或 Thread interrupted
 - [ ] T007: DEFER 调度 handler（职责6）— Limbic Slot DEFER → pending 写入
 - [ ] T008: 信号捕获 handler（职责7）— 规则匹配 + Haiku fallback → pending 写入
 - [ ] T009: 重试计数追踪（working 记忆存 retryCount，超限降级）
