@@ -1,7 +1,7 @@
 ---
 work_package_id: WP08
 title: 公共 API 导出 + 构建验证
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks:
 - T035
@@ -12,8 +12,8 @@ phase: Phase 3 - Verification
 assignee: ''
 agent: "claude"
 shell_pid: "57226"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-10T00:00:00Z'
   lane: planned
@@ -258,3 +258,4 @@ head -20 dist/index.d.ts  # 应有 export declare class CognitiveWorkspace
 - 2026-03-10T11:48:39Z – claude – shell_pid=54243 – lane=doing – Started implementation via workflow command
 - 2026-03-10T11:50:21Z – claude – shell_pid=54243 – lane=for_review – Ready for review: src/index.ts exports all public types+class, tsup.config.ts ESM+CJS+dts, package.json exports order fixed, build passes, typecheck clean, biome clean
 - 2026-03-10T11:50:27Z – claude – shell_pid=57226 – lane=doing – Started review via workflow command
+- 2026-03-10T11:50:47Z – claude – shell_pid=57226 – lane=done – Review passed: src/index.ts exports all types with 'export type', only CognitiveWorkspace as value export; schema objects not in public exports (treeshaken); tsup config correct (ESM+CJS+dts+sourcemap+treeshake+splitting:false); package.json exports types condition first; build clean, typecheck zero errors, biome clean

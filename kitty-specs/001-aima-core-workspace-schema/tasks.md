@@ -196,10 +196,10 @@
 **Prompt**: `tasks/WP07-integration-tests.md`
 
 ### Included Subtasks
-- [ ] T031 集成测试基础设施：vitest config、DB 连接 helper、beforeEach BEGIN / afterEach ROLLBACK fixture
-- [ ] T032 Thread & Slot 集成测试：完整生命周期（create → writeSlot → updateState → getActive → Slot upsert）
-- [ ] T033 Pending 集成测试：正常写入、容量淘汰（写入超限验证淘汰）、并发写（Promise.all 多个 writePending）、过期清理
-- [ ] T034 Memory 集成测试：write + searchMemory 过滤正确性、supersedes_id 原子失效、markMemoryUsed 计数、clearWorkingMemory
+- [x] T031 集成测试基础设施：vitest config、DB 连接 helper、beforeEach BEGIN / afterEach ROLLBACK fixture
+- [x] T032 Thread & Slot 集成测试：完整生命周期（create → writeSlot → updateState → getActive → Slot upsert）
+- [x] T033 Pending 集成测试：正常写入、容量淘汰（写入超限验证淘汰）、并发写（Promise.all 多个 writePending）、过期清理
+- [x] T034 Memory 集成测试：write + searchMemory 过滤正确性、supersedes_id 原子失效、markMemoryUsed 计数、clearWorkingMemory
 
 ### Implementation Notes
 - DB helper：`createTestDb()` 返回 Drizzle 实例 + SQL 连接，从 `process.env.AIMA_TEST_DATABASE_URL` 读取
@@ -224,10 +224,10 @@
 **Prompt**: `tasks/WP08-public-api-build.md`
 
 ### Included Subtasks
-- [ ] T035 `src/index.ts`：导出 CognitiveWorkspace class、ICognitiveWorkspace、所有公共类型（从 types/index.ts re-export）
-- [ ] T036 验证无内部实现细节泄漏：schema 表对象、drizzle DB 类型不在公共导出中
-- [ ] T037 `tsup.config.ts`：配置 ESM + CJS 双输出，dts: true，sourcemap: true
-- [ ] T038 运行 `bun run build` + `bun run typecheck`，验证零错误，dist/ 包含 index.js / index.cjs / index.d.ts
+- [x] T035 `src/index.ts`：导出 CognitiveWorkspace class、ICognitiveWorkspace、所有公共类型（从 types/index.ts re-export）
+- [x] T036 验证无内部实现细节泄漏：schema 表对象、drizzle DB 类型不在公共导出中
+- [x] T037 `tsup.config.ts`：配置 ESM + CJS 双输出，dts: true，sourcemap: true
+- [x] T038 运行 `bun run build` + `bun run typecheck`，验证零错误，dist/ 包含 index.js / index.cjs / index.d.ts
 
 ### Implementation Notes
 - tsup entry: `{ index: 'src/index.ts' }`，format: `['esm', 'cjs']`
