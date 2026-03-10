@@ -1,11 +1,11 @@
 ---
-work_package_id: "WP05"
-title: "PiCodingAgentAdapter"
-lane: "planned"
-dependencies: ["WP01", "WP02", "WP03"]
-subtasks: ["T025", "T026", "T027", "T028", "T029", "T030"]
+work_package_id: WP05
+title: PiCodingAgentAdapter
+lane: planned
+dependencies: []
+subtasks: [T025, T026, T027, T028, T029, T030]
 history:
-  - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
 
 # WP05 — PiCodingAgentAdapter

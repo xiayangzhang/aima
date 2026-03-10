@@ -1,11 +1,11 @@
 ---
-work_package_id: "WP09"
-title: "集成测试 + E2E smoke test"
-lane: "planned"
-dependencies: ["WP07"]
-subtasks: ["T052", "T053", "T054", "T055", "T056", "T057"]
+work_package_id: WP09
+title: 集成测试 + E2E smoke test
+lane: planned
+dependencies: []
+subtasks: [T052, T053, T054, T055, T056, T057]
 history:
-  - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
 
 # WP09 — 集成测试 + E2E smoke test

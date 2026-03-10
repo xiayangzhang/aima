@@ -1,11 +1,11 @@
 ---
-work_package_id: "WP06"
-title: "ClaudeAgentSDKAdapter + MCP Server"
-lane: "planned"
-dependencies: ["WP01", "WP02", "WP03"]
-subtasks: ["T031", "T032", "T033", "T034", "T035", "T036", "T037", "T038"]
+work_package_id: WP06
+title: ClaudeAgentSDKAdapter + MCP Server
+lane: planned
+dependencies: []
+subtasks: [T031, T032, T033, T034, T035, T036, T037, T038]
 history:
-  - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
 
 # WP06 — ClaudeAgentSDKAdapter + MCP Server

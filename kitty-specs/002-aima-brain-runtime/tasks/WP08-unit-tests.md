@@ -1,11 +1,11 @@
 ---
-work_package_id: "WP08"
-title: "单元测试（ThreadRunner / EventBus / ContextAssembler）"
-lane: "planned"
-dependencies: ["WP01", "WP02", "WP03", "WP04"]
-subtasks: ["T045", "T046", "T047", "T048", "T049", "T050", "T051"]
+work_package_id: WP08
+title: 单元测试（ThreadRunner / EventBus / ContextAssembler）
+lane: planned
+dependencies: []
+subtasks: [T045, T046, T047, T048, T049, T050, T051]
 history:
-  - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
 
 # WP08 — 单元测试

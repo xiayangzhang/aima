@@ -1,11 +1,11 @@
 ---
-work_package_id: "WP04"
-title: "ThreadRunner（路由 + 崩溃恢复 + pending）"
-lane: "planned"
-dependencies: ["WP01", "WP02"]
-subtasks: ["T017", "T018", "T019", "T020", "T021", "T022", "T023", "T024"]
+work_package_id: WP04
+title: ThreadRunner（路由 + 崩溃恢复 + pending）
+lane: planned
+dependencies: []
+subtasks: [T017, T018, T019, T020, T021, T022, T023, T024]
 history:
-  - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
 
 # WP04 — ThreadRunner

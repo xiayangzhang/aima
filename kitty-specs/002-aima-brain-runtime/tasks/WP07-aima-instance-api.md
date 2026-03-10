@@ -1,11 +1,11 @@
 ---
-work_package_id: "WP07"
-title: "AIMAInstance + 公共 API 导出"
-lane: "planned"
-dependencies: ["WP04", "WP05", "WP06"]
-subtasks: ["T039", "T040", "T041", "T042", "T043", "T044"]
+work_package_id: WP07
+title: AIMAInstance + 公共 API 导出
+lane: planned
+dependencies: []
+subtasks: [T039, T040, T041, T042, T043, T044]
 history:
-  - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
 
 # WP07 — AIMAInstance + 公共 API 导出

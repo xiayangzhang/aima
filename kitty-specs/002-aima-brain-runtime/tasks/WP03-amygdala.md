@@ -1,11 +1,11 @@
 ---
-work_package_id: "WP03"
-title: "Amygdala 守卫"
-lane: "planned"
-dependencies: ["WP01"]
-subtasks: ["T012", "T013", "T014", "T015", "T016"]
+work_package_id: WP03
+title: Amygdala 守卫
+lane: planned
+dependencies: []
+subtasks: [T012, T013, T014, T015, T016]
 history:
-  - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
 
 # WP03 — Amygdala 守卫
