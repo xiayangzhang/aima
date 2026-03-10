@@ -63,3 +63,7 @@ export { Amygdala } from './amygdala/index'
 // ── ThreadRunner ──────────────────────────────────────────────────────────────
 export type { ThreadRunnerConfig } from './runner/index'
 export { ThreadRunner } from './runner/index'
+
+// ── Adapters ──────────────────────────────────────────────────────────────────
+export type { PiCodingAgentAdapterConfig } from './adapters/pi-agent/index'
+export { PiCodingAgentAdapter } from './adapters/pi-agent/index'
