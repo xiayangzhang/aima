@@ -50,3 +50,12 @@ export type {
   AssembledContext,
 } from './context/index'
 export { assembleBlock12, assembleBlock3, assembleBlock4, assembleContext } from './context/index'
+
+// ── Amygdala ──────────────────────────────────────────────────────────────────
+export type {
+  ToolRiskLevel,
+  AmygdalaDecision,
+  AmygdalaRule,
+  AmygdalaConfig,
+} from './amygdala/index'
+export { Amygdala } from './amygdala/index'
