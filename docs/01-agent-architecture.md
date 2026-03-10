@@ -142,7 +142,9 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 
 子执行 session 的结果作为 **tool_result** 注入回主 session（主 session 只看结构化摘要，不见完整推理链），保护主 session 的 cache prefix 不被污染。子执行 session 的完整推理链通过 Event Bus（`COMPLIANCE` 事件携带子 `session_id`）保留，供审计和 DMN 学习使用。子执行结果不写入 episodic 记忆——episodic 是认知衍生物，不存基础设施标识符。
 
-"主 session 自己判断是否 spawn"：Haiku 在看到任务描述后决定——单步 API 调用直接执行，多步推理任务调用 spawn 工具。不需要外部预判。
+**spawn 判断机制**：Haiku 做的是**结构性判断**（工具调用数量、依赖链深度、是否需要中间推理），不是语义复杂度判断——这对 Haiku 是可靠的。Cortex 在规划时可选注解 `complexity_hint: 'simple' | 'complex'` 写入 Brainstem Slot；Haiku 优先使用此提示，无提示时独立判断。Cortex 有更完整的任务上下文，能在规划阶段预判执行复杂度。
+
+**spawn 决策的反馈**：DMN 通过 `usage_outcomes` 追踪 spawn 决策质量——子执行 session 完成后的结果质量（由 DMN 评估）与"是否 spawn"的决策形成反馈对，持续偏差时写 pending 给 Cortex，建议更新 `complexity_hint` 的判断标准（作为 Skill 更新）。
 
 完整系统图见 `00-overview.md` §四。
 
@@ -253,7 +255,10 @@ Workspace
 │   ├── state              // active | waiting | complete | interrupted
 │   └── slots
 │       ├── limbic:    { input, output, status }
-│       ├── cortex:    { input, output, status, intent }   // intent: communicate|execute|both
+│       ├── cortex:    { input, output, status, intent, complexity_hint? }
+│       │              // intent: communicate|execute|both
+│       │              // complexity_hint (optional): 'simple'|'complex' — Cortex 可选注解执行复杂度
+│       │              // Brainstem 优先使用；无则 Haiku 自行判断是否 spawn 子执行 session
 │       ├── brainstem: { input, output, status, execution_session_id }  // 子执行 session ID 四态：
 │       │              // null   + status≠done → 未开始
 │       │              // non-null + status≠done → 执行中（或崩溃中断，见下方崩溃恢复）
@@ -276,7 +281,8 @@ Workspace
   added_at:     timestamp
 }
 // 容量保护：JSONB 字段中的 pending 条目数应有上限（上层配置项）。
-// 超出时 DMN 按 trigger_at 最远的条目优先淘汰，保留最近期的预测。
+// 超出时按 base_importance 最低的条目优先淘汰——长期预测（trigger_at 远）往往是
+// 最有价值的，不应因时间距离远而被优先丢弃。time-to-trigger 不是价值的代理指标。
 ```
 
 ### 脑区间通信：Thread Runner 路由
