@@ -1,9 +1,11 @@
 ---
 work_package_id: WP05
 title: PiCodingAgentAdapter
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T025, T026, T027, T028, T029, T030]
+agent: "claude"
+shell_pid: "52619"
 history:
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -347,3 +349,7 @@ async abort(brain: string, threadId: string): Promise<void> {
 ```bash
 spec-kitty implement WP05 --base WP03
 ```
+
+## Activity Log
+
+- 2026-03-10T13:13:22Z – claude – shell_pid=52619 – lane=doing – Started implementation via workflow command
