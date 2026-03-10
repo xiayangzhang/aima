@@ -103,7 +103,7 @@
 
 ### Included Subtasks
 - [x] T018 `src/workspace/index.ts`：CognitiveWorkspace class 骨架，constructor(db: DrizzleDB)
-- [ ] T019 实现 Thread 操作：createThread、getThread、updateThreadState、getActiveThreads
+- [x] T019 实现 Thread 操作：createThread、getThread、updateThreadState、getActiveThreads
 - [ ] T020 实现 Slot 操作：writeSlot（upsert by thread_id+brain）、readSlot、getSlotsByThread
 - [ ] T021 `tests/unit/workspace/thread-slot.test.ts`：mock DB，覆盖正常路径和边界情况
 
