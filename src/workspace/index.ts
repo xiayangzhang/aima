@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events'
 import { and, arrayContains, asc, desc, eq, gte, inArray, isNull, lt, not, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { BrainSignal, BrainSignalType } from '../adapters/index'
@@ -5,6 +6,7 @@ import { memories, pendingObservations, slots, threads } from '../schema/index'
 import type * as schema from '../schema/index'
 import type {
   BrainType,
+  CognitiveBrainType,
   ComplexityHint,
   CreateMemoryParams,
   CreatePendingParams,
@@ -101,6 +103,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
   private readonly db: DrizzleDB
   private readonly pendingCapacity: number
   private signals: Map<string, BrainSignal[]> = new Map()
+  private wsEmitter = new EventEmitter()
 
   constructor(db: DrizzleDB, options: CognitiveWorkspaceOptions = {}) {
     this.db = db
@@ -125,6 +128,52 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
 
   hasSignal(type: BrainSignalType): boolean {
     return (this.signals.get(type)?.length ?? 0) > 0
+  }
+
+  // ── Workspace Notifications (for ThreadRunner) ───────────────────────────────
+
+  notifySlotDone(threadId: string, brain: CognitiveBrainType, slotStatus: string): void {
+    this.wsEmitter.emit('slot_change', { threadId, brain, slotStatus })
+  }
+
+  notifyThreadComplete(threadId: string): void {
+    this.wsEmitter.emit('thread_complete', threadId)
+  }
+
+  onSlotChange(
+    handler: (event: { threadId: string; brain: CognitiveBrainType; slotStatus: string }) => void,
+  ): () => void {
+    this.wsEmitter.on('slot_change', handler)
+    return () => {
+      this.wsEmitter.off('slot_change', handler)
+    }
+  }
+
+  onThreadComplete(handler: (threadId: string) => void): () => void {
+    this.wsEmitter.on('thread_complete', handler)
+    return () => {
+      this.wsEmitter.off('thread_complete', handler)
+    }
+  }
+
+  waitForComplete(threadId: string): Promise<void> {
+    return new Promise((resolve) => {
+      this.getThread(threadId)
+        .then((thread) => {
+          if (thread?.state === 'complete' || thread?.state === 'interrupted') {
+            resolve()
+            return
+          }
+          const handler = (id: string) => {
+            if (id === threadId) {
+              this.wsEmitter.off('thread_complete', handler)
+              resolve()
+            }
+          }
+          this.wsEmitter.on('thread_complete', handler)
+        })
+        .catch(() => resolve())
+    })
   }
 
   // ── Thread ──────────────────────────────────────────────────────────────────
