@@ -133,7 +133,7 @@
 **Prompt**: `tasks/WP05-workspace-pending.md`
 
 ### Included Subtasks
-- [ ] T022 `src/workspace/pending.ts`：writePending 实现（advisory lock + 容量检查 + 淘汰 + insert，全在一个事务内）
+- [x] T022 `src/workspace/pending.ts`：writePending 实现（advisory lock + 容量检查 + 淘汰 + insert，全在一个事务内）
 - [ ] T023 实现 getPendingObservations、removeExpiredPending、removePending
 - [ ] T024 容量淘汰逻辑：配置上限（默认 100），超限时按 base_importance ASC, added_at ASC 删除
 - [ ] T025 `tests/unit/workspace/pending.test.ts`：mock DB，测试正常写入、超限淘汰、过期清理
