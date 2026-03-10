@@ -1,9 +1,11 @@
 ---
 work_package_id: WP09
 title: 集成测试 + E2E smoke test
-lane: "for_review"
+lane: "doing"
 dependencies: []
 subtasks: [T052, T053, T054, T055, T056, T057]
+agent: "claude"
+shell_pid: "9051"
 history:
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -385,3 +387,4 @@ spec-kitty implement WP09 --base WP07
 
 - 2026-03-10T13:37:11Z – unknown – lane=doing – Moved to doing
 - 2026-03-10T13:41:04Z – unknown – lane=for_review – Moved to for_review
+- 2026-03-10T13:50:21Z – claude – shell_pid=9051 – lane=doing – Started review via workflow command
