@@ -67,3 +67,8 @@ export { ThreadRunner } from './runner/index'
 // ── Adapters ──────────────────────────────────────────────────────────────────
 export type { PiCodingAgentAdapterConfig } from './adapters/pi-agent/index'
 export { PiCodingAgentAdapter } from './adapters/pi-agent/index'
+export type { ClaudeAgentSDKAdapterConfig } from './adapters/claude-sdk/index'
+export { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
+
+// ── MCP Server ────────────────────────────────────────────────────────────────
+export { createAimaMcpServer } from './mcp/index'
