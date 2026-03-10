@@ -2,12 +2,12 @@
 work_package_id: "WP01"
 title: "包初始化 + 工具链"
 phase: "Phase 1 - Foundation"
-lane: "doing"
+lane: "done"
 assignee: ""
 agent: "claude"
 shell_pid: "7871"
-review_status: ""
-reviewed_by: ""
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 subtasks:
   - "T001"
   - "T002"
@@ -302,3 +302,4 @@ touch drizzle/migrations/.gitkeep
 - 2026-03-10T10:00:35Z – claude – shell_pid=86638 – lane=doing – Started implementation via workflow command
 - 2026-03-10T10:02:26Z – claude – shell_pid=86638 – lane=for_review – Ready for review: package.json (@aima/core), tsconfig.json (strict/ESM/NodeNext), biome.json (scripts/ added to ignore), drizzle.config.ts, vitest.integration.config.ts, directory skeleton. bun install ✓, typecheck ✓, biome check ✓
 - 2026-03-10T10:14:49Z – claude – shell_pid=7871 – lane=doing – Started review via workflow command
+- 2026-03-10T10:15:46Z – claude – shell_pid=7871 – lane=done – Review passed: all files correct. Fixed tsconfig.json NodeNext→Bundler/ESNext during review (needed for drizzle-kit compat and correct bundled-lib pattern). typecheck ✓, biome ✓ post-fix.
