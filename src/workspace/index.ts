@@ -1,5 +1,6 @@
 import { and, arrayContains, asc, desc, eq, gte, inArray, isNull, lt, not, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import type { BrainSignal, BrainSignalType } from '../adapters/index'
 import { memories, pendingObservations, slots, threads } from '../schema/index'
 import type * as schema from '../schema/index'
 import type {
@@ -99,10 +100,31 @@ function mapMemoryRow(row: typeof memories.$inferSelect): MemoryEntry {
 export class CognitiveWorkspace implements ICognitiveWorkspace {
   private readonly db: DrizzleDB
   private readonly pendingCapacity: number
+  private signals: Map<string, BrainSignal[]> = new Map()
 
   constructor(db: DrizzleDB, options: CognitiveWorkspaceOptions = {}) {
     this.db = db
     this.pendingCapacity = options.pendingCapacity ?? 100
+  }
+
+  // ── Brain Signals (in-memory) ────────────────────────────────────────────────
+
+  pushSignal(signal: BrainSignal): void {
+    const existing = this.signals.get(signal.type) ?? []
+    existing.push(signal)
+    this.signals.set(signal.type, existing)
+  }
+
+  popSignal(type: BrainSignalType): BrainSignal | undefined {
+    const list = this.signals.get(type) ?? []
+    const item = list.shift()
+    if (list.length === 0) this.signals.delete(type)
+    else this.signals.set(type, list)
+    return item
+  }
+
+  hasSignal(type: BrainSignalType): boolean {
+    return (this.signals.get(type)?.length ?? 0) > 0
   }
 
   // ── Thread ──────────────────────────────────────────────────────────────────

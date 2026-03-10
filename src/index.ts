@@ -30,3 +30,15 @@ export type {
   // Interface
   ICognitiveWorkspace,
 } from './types/index'
+
+// ── Brain Runtime ─────────────────────────────────────────────────────────────
+export type {
+  BrainAdapter,
+  BrainRunParams,
+  BrainRunResult,
+  BrainSignal,
+  BrainSignalType,
+  BrainEvent,
+  EventLevel,
+} from './adapters/index'
+export { BrainEventBus, getEventBus } from './eventbus/index'
