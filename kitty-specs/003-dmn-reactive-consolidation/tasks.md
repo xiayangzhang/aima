@@ -52,7 +52,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 
 子任务：
 - [x] T010: brain.complete 事件 handler 入口（Promise.all 并发执行四项职责）
-- [ ] T011: 段分配（职责3）— threadSegments 内存 Map + segment_id/segment_seq 分配逻辑 + episodic 写入
+- [x] T011: 段分配（职责3）— threadSegments 内存 Map + segment_id/segment_seq 分配逻辑 + episodic 写入
 - [ ] T012: 显著性处理（职责4）— significance_boost 读取 + base_importance 叠加到 episodic 写入
 - [ ] T013: 记忆使用反馈（职责5）— injectedMemoryIds + 确定性 outcome 评估 + markUsed 调用
 - [ ] T014: 回溯纠错（职责2）— 读最近 N 条事件 + Haiku 判断 + dmn_correction Signal 写入
