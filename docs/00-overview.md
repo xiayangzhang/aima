@@ -135,60 +135,38 @@ AIMA 把一个认知个体的能力分为五个功能区：
 ### 完整系统图
 
 ```
-                         外部输入
-            Teams · Email · Webhook · Scheduler
-                            │
-               ┌────────────▼────────────┐
-               │          Limbic         │  唯一人类接口
-               │      对话 · 路由        │
-               └────────────┬────────────┘
-                            │ ROUTE / DEFER
-               ┌────────────▼────────────┐
-               │          Cortex         │
-               │       推理 · 规划       │
-               └────────────┬────────────┘
-                            │ execute
-    ┌───────────┐  ┌────────▼────────────┐
-    │ Amygdala  │  │      Brainstem      │
-    │ 合规·拦截 ├──│      工具执行       │
-    │ 该不该做  │  │                     │
-    └───────────┘  └────────┬────────────┘
-                            │
-                       外部系统
-           Dataverse · Teams API · Email · ...
-
- ─────────────────── 后台 ──────────────────────
-
- ┌─────────────────────────────────────────────┐
- │  DMN                                        │
- │  ┌──────────────────┐  ┌─────────────────┐  │
- │  │   事件响应        │  │   心跳整合       │  │
- │  │   · 错误恢复     │  │   · 深度前瞻预测 │  │
- │  │   · 回溯纠错     │  │   · pending 维护 │  │
- │  │   · 信号捕获     │  │                 │  │
- │  └──────────────────┘  └────────┬────────┘  │
- └───────────────────────────────── │ ──────────┘
-                                    │ pending_observations
-                        ┌───────────▼───────────┐
-                        │     Thread Runner      │
-                        │   路由 → 目标脑区      │
-                        └───────────────────────┘
-
- ┌─────────────────────────────────────────────┐
- │  Hippocampus（每日 batch，不阻塞脑区）       │
- │  记忆整理 · semantic 提炼 · Skill Review     │
- └─────────────────────────────────────────────┘
-
- ─────────────────── 数据层 ─────────────────────
-
- ┌─────────────┐  ┌──────────────┐  ┌──────────────┐
- │ Cognitive   │  │ Memory Pool  │  │ Event Bus    │
- │ Workspace   │  │ semantic     │  │ COMPLIANCE   │
- │ Thread·Slot │  │ episodic     │  │ ALERT · INFO │
- │ (PostgreSQL)│  │ procedural   │  │ ↓ Audit WORM │
- │             │  │ working      │  │ ↓ OTel       │
- │             │  │ implicit     │  │ ↓ 其他实例   │
- └─────────────┘  └──────────────┘  └──────────────┘
+┌──────────────────────────────────── AIMA 实例 ────────────────────────────────────────┐
+│                                                                                        │
+│  ┌─ 认知层 ──────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                                │   │
+│  │  人类协作者                                                   系统 / 平台      │   │
+│  │      ↕                                                             ↕           │   │
+│  │  ┌────────────┐        ┌──────────────────────┐        ┌──────────────────┐   │   │
+│  │  │   Limbic   │        │        Cortex         │        │    Brainstem     │   │   │
+│  │  │Communicator│◀──────▶│   Planner + Reasoner  │◀──────▶│    Executor /    │   │   │
+│  │  │ + Router   │        │                       │        │  System Interface │   │   │
+│  │  └────────────┘        └──────────────────────┘        └──────────────────┘   │   │
+│  │                                                                                │   │
+│  │  脑区视角：只有 Context Assembly 注入的 system prompt，以及调用 MCP 工具       │   │
+│  │  脑区之间不直接互相调用，通过 Thread Runner 路由                               │   │
+│  └────────────────────────────────────────────────────────────────────────────── ┘   │
+│                                          │                                            │
+│  ┌─ 协调层 ──────────────────────────────────────────────────────────────────────┐   │
+│  │  Thread Runner · Context Assembly · 认知工作空间（Thread / Slot，PostgreSQL）  │   │
+│  └────────────────────────────────────────────────────────────────────────────── ┘   │
+│                                          │                                            │
+│  ┌─ 横切层 ──────────────────────────────────────────────────────────────────────┐   │
+│  │  Brain Event Bus                                                               │   │
+│  │    │── tool.pre_use ──→ Amygdala（GuardRail，同步拦截，不持有 LLM session）   │   │
+│  │    └── INFO 及以上 ──→ DMN（Reactive: 事件响应 / Consolidation: 心跳整合）    │   │
+│  └────────────────────────────────────────────────────────────────────────────── ┘   │
+│                                          │                                            │
+│  ┌─ 记忆层 ──────────────────────────────────────────────────────────────────────┐   │
+│  │  Hippocampus                                                                   │   │
+│  │  Encoding（写入路径）  ·  Recall（检索路径）  ·  Consolidation（每日批量）     │   │
+│  │  存储：semantic · episodic · procedural · working · implicit                   │   │
+│  └────────────────────────────────────────────────────────────────────────────── ┘   │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -205,8 +183,8 @@ AIMA 把一个认知个体的能力分为五个功能区：
 | **Skill** | Markdown 文件，Agent 读取后获得领域操作能力 |
 | **Event Bus** | 只读可观测性接口，五个级别（COMPLIANCE/ALERT/INFO/DEBUG/TRACE） |
 | **Amygdala** | 内置安全层，基于 `risk_level` 和 `implicit` 记忆做 pre-execution 检查 |
-| **DMN** | 纯分析者，从不直接激活脑区。事件响应（准实时，错误恢复+纠错+信号捕获）+ 心跳整合（30分钟-1小时，深度前瞻预测+pending维护）；所有输出写入 pending_observations，由 Thread Runner 路由执行 |
-| **Hippocampus** | 独立后台 batch job，每天整理记忆权重、提炼 semantic、评估 DMN 预测准确度（准确→强化 semantic/procedural，偏差→修正）；定期（可配置）review Skill 固化候选 |
+| **DMN** | 纯分析者，从不调用 `activateBrain()`。事件响应（准实时，错误恢复+纠错+段分配+记忆反馈）+ 心跳整合（30分钟-1小时，深度前瞻预测+pending维护）；所有输出写 Slot 或 pending_observations，由 Thread Runner 路由执行 |
+| **Hippocampus** | AIMA 的完整记忆实体，含三个子模块：Encoding（写入路径）· Recall（检索路径）· Consolidation（每日批量：段精修 → 序列回放 → 使用反馈收敛 → 过期清理）。Skill 质量评估归 Cortex，Hippocampus 只维护 Skill 索引元数据。 |
 
 ---
 
@@ -304,7 +282,7 @@ const session = await createAIMASession({ instance, sessionKey, tools, toolIndex
 |---|---|---|
 | **00-overview.md**（本文） | 项目概览，入门导读 | 所有人 |
 | **01-agent-architecture.md** | 五脑架构、Thread/Slot 模型、Event Bus、崩溃恢复 | 架构师、后端工程师 |
-| **02-memory-architecture.md** | 五类记忆、MemoryService API、检索策略、数据库 schema | 后端工程师 |
+| **02-memory-architecture.md** | 五类记忆、Hippocampus 接口（Encoding/Recall/Consolidation）、检索策略、数据库 schema | 后端工程师 |
 | **03-implementation-guide.md** | 实现状态、适配器选择、ThreadRunner、Context Assembly | 实现工程师 |
 | **04-sdk-api.md** | 公共 API（只记录 AIMA 在 pi 之上额外提供的接口） | 集成方、应用开发者 |
 | **05-status.md** | 实现进度、已决定未实现的方向、路线图、暂缓决策 | 所有人 |
