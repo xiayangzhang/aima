@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: CognitiveWorkspace — Thread & Slot
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks:
 - T018
@@ -440,3 +440,4 @@ bun test tests/unit/workspace/thread-slot.test.ts
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 - 2026-03-10T10:19:03Z – claude – shell_pid=13938 – lane=doing – Started implementation via workflow command
+- 2026-03-10T10:25:01Z – claude – shell_pid=13938 – lane=for_review – 20/20 unit tests passing, tsc clean, biome clean. Thread & Slot DAO complete with upsert semantics.
