@@ -73,6 +73,8 @@ Skill Review 不属于 Hippocampus——评估 Skill 质量需要认知判断，
 
 **`episodic` 的审计边界**：`episodic` 是认知衍生物，可以自由衰减和整理。审计完整性由 Event Bus → WORM 保证，与 `episodic` 无关。
 
+**`episodic` 记录脑区行为，不是原始输入**：`content` 描述脑区的决策和动作（"Limbic 判断 intent=both，ROUTE 给 Cortex"；"Brainstem 执行工具 X，结果 Y"），不复制原始输入文本。原始输入如需参考可放 `context` 字段，但 `content` 必须是行为层描述。DMN 读 Event Bus 或读 episodic 时，读到的都是同一层：认知系统的**行为历史**，不是外部刺激的内容历史。
+
 ### 重要度字段
 
 | 字段 | 含义 | 由谁设置 |
