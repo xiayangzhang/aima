@@ -1,9 +1,11 @@
 ---
 work_package_id: WP02
 title: DmnReactive — 错误恢复 + DEFER + 信号捕获
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T005, T006, T007, T008, T009]
+agent: "claude"
+shell_pid: "52157"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -311,3 +313,7 @@ Only set requires_followup=true if there is a clear, actionable follow-up needed
 ```bash
 spec-kitty implement WP02 --base WP01
 ```
+
+## Activity Log
+
+- 2026-03-10T14:35:42Z – claude – shell_pid=52157 – lane=doing – Started implementation via workflow command
