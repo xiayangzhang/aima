@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: CognitiveWorkspace — Pending Observations
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks:
 - T022
@@ -285,3 +285,4 @@ bun test tests/unit/workspace/pending.test.ts
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 - 2026-03-10T10:19:08Z – claude – shell_pid=14255 – lane=doing – Started implementation via workflow command
+- 2026-03-10T10:48:08Z – claude – shell_pid=14255 – lane=for_review – Ready for review: writePending (advisory lock + capacity eviction), getPendingObservations, removeExpiredPending, removePending all implemented. 15 unit tests pass, typecheck clean.
