@@ -72,7 +72,7 @@ const thread = await aima.receive({
 
 | thread.state | 触发场景 | 上层行为 |
 |---|---|---|
-| `complete` | Limbic 输出 `RESPOND` / `NO_REPLY` / `ROUTE` / `EXECUTE` 且 Brainstem 已跑完 | 读取 `slots.limbic.output.mode` 决定是否向通道发送消息 |
+| `complete` | Limbic 输出 `RESPOND` / `NO_REPLY` 且流程结束；或 `EXECUTE` 且 Brainstem 已跑完；或 `ROUTE` 且 Cortex（及可能的 Brainstem）完成后 Limbic 发出最终回复 | 读取 `slots.limbic.output.mode` 决定是否向通道发送消息 |
 | `interrupted` | 任意脑区出错 | 读取 `error_reason`，记录日志，必要时通知人工 |
 | `waiting` | Limbic 输出 `DEFER` | 向用户发送 `output.content`（Agent 的追问），保留 thread_id，下条消息用 `continue()` 续接 |
 
@@ -184,6 +184,9 @@ const output = thread.slots.limbic.output
 
 ```typescript
 interface MemorySearchOptions {
+  // implicit 类型不在公共 API 中暴露：风险模式是 Amygdala 的内部检测数据，
+  // 对外暴露会泄露系统对哪些操作持有风险判断，影响安全边界。
+  // Shadow Mode 审计和合规检查应通过 Event Bus（COMPLIANCE 级）而非记忆只读接口获取风险信息。
   types?: Array<'semantic' | 'episodic' | 'procedural' | 'working'>
   limit?: number          // 默认 20
   entity_id?: string      // 过滤指定实体的记录（如 "colleague:alice"）
@@ -315,7 +318,7 @@ OpenClaw gateway 只需改一处调用：
 
 ```typescript
 // 原来:
-import { createAgentSession } from '@mariozachner/pi-coding-agent'
+import { createAgentSession } from '@mariozechner/pi-coding-agent'
 const session = await createAgentSession({ sessionManager, tools, model, ... })
 
 // 改为:

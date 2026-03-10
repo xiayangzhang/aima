@@ -41,14 +41,14 @@ AIMA 是一个**中间层行为框架**，位于 LLM 基础设施和具体应用
 
 ### 底层适配器
 
-AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Event Bus）与底层 agent runtime 无关。官方提供两个适配器：
+AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Event Bus）与底层 agent runtime 无关。适配器对上层透明，当前决策：
 
-| 适配器 | 特点 | 适用场景 |
+| 适配器 | 状态 | 说明 |
 |---|---|---|
-| **pi-agent-core** | 完全 provider 无关，支持 20+ LLM provider，完整控制 agent loop | 需要 GPT-4 / Gemini / 本地模型；需要精细控制每一步 |
-| **Claude Agent SDK** | 内置 session 管理、MCP native、PreCompact hook、未来 Agent Teams | 快速上手；Claude 生态；开源用户的最低阻力入门路径 |
+| **pi-coding-agent** | ✅ 当前决策（默认） | pi-agent-core 超集，内置工具与外部工具走同一路径，Amygdala 覆盖无缺口 |
+| **Claude Agent SDK** | ⏳ 未来选项 | 内置 session 管理、MCP native、PreCompact hook；需要多云部署（Azure/Bedrock）时启用 |
 
-两个适配器暴露相同接口给 Thread Runner，框架层代码无需感知底层选型。详见 `03-implementation-guide.md`。
+两个适配器暴露相同 `BrainAdapter` 接口给 Thread Runner，框架层代码无需感知底层选型。详见 `03-implementation-guide.md`。
 
 ---
 
@@ -153,9 +153,9 @@ AIMA 实例不实现 Audit 逻辑。Audit 是外部关注点。取而代之的�
 
 | Level | 含义 | 发射场景 |
 |---|---|---|
-| `TRACE` | 内部状态转换 | 工作空间 Slot 写入、脑区激活/完成（开发调试用） |
+| `TRACE` | 内部状态转换 | 工作空间 Slot 写入（开发调试用） |
 | `DEBUG` | 详细认知过程 | Cortex 推理步骤、Skill 加载 |
-| `INFO` | 显著行为 | 工具调用、记忆写入、Skill 调用 |
+| `INFO` | 显著行为 | 工具调用、记忆写入、Skill 调用、**脑区激活/完成** |
 | `COMPLIANCE` | 合规相关 | 有真实外部效果的动作（发送消息、修改数据、执行操作） |
 | `ALERT` | 需要关注 | Amygdala 中断、Escalation、Cortex 判断失败 |
 
@@ -447,9 +447,9 @@ Amygdala 宁可多一条冗余记录也不能因等锁而延迟工具拦截决�
 
 Hippocampus 是 AIMA 的**长期记忆管理者**，独立于五脑实时运作，每天定时批量执行，不参与实时决策，不阻塞任何脑区。
 
-**职责**（每次运行均执行）：
-1. **段精修**：回顾近期 episodic 段序列，对 DMN Reactive 粗分的段做因果分析，必要时拆分或合并——更新相关记录的 `segment_id` 字段（不新增记录）
-2. **段序列回放**：按重要度/时效性/风险标注排序，对 top-K 段运行 `getSegmentSequence()`，LLM 分析事件序列，提取跨段模式 → 写入 semantic（事实）/ procedural（可操作规程）/ implicit（风险模式）；详见 `02-memory-architecture.md` 第七节
+**职责**（每次运行均执行，有执行顺序约束）：
+1. **段精修**（必须先于段序列回放执行）：回顾近期 episodic 段序列，对 DMN Reactive 粗分的段做因果分析，必要时拆分或合并——更新相关记录的 `segment_id` 字段（不新增记录）。精修完成前不得开始段序列回放，否则回放会读到旧的段边界。
+2. **段序列回放**（在段精修完成后执行）：按重要度/时效性/风险标注排序，对 top-K 段运行 `getSegmentSequence()`，LLM 分析事件序列，提取跨段模式 → 写入 semantic（事实）/ procedural（可操作规程）/ implicit（风险模式）；详见 `02-memory-architecture.md` 第七节
 3. **使用反馈收敛**：批量读取 `usage_outcomes` 计数器（由 DMN Reactive 递增），根据正负比例小幅调整 `base_importance`；单次反馈不直接修改权重，Hippocampus 批量收敛
 4. **记忆整理**：清理低权重 `episodic` 条目（`last_accessed_at` 超过阈值），将高价值 episodic 模式提炼为 `semantic` 记忆
 5. **预测反馈**：评估 DMN 心跳整合上轮预测的准确度，更新对应记忆条目权重（准确 → 强化对应 `semantic`/`procedural`，偏差 → 修正或标记低可信度）
@@ -482,7 +482,7 @@ Hippocampus 是 AIMA 的**长期记忆管理者**，独立于五脑实时运作�
 | `episodic` | 事件序列（= Action Log） | DMN（消费 Event Bus） | DMN |
 | `procedural` | Skill 化的流程模式 | Cortex | Limbic / Brainstem |
 | `working` | 当前 Thread 临时状态 | 所有脑区 | 所有脑区（Thread 完成时清除） |
-| `implicit` | 风险模式、危险行为历史 | Amygdala / DMN | Amygdala |
+| `implicit` | 风险模式、危险行为历史 | Amygdala / DMN | Amygdala（主）/ Brainstem（Block 4 辅） |
 
 初始 `base_importance`：`episodic` = 0.3、`procedural` = 0.8、`semantic` = 0.6、`implicit` = 0.7。检索排序使用 `base_importance + recency_boost`（基于 `last_accessed_at` 动态计算）。详见 `02-memory-architecture.md`。
 
@@ -493,7 +493,7 @@ Hippocampus 是 AIMA 的**长期记忆管理者**，独立于五脑实时运作�
 | 轴 | 概念 | 实现方式 |
 |---|---|---|
 | **因果链** | 段内事件因果序列 | `segment_id` + `segment_seq` 字段 |
-| **时间容器** | Thread → Segment → Epoch 层级 | `thread_id` + `segment_id` + Hippocampus 提取的 epoch 写入 semantic |
+| **时间容器** | Thread → Segment 两层时间层级 | `thread_id` + `segment_id`，见 `02-memory-architecture.md` 第三节 |
 | **实体驱动** | 以实体为中心的星形拓扑 | `entity_id` + `getEntityContext()` 深度展开 |
 
 底层存储永远保持扁平完整——审计系统直接读扁平表，不需要理解认知层抽象。
@@ -521,7 +521,7 @@ Hippocampus 是 AIMA 的**长期记忆管理者**，独立于五脑实时运作�
 
 `episodic` 是认知衍生物——DMN 从 Event Bus 消费事件后写入的压缩表示，可以自由衰减和整理。外部审计系统直接订阅 Event Bus（`COMPLIANCE` 级），保证不可变的完整记录，不依赖 `episodic` 数据库记录。
 
-**五种记忆类型的划分依据是访问模式，不是内容类型**：`episodic` 时序读取、`implicit` 每次工具执行前查、`procedural` Context Assembly 时加载、`working` 不持久化——四种不同的读写频率和检索策略，合并进同一接口会互相干扰。详见 `02-memory-architecture.md`。
+**五种记忆类型的划分依据是访问模式，不是内容类型**：`episodic` 时序读取、`implicit` 每次工具执行前查、`procedural` Context Assembly 时加载、`working` 有限生命周期（Thread 完成时清除）——四种不同的读写频率和检索策略，合并进同一接口会互相干扰。详见 `02-memory-architecture.md`。
 
 ### 实体模型与自我认知
 
@@ -578,7 +578,7 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 | **身份** | 人格 + 人际关系 + 沟通风格 | 推理角色 + 当前任务 | 系统权限 + API 清单 |
 | **Skill** | Skill Index + 固化/适配 Skill | 分析方法论 | 操作 Skill + 执行参数模板 |
 | **状态** | 工作空间状态 + 待处理 Thread | 当前分析任务 + 中间结论 | 待执行队列 + 系统状态 |
-| **记忆** | `semantic` + `episodic` | `semantic` + `procedural` | `implicit` + `procedural` |
+| **记忆** | `semantic` + `episodic` + `procedural` | `semantic` + `procedural` | `implicit` + `procedural` |
 
 Block 4 使用原始消息/任务描述作为检索 query，无结果时省略。
 

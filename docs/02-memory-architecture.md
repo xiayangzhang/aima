@@ -61,7 +61,7 @@
 | `episodic` | 认知事件流 | DMN 从 Event Bus 派生的事件摘要，以及 Session 摘要锚点 | DMN | DMN Reactive；Hippocampus 段回放 |
 | `procedural` | 技能库 | Skill 化的流程模式（reference / adapted / first-party） | Cortex | Context Assembly + Skill 固化 |
 | `working` | 会话暂存 | 当前 Thread 的临时状态，Thread 完成时清除 | 所有脑区 | 当前 Thread |
-| `implicit` | 风险模式 | Amygdala 规则的动态补充，泛化后的风险行为模式 | Amygdala / DMN | Amygdala 检测 |
+| `implicit` | 风险模式 | Amygdala 规则的动态补充，泛化后的风险行为模式 | Amygdala / DMN | Amygdala 检测（主）/ Brainstem Block 4（辅） |
 
 **`working` 的清除粒度**：`working` 记忆的生命周期绑定到 **Thread**，而非单个脑区的 LLM session。Thread Runner 在 Thread 状态变为 `complete` 时调用 `clearWorkingMemory(thread_id)` 批量清除。`working` 记录的 `session_id` 字段保留写入时的脑区 session ID（供调试追溯），但清除逻辑不依赖此字段——依赖 `tags` 中的 `thread_id` 标签。
 
@@ -84,7 +84,7 @@
 | `procedural` | 0.8 | Skill 是核心知识，高优先注入 |
 | `semantic` | 0.6 | 中等稳定性 |
 | `implicit` | 0.7 | 风险模式应被优先检索 |
-| `working` | — | 不持久化，不参与检索排序 |
+| `working` | — | 持久化到 PG，但有限生命周期（Thread 完成时批量清除），不参与检索排序 |
 
 `usage_outcomes`（新增字段）影响 `base_importance` 的方式：不实时修改——只累积计数器，由 Hippocampus 每日批量收敛（见第五节）。
 
@@ -519,6 +519,10 @@ interface MemoryService {
   search(query: string, filters: MemoryFilters): Promise<MemoryEntry[]>
 
   // 场景 B：DMN Reactive 专用——返回最近 session_anchor + 其后的增量 event
+  // sessionId 是被监控的脑区 session ID（如 Limbic 或 Brainstem 的 session），
+  // 不是 DMN 自己的 session（DMN Reactive 不使用 LLM session）。
+  // 来源：Thread Runner 在 activateBrain() 后将 BrainRunResult.session_id 存入 Thread 状态，
+  // DMN 订阅 brain.complete 事件时从事件 payload 取到此 ID。
   getSessionContext(sessionId: string): Promise<{
     anchor: MemoryEntry | null
     events: MemoryEntry[]

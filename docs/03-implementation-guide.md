@@ -97,6 +97,11 @@ function createBrainAgent(brain: BrainType, workspace: CognitiveWorkspace): Agen
     }),
 
     // 工具调用间隙检查中断信号
+    // ⚠️ pi-agent-core 的 Amygdala 阻断能力限制：
+    //    getSteeringMessages 在工具调用之间触发，不在工具调用前同步触发。
+    //    这意味着 pi-agent-core 适配器的 Amygdala 阻断是"下一个工具调用前"而非"当前工具执行前"。
+    //    Claude SDK 适配器通过 PreToolUse hook 实现真正的执行前同步阻断。
+    //    如果 Amygdala 需要严格的执行前拦截，应使用 Claude SDK 适配器。
     getSteeringMessages: async () => {
       // 1. Amygdala 信号（来自 tool.pre_use 事件）
       const amygdalaSignal = workspace.signals.pop('amygdala_interrupt')
@@ -137,7 +142,7 @@ agent.subscribe((event) => {
         brain, tool: event.toolName, result: event.result })
       break
     case 'agent_end':
-      eventBus.emit({ level: 'TRACE', type: 'brain.complete', brain })
+      eventBus.emit({ level: 'INFO', type: 'brain.complete', brain })
       break
   }
 })
