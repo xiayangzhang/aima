@@ -101,7 +101,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 - [x] T027: DmnReactive DEFER 调度单元测试（pending 写入参数验证）
 - [x] T028: DmnReactive brain.complete 单元测试（段分配、significance、markUsed）
 - [x] T029: DmnReactive 回溯纠错单元测试（Haiku mock → dmn_correction Signal）
-- [ ] T030: DmnConsolidation 前瞻预测 + Pending 维护单元测试（Haiku mock）
+- [x] T030: DmnConsolidation 前瞻预测 + Pending 维护单元测试（Haiku mock）
 
 **Prompt**: WP06-unit-tests.md
 
