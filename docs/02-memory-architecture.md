@@ -522,6 +522,6 @@ Encoding 和 Recall 共享同一 PostgreSQL 连接池，底层实现在同一进
 |---|---|---|
 | 所有 Recall 方法底层是 ILIKE 全文搜索 | 语义相近但词汇不同无法命中 | pgvector 向量检索 + BM25 双路 + RRF 融合（独立工程项目） |
 | 复合检索（场景 D/E）是多次单类型查询合并 | 跨类型相关性排序不准 | 向量检索上线后升级为跨类型 RRF，接口不变 |
-| 段分配是 Encoding 粗分 | 段边界可能不精确 | Consolidation 精修补偿，精度随积累提高 |
+| DMN 段分配是粗分 | 段边界可能不精确（DMN 实时响应只做 Thread/目标/错误/话题等粗粒度切割） | Consolidation 每日精修补偿，精度随积累提高 |
 | usage_outcomes 收敛需 Consolidation 批量运行 | 单次反馈不立即影响检索排序 | 有意设计，防止单次噪音；批量收敛每日执行 |
-| `session_anchor` 是 LLM 生成的摘要 | 有失真风险，细节不可还原 | 明确能力边界，不是待修复的缺陷 |
+| `session_anchor` 是 LLM 生成的摘要 | anchor 后对话历史仅有摘要，隐含约束/偏好有丢失风险；在长对话的合规敏感场景下尤为显著 | 缓解策略：Limbic 在对话中检测到重要约束/偏好时主动写入 `semantic`（`entity_id` = 对方实体，`attribute = "preference"` 等）——结构化记忆比摘要更可靠。Event Bus `COMPLIANCE` 轨迹保存所有有效外部动作的完整记录（独立于 anchor）。剩余风险（纯对话细节无 COMPLIANCE 动作）是已知能力边界。 |

@@ -29,7 +29,7 @@ AIMA 是一个**中间层行为框架**，位于 LLM 基础设施和具体应用
 ├─────────────────────────────────────────────────────────────┤
 │  AIMA                                                        │
 │  行为框架：认知如何运作                                       │
-│  五脑架构、认知工作区、记忆系统、Skill 体系、Brain Event Bus   │
+│  五脑架构、认知工作区、Hippocampus、Skill 体系、Brain Event Bus│
 ├─────────────────────────────────────────────────────────────┤
 │  pi-agent-core / pi-ai（pi-mono）                            │
 │  LLM 基础设施：解决机器问题                                   │
@@ -116,7 +116,7 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 - 推理完成后，在 Cortex Slot 的 `intent` 字段标记结果归属：
   - `"communicate"` → Limbic 激活，组织对外表达
   - `"execute"` → Brainstem 激活，执行具体操作
-  - `"both"` → Limbic **先行**（试探性措辞，不说"已完成"），Brainstem 随后执行，DMN Reactive 检测执行结果后触发 Limbic 发出最终通知（成功确认或失败补偿）
+  - `"both"` → Limbic **先行**（试探性措辞，不说"已完成"），Brainstem 随后执行，DMN Reactive 检测执行结果后触发 Limbic 发出最终通知（成功确认或失败补偿）。**Limbic 阶段区分机制**：Context Assembly Block 3 包含完整 Slot 状态——Limbic 第一次被激活时 Brainstem Slot 不存在（或 `status ≠ done`），应给试探性回复；第二次被激活时 Brainstem Slot `status = done`（含执行结果），应给最终确认。Limbic 读 Slot 状态即可区分，无需额外字段。**执行失败补偿**：Brainstem 失败时发射 `ALERT`，DMN 错误恢复路径（职责1）立即介入，写 Slot 标记失败 + 写 pending 触发 Limbic 发出失败通知——补偿路径与正常结束路径对称，语义统一在 DMN 事件响应中。
 
 ### Brainstem — Executor + System Interface
 - **系统输入**：监听系统事件（Webhook、Dataverse 变更、定时触发）
@@ -125,6 +125,7 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
   - 已知事件类型（在对照表中）→ Brainstem 按 Skill 指令直接处理
   - 未知 / 复杂事件（不在对照表中）→ 写入工作空间并标记 `"needs_analysis"` → Cortex 激活
 - 规则路由保持确定性和低延迟，与 Limbic 的 LLM 判断形成对称但不对等的设计。事件类型对照表放 Skill 而非 hardcode，符合"判断=Skill"原则——新事件类型无需改代码，只需更新 `event-routing.md`
+- **`event-routing.md` 是 `reference` 类型 Skill**（见§十 Skill 三层分类）：由应用层外部维护，Cortex 不能直接覆写。Cortex Skill Review 可建议更新（生成 `adapted` 版本 + 写 pending 等待人工审核合并），但不能自动替换生效——路由规则错误会影响所有后续事件处理且难以自动检测（事件按错误规则被"正确地"路由），属于高风险静默故障。
 
 **执行模型**：大多数情况 Brainstem 主 session（Haiku）直接执行任务（单层，默认）。对于大型复杂任务（多步骤、需要深度推理、可并行的子操作），主 session 调用 `spawn_execution_session` 工具，启动独立的子执行 session（Opus / Sonnet），获得完整推理链后以结构化结果返回——类比 Claude Code 的 Task 工具：
 
@@ -140,12 +141,28 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 ### 两个接口原则
 
 ```
-人类协作者 ←→ Limbic（LLM 判断路由）←→ [认知工作空间] ←→ Cortex
-                                                ↕
-系统 / 平台  ←→ Brainstem（规则路由）←─────────────────────┘
+                          ┌────────────────────────────────────────────────────┐
+  人类协作者 ──→ Limbic ──┤                                                    │
+                          │          认知工作空间（Thread + Slot）               │
+  系统 / 平台 ──→ Brainstem──┤    Limbic Slot ↔ Cortex Slot ↔ Brainstem Slot   │
+                          │         ↑↑ Thread Runner 读 Slot → 路由激活 ↑↑      │
+                          └──────────────────────────────────────────────────┬─┘
+                                     │                                       │
+               ┌─────────────────────▼──────────────────────────┐           │
+               │             Brain Event Bus                      │           │
+               │  tool.pre_use ──→ Amygdala（GuardRail）         │           │
+               │  INFO + ─────→ DMN Reactive（事件响应 / 段分配） │           │
+               │  心跳（定时）→ DMN Consolidation（前瞻预测）     │           │
+               └────────────────────────┬───────────────────────┘           │
+                                        │                                    │
+               ┌────────────────────────▼───────────────────────────────────▼─┐
+               │                    Hippocampus                                │
+               │   Encoding（写入）  │  Recall（检索）  │  Consolidation（批量）│
+               │   ← DMN / Cortex   │  → 五脑 Block 4  │  daily batch         │
+               └───────────────────────────────────────────────────────────────┘
 ```
 
-Limbic 用 LLM 判断社交情境，Brainstem 用规则处理系统事件——两者都做路由决策，但方式不同，因为各自面对的不确定性类型不同。
+Limbic 用 LLM 判断社交情境，Brainstem 用规则处理系统事件——两者都做路由决策，但方式不同，因为各自面对的不确定性类型不同。Amygdala 和 DMN 不持有 LLM session，通过 Event Bus 横切介入——前者同步拦截，后者异步分析。
 
 ---
 
@@ -165,8 +182,10 @@ AIMA 实例不实现 Audit 逻辑。Audit 是外部关注点。取而代之的�
 
 ### 内部订阅
 
-- **Amygdala** 订阅：`tool.pre_use`（`INFO` 级）
+- **Amygdala** 订阅：`tool.pre_use`（`INFO` 级）— 拦截时序依赖适配器实现，见下方 ⚠️
 - **DMN** 订阅：`INFO` 及以上（作为 Action Log 来源）
+
+> ⚠️ **P0 已知限制（Amygdala 拦截时序）**：Amygdala 的"执行前拦截"设计假设适配器在工具**执行前**同步回调（如 `pi-coding-agent` Extension API 的 `tool_call` 事件，可返回 `{ block: true }`）。当前暂用的 `pi-agent-core` 适配器的 `getSteeringMessages` 在工具调用**之间**触发，不是执行前同步——Amygdala 的阻断可能晚到一步，工具已开始执行。**在迁移到 `pi-coding-agent` 之前，Amygdala 对单次工具调用的实时拦截不可依赖**；风险决策应在 Context Assembly 阶段（pre-activation）完成，而非依赖 `tool.pre_use` 时序。迁移优先级：P0。
 
 ### 外部订阅（由集成方实现）
 
@@ -251,6 +270,15 @@ Workspace
 └── signals[]              // 横切信号（优先于任何 Thread）
     ├── Amygdala 中断信号
     └── DMN 纠错 / 预测通知
+
+// pending_observations 条目结构（存储在 workspace JSONB 字段）
+{
+  id:           UUID
+  target_brain: BrainType
+  note:         string           // LLM 生成的自然语言描述，供 Cortex 理解上下文
+  trigger_at:   timestamp | null // null = 立即路由；non-null = 不早于此时刻路由
+  added_at:     timestamp
+}
 ```
 
 ### 脑区间通信：Thread Runner 路由
@@ -281,6 +309,8 @@ Thread Runner 自身需要处理若干边界情况：`intent=both` 时两个脑�
 - **Thread 间**：不同 Thread 的 Slot 集完全独立，多个脑区可同时处理不同 Thread，无需协调。
 
 这意味着"Brain 级并行"的实质是：Cortex 处理 Thread-A，Brainstem 处理 Thread-B——并行发生在 Thread 维度，而非同一 Thread 内的多脑并发。无需锁，无需事务，竞态在设计层消除。
+
+**`intent=both` 并发安全**：`both` 模式下 Limbic 先行、Brainstem 随后——这是 Thread 内的顺序执行（Limbic 写 Slot done → Thread Runner 激活 Brainstem），不违反单脑写权限规则。若 Brainstem 执行期间用户发来新消息，该消息触发的是**独立的新 Thread**（上层路由规则决定），不会注入当前 Thread——原 Thread 保持 Brainstem 独占写权限直到完成。两个 Thread 并行处理，不相互阻塞。
 
 ### 信号优先级
 
@@ -460,7 +490,7 @@ Hippocampus 是 AIMA 的**完整记忆实体**，不是"记忆数据库旁边的
 
 | 子模块 | 性质 | 职责 |
 |---|---|---|
-| **Encoding** | 实时同步 | 所有记忆写入的唯一入口；segment 分配；significance_boost 应用 |
+| **Encoding** | 实时同步 | 所有记忆写入的唯一入口；持久化 DMN 传入的 segment_id/segment_seq；significance_boost 应用 |
 | **Recall** | 实时同步 | 所有记忆读取的唯一入口；脑区专属检索策略（见§九） |
 | **Consolidation** | 批量异步 | 每日低负载时段运行；段精修 → 段序列回放 → 使用反馈收敛 → 过期清理 |
 
@@ -583,6 +613,8 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 
 Skill Review 由 **Cortex** 执行——评估 Skill 质量是认知判断，不是数据维护。Hippocampus 维护 Skill 实体记录（Index），提供 `usage_outcomes` 等统计数据供 Cortex 判断；Cortex 读这些数据并决策。
 
+**Skill 文件并发语义**：Skill Review 是 Cortex 受 DMN pending 触发的独立 Thread，与其他 Thread 中 Brainstem 读取 Skill 文件的 I/O 并发无锁。Skill 文件在 Cortex 写入前对读者不可见（文件系统原子替换），Brainstem 读到的永远是完整的某一版本，不会读到写到一半的状态。`adapted` / `first-party` Skill 的更新频率远低于 Brainstem 的读频率，实际并发冲突概率极低。`reference` 类 Skill（如 `event-routing.md`）由外部维护，不参与 Cortex 自动写入路径，并发更安全。
+
 ---
 
 ## 十一、Context Assembly（面向五脑）
@@ -595,6 +627,8 @@ Skill Review 由 **Cortex** 执行——评估 Skill 质量是认知判断，不
 | **记忆** | `semantic` + `episodic` + `procedural` | `semantic` + `episodic` + `procedural` | `procedural` |
 
 Block 4 使用原始消息/任务描述作为检索 query，无结果时省略。
+
+**实体检索的两步模式**：`getEntityContext(entityId)` 要求已知 `entity_id`，但 Block 4 执行时可能只有实体名称（如"客户 A"）。标准解法：先用 `search("客户 A")` 找到包含该实体的记忆记录，从结果中读取 `entity_id`，再调用 `getEntityContext()` 展开完整上下文。对 Limbic 而言，这是两次 Hippocampus.Recall 调用——先发现实体，再展开实体。current ILIKE 实现对姓名文字匹配已足够；向量检索上线后语义发现能力进一步增强。
 
 ### 时间感知
 

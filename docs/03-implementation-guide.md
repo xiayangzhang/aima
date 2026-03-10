@@ -411,12 +411,13 @@ class ThreadRunner {
   }
 
   // DMN 写入 pending_observations 时触发。
-  // 取出所有 target_brain 对应的成熟 pending 项，创建新 Thread 并激活目标脑区。
-  // "成熟"的判断由 pending 的 added_at + note 中的时间提示决定（DMN 写入时已标注预期触发时间）。
+  // 取出所有"成熟"的 pending 项，创建新 Thread 并激活目标脑区。
+  // 成熟条件：trigger_at IS NULL（立即路由）OR trigger_at <= now()
+  // DMN 负责在写入时将预测时间转换为具体 timestamp，Thread Runner 只做确定性时间比较。
   private async routePending() {
     const pending = await this.workspace.getPendingObservations()
     for (const item of pending) {
-      if (this.isMature(item)) {
+      if (item.trigger_at === null || item.trigger_at <= new Date()) {
         const thread = await this.workspace.createThread({ trigger: item.note, initiated_by: 'dmn' })
         await this.activateBrain(item.target_brain, thread.thread_id)
         await this.workspace.removePending(item.id)
