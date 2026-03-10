@@ -153,6 +153,131 @@ describe('ThreadRunner routing', () => {
   })
 })
 
+describe('ThreadRunner routing — extended', () => {
+  function patchWorkspace(workspace: CognitiveWorkspace, thread: Thread, getSlots: () => Slot[]) {
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => getSlots()
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+  }
+
+  // T049: cortex communicate → limbic activated
+  test('cortex communicate → limbic adapter called', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    let limbicCalled = false
+
+    patchWorkspace(workspace, thread, () => [makeSlot('cortex', { intent: 'communicate' })])
+
+    const limbicAdapter: BrainAdapter = {
+      run: async () => {
+        limbicCalled = true
+        thread.state = 'complete'
+        return { sessionId: 'sess-l', output: {}, stopReason: 'done', injectedMemoryIds: [] }
+      },
+      inject: async () => {},
+      abort: () => {},
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>([['limbic', limbicAdapter]])
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'cortex', 'done')
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(limbicCalled).toBe(true)
+    runner.stop()
+  })
+
+  // T050: Cortex intent=both → Limbic activated first
+  test('cortex intent=both → limbic adapter called', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    let limbicCalled = false
+
+    patchWorkspace(workspace, thread, () => [makeSlot('cortex', { intent: 'both' })])
+
+    const limbicAdapter: BrainAdapter = {
+      run: async () => {
+        limbicCalled = true
+        thread.state = 'complete'
+        return { sessionId: 'sess-l', output: {}, stopReason: 'done', injectedMemoryIds: [] }
+      },
+      inject: async () => {},
+      abort: () => {},
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>([['limbic', limbicAdapter]])
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'cortex', 'done')
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(limbicCalled).toBe(true)
+    runner.stop()
+  })
+
+  // T051: ThreadRunner pending routing
+  test('routePending() activates target brain for due items', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+
+    const createdThreads: string[] = []
+    let brainstemCalled = false
+    const pendingThread = makeThread({ id: 'pending-thread' })
+
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => [
+      {
+        id: 'obs-1',
+        targetBrain: 'brainstem',
+        note: 'test pending',
+        triggerAt: new Date(Date.now() - 1000), // already due
+        expiresAt: new Date(Date.now() + 60_000),
+        createdAt: new Date(),
+      },
+    ]
+    workspace.createThread = async () => {
+      createdThreads.push('pending-thread')
+      return pendingThread
+    }
+    workspace.removePending = async () => {}
+    workspace.getThread = async () => pendingThread
+    workspace.getSlotsByThread = async () => []
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+    workspace.updateThreadState = async (_id, state) => {
+      pendingThread.state = state
+    }
+
+    const brainstemAdapter: BrainAdapter = {
+      run: async () => {
+        brainstemCalled = true
+        return { sessionId: 'sess', output: {}, stopReason: 'done', injectedMemoryIds: [] }
+      },
+      inject: async () => {},
+      abort: () => {},
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>([['brainstem', brainstemAdapter]])
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    await runner.routePending()
+
+    expect(createdThreads).toHaveLength(1)
+    expect(brainstemCalled).toBe(true)
+    runner.stop()
+  })
+})
+
 describe('CognitiveWorkspace.waitForComplete', () => {
   test('resolves when thread_complete event fires', async () => {
     const workspace = new CognitiveWorkspace(mockDb)
