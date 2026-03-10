@@ -1,7 +1,7 @@
 ---
 work_package_id: WP07
 title: AIMAInstance + 公共 API 导出
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T039, T040, T041, T042, T043, T044]
 history:
@@ -313,3 +313,4 @@ spec-kitty implement WP07 --base WP06
 ## Activity Log
 
 - 2026-03-10T13:27:23Z – unknown – lane=doing – Moved to doing
+- 2026-03-10T13:31:58Z – unknown – lane=for_review – Moved to for_review
