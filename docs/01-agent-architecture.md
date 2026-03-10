@@ -86,7 +86,7 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 
 ## 二、五脑架构
 
-神经学名字是代号，功能角色是抽象职责描述。两者同等重要。
+**命名约定**：神经学名（Limbic、Cortex 等）是这些组件的正式标识符，方便人类沟通。括号内的功能角色是每个组件的工程语义——这是它"实际上在做什么"。神经学名只做命名，不暗示生物学实现；功能角色才是设计约束的来源。
 
 | 脑区 | 功能角色 | 神经科学对应 | 模型 |
 |---|---|---|---|
@@ -378,6 +378,13 @@ tool.pre_use 事件到达
 ```
 
 `implicit` 记忆匹配在步骤 2 中作为参考输入，命中后的拦截判断可以是纯规则（高置信度）或交给 Haiku（低置信度）——应用层可配置边界。
+
+**implicit 记忆的反向反馈路径**：静态规则命中的 BLOCK 是权威判断，不需要反馈校正。LLM 评估产生的 BLOCK/ESCALATE 存在误判可能：
+- ESCALATE → 人工放行：DMN 事件响应捕获"人工覆盖"事件，对触发该次 ESCALATE 的 implicit 记忆调用 `markUsed(ids, 'negative')`
+- ESCALATE → 人工拒绝：强化信号，`markUsed(ids, 'positive')`
+- BLOCK（LLM 评估）→ 相同操作随后由更高权限成功执行：DMN 心跳整合检测此模式，写 negative 反馈
+
+Hippocampus Consolidation 在 `usage_outcomes` 收敛时对 `implicit` 记忆同样适用——如果一条模式持续获得 negative，`base_importance` 下降，检索命中率降低，避免误判积累。
 
 ### 与 DMN 的分工
 

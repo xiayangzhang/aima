@@ -426,14 +426,20 @@ class ThreadRunner {
   // 成熟条件：trigger_at IS NULL（立即路由）OR trigger_at <= now()
   // DMN 负责在写入时将预测时间转换为具体 timestamp，Thread Runner 只做确定性时间比较。
   private async routePending() {
-    const pending = await this.workspace.getPendingObservations()
     const now = new Date()
     // 过期条目（expires_at <= now）直接删除，不路由
     await this.workspace.removeExpiredPending(now)
     const pending = await this.workspace.getPendingObservations()
     for (const item of pending) {
       if (item.trigger_at === null || item.trigger_at <= now) {
-        const thread = await this.workspace.createThread({ trigger: item.note, initiated_by: 'dmn' })
+        // DMN 主动创建的 Thread 无外部渠道来源，source_channel = null
+        // Limbic 在此类 Thread 中不得发出面向外部协作者的消息，
+        // 若确需对外通知，应通过 pending 关联到已有 Thread（携带 source_channel）
+        const thread = await this.workspace.createThread({
+          trigger: item.note,
+          initiated_by: 'dmn',
+          source_channel: null,
+        })
         await this.activateBrain(item.target_brain, thread.thread_id)
         await this.workspace.removePending(item.id)
       }
