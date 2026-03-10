@@ -1,7 +1,7 @@
 ---
 work_package_id: WP06
 title: CognitiveWorkspace — Memory
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks:
 - T026
@@ -11,8 +11,8 @@ subtasks:
 - T030
 phase: Phase 2 - Core DAO
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude"
+shell_pid: "14517"
 review_status: ''
 reviewed_by: ''
 history:
@@ -371,3 +371,4 @@ bun test tests/unit/workspace/memory.test.ts
 ## Activity Log
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T10:19:10Z – claude – shell_pid=14517 – lane=doing – Started implementation via workflow command
