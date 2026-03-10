@@ -46,7 +46,7 @@
 - [x] T008 定义实体接口（Thread、Slot、MemoryEntry、PendingObservation、UsageOutcomes）
 - [x] T009 定义输入/参数类型（CreateThreadParams、WriteSlotParams、CreateMemoryParams、MemorySearchFilters、CreatePendingParams）
 - [x] T010 定义 ICognitiveWorkspace 接口（与 contracts/workspace.ts 完全对齐）
-- [ ] T011 [P] 验证类型：tsc --noEmit 零错误，无 `any`
+- [x] T011 [P] 验证类型：tsc --noEmit 零错误，无 `any`
 
 ### Implementation Notes
 - `src/types/index.ts` 是唯一文件，不分拆
