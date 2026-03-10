@@ -248,7 +248,24 @@ Shadow Mode 期间，Agent 观察人类如何处理同类任务，差异经人�
 
 ### @aima/crew — OpenClaw Fork
 
-**定位**：OpenClaw 的 fork 版本，将 OpenClaw 内部的 `pi-coding-agent` 替换为 AIMA 五脑架构。面向已经在用 OpenClaw 的场景，让它无感获得 AIMA 的认知能力。
+#### 战略定位
+
+**AIMA 是 pi-coding-agent 的认知超集**：它用五脑功能分区替代单 Agent 循环，在同一 LLM 基础设施之上获得三项 pi-coding-agent 本身没有的能力：
+
+| 能力 | pi-coding-agent | AIMA |
+|---|---|---|
+| 行为-意识分离 | ✗ — LLM 推理与工具执行混在一个循环 | ✓ — Cortex 推理 / Brainstem 执行 / Limbic 沟通，各自独立 session |
+| 自主性 | ✗ — 完全由外部触发驱动 | ✓ — DMN 自发运作，Agent 自己决定什么时候该做什么 |
+| 可观察可审计 | ✗ — 无内置 | ✓ — Brain Event Bus 五级，COMPLIANCE → WORM |
+
+**@aima/crew 是这个超集能力的生态入口**：通过 CI/CD fork OpenClaw、替换核心 Agent 引擎，任何现有 OpenClaw 项目可以无感升级到 AIMA 认知架构。这是一个双向关系：
+
+```
+AIMA 项目  ←获得→  OpenClaw 生态（通道插件、多平台部署模式、社区）
+OpenClaw 项目  ←获得→  AIMA 认知能力（五脑、记忆、DMN 自主性、审计）
+```
+
+OpenClaw 的通道插件（Teams、Telegram、Discord...）、部署模式和生态资源对**所有基于 AIMA 的项目**都有价值——即使这些项目不直接使用 @aima/crew，也可以借鉴其通道集成实现。
 
 **为什么是 fork 而不是兼容层**：我们需要控制演进路径，不受 OpenClaw 原版设计决策约束。替换是一次性的底层换芯，上层通道插件完全复用。
 

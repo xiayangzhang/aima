@@ -186,7 +186,7 @@ AIMA 只保证事件的结构化发射，不关心谁在消费。
 | `thread_id` | string | 所属 Thread（横切信号时为 null） |
 | `session_id` | string | 当前脑区 Session ID |
 | `causation_id` | UUID \| null | 直接触发本事件的上一个事件 ID |
-| `schema_version` | string | 事件格式版本号 |
+| `schema_version` | string | 事件格式版本号（**框架自动注入**，调用方不设置；用于 WORM 存储的长期解析和滚动升级期间的消费者版本协商） |
 | `payload` | object | 事件内容（工具名、参数、结果等） |
 
 `thread_id` 作为顶层关联 ID（一次外部输入触发的全部事件共享同一 `thread_id`）；`causation_id` 表达单步因果（哪个事件直接触发了本事件），两者独立，共同支撑可观测性和 replay。链条起点（外部输入触发的第一个事件、DMN 心跳自发触发的事件）`causation_id = null`。

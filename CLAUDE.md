@@ -21,6 +21,16 @@ Apply in order before adding anything:
 
 Occam's Razor: minimum complexity for the current problem.
 
+## Strategic Positioning
+
+**AIMA is a cognitive superset of pi-coding-agent.** It replaces the single Agent loop with five brain-area functional clusters, gaining three capabilities that pi-coding-agent cannot provide:
+
+- **Behavior-consciousness separation** — Cortex reasons, Brainstem executes, Limbic communicates; each in isolated sessions, not collapsed into one loop
+- **Autonomy** — DMN operates without external triggers; the Agent decides what to do next, not the system clock or incoming events
+- **Observability + auditability** — Brain Event Bus five levels, COMPLIANCE events → WORM
+
+**@aima/crew is the ecosystem bridge**: a CI/CD fork of OpenClaw that swaps the Agent engine for AIMA, letting OpenClaw projects gain cognitive capabilities without changing anything else. The relationship is bidirectional — AIMA-based projects gain OpenClaw's channel ecosystem (Teams, Telegram, Discord plugins, deployment patterns), and OpenClaw projects gain AIMA's cognitive architecture.
+
 ## Architecture Principles
 - Five brains are fixed core: Limbic / Cortex / Brainstem / Amygdala / DMN
 - Loop is infrastructure — no business logic inside
