@@ -1,7 +1,7 @@
 ---
 work_package_id: WP07
 title: AIMAInstance + 公共 API 导出
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T039, T040, T041, T042, T043, T044]
 history:
@@ -309,3 +309,7 @@ spec-kitty implement WP07 --base WP06
 ```
 
 注意：WP07 同时依赖 WP04/WP05/WP06，但 spec-kitty 只支持单个 --base。实现时请先确认 WP04、WP05 的分支均已合并到 WP06 分支（或从 main 拉取）。
+
+## Activity Log
+
+- 2026-03-10T13:27:23Z – unknown – lane=doing – Moved to doing
