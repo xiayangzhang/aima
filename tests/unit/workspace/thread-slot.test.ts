@@ -319,14 +319,3 @@ describe('Slot operations', () => {
   })
 })
 
-// ─── Unimplemented stubs ──────────────────────────────────────────────────────
-
-describe('Unimplemented stubs (WP05)', () => {
-  test('writePending throws Not implemented', async () => {
-    const db = makeMockDb()
-    const ws = new CognitiveWorkspace(db)
-    await expect(
-      ws.writePending({ targetBrain: 'dmn', note: 'x', expiresAt: new Date() }),
-    ).rejects.toThrow('Not implemented')
-  })
-})
