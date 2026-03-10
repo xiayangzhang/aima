@@ -80,6 +80,8 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 
 五脑分工带来的互相使能是真实的，但代价也是真实的：一条消息从输入到最终动作，经过 Thread Runner 路由、Context Assembly 重组、Amygdala 拦截、DMN 异步观察、Hippocampus 读写——每一步的 LLM 偏差都可能被下游放大。Event Bus 的 `causation_id` 提供单步因果链，全链追溯需要应用层自行重建。**这个架构适合"需要深度推理且对可观测性有要求"的场景，不适合"需要极低延迟的简单操作"**——后者应该用 Limbic EXECUTE 直通或 Brainstem 规则路由绕过 Cortex。分工的目的是让复杂情况不退化，不是让所有情况都复杂。
 
+**不确定时走保守路径**：各决策点的 LLM 偏差若在不确定情况下选择激进路径，下游放大效应最严重。因此每个脑区在不确定时应默认走保守路径：Limbic 不确定意图时 `ROUTE` 给 Cortex 而非直接 `EXECUTE` 或 `RESPOND`；Amygdala 无法判断风险时 `ESCALATE` 而非放行。DMN 通过 `usage_outcomes` 追踪各脑区决策反馈，持续低于阈值时写 `pending_observations`（ALERT）给上层应用，由上层决定是否介入。
+
 ---
 
 ## 二、五脑架构
@@ -227,6 +229,8 @@ Brainstem 崩溃时，`execution_session_id` 为 non-null 且 `status ≠ done`�
 
 这是 at-most-once 语义的实现底线：非幂等操作在崩溃歧义情况下，系统选择"可能少做一次"而非"可能多做一次"。
 
+**`intent=both` 崩溃场景的额外处理**：崩溃恢复时若检测到 `interrupted` Thread 且 Cortex Slot `intent=both`，需要检查 Limbic 是否已发出了试探性消息（通过 Event Bus 查询该 Thread 的 COMPLIANCE 事件是否有 Limbic 发消息记录）。若已发消息，Thread Runner 在 escalate 的同时触发 Limbic 的补偿激活，发出失败通知——避免用户停留在"正在处理"的悬挂状态。
+
 ### 模型：Thread + Slot
 
 工作空间是 AIMA 实例内部的共享状态，支持多任务并行。
@@ -291,7 +295,7 @@ Thread Runner 自身需要处理若干边界情况：`intent=both` 时两个脑�
 
 | 脑区 | 激活条件 |
 |---|---|
-| **Limbic** | 有新的人类输入；或 Cortex Slot 的 `intent` 包含 `"communicate"` |
+| **Limbic** | 有新的人类输入；或 Cortex Slot 的 `intent` 包含 `"communicate"`；或 `intent=both` 且 Brainstem Slot `status=done`（触发最终通知） |
 | **Cortex** | 任意 Slot 写入了 `"needs_analysis"` 标记，且当前 Thread 的 Cortex Slot 为空 |
 | **Brainstem** | Cortex Slot 的 `intent` 包含 `"execute"`；或 Limbic 输出 `EXECUTE(intent)`；或新系统事件到达 |
 
@@ -354,6 +358,27 @@ Thread 数量上限是配置项。
 
 大多数工具是 `low`，Amygdala 的 LLM 成本只在 `high` 级别工具上发生。
 
+**Amygdala 决策骨架**（框架定义三段式，具体阈值和规则集由应用层配置）：
+
+```
+tool.pre_use 事件到达
+  1. 静态规则匹配（零 LLM）
+     命中 BLOCK 规则 → 立即拦截，写 Signal
+     命中 ALLOW 规则 → 放行
+     无命中 → 进入第 2 步
+
+  2. implicit 记忆检索（getByTags，按工具类型 + 操作参数匹配）
+     命中高置信度风险模式 → 拦截
+     命中低置信度 → 进入第 3 步（参考但不决定）
+     无命中 → 按 risk_level 决定是否进入第 3 步
+
+  3. Haiku 一次性评估（仅 medium/high 工具，含 implicit 检索摘要作为上下文）
+     → ALLOW / BLOCK / ESCALATE
+     ESCALATE = 不自动拦截，写 pending 给 DMN，人工或更高权限脑区决定
+```
+
+`implicit` 记忆匹配在步骤 2 中作为参考输入，命中后的拦截判断可以是纯规则（高置信度）或交给 Haiku（低置信度）——应用层可配置边界。
+
 ### 与 DMN 的分工
 
 | | Amygdala | DMN |
@@ -395,7 +420,8 @@ DMN 在概念上是一个脑区，**工程上由两种触发方式实现**——
 3. **段分配**：写 episodic 事件时，根据 Thread 边界/目标变更/错误恢复/话题切换等触发条件分配 `segment_id` 和 `segment_seq`；每条 episodic 事件都标注所属事件段（粗分，Hippocampus 精修）
 4. **显著性处理**：若事件携带 Amygdala 发射的 `significance_boost`，写 episodic 时对应增加 `base_importance`，使风险相关经历编码更深
 5. **记忆使用反馈**：脑区完成（`brain.complete` 事件）后，评估执行结果，调用 `markUsed(injected_memory_ids, outcome)`，将反馈写入对应记忆条目的 `usage_outcomes` 计数器；`injected_memory_ids` 来自 `BrainRunResult`
-6. **信号捕获**：检测到已知的触发信号（确定性规则 + Haiku fallback）→ 写入 `pending_observations`，由 Thread Runner 下次扫描时路由执行
+6. **DEFER 超时调度**：检测到 Limbic 输出 `DEFER(timeout)` 事件时，写入一条 `pending_observations`（`trigger_at = event.occurred_at + timeout`，`target_brain = limbic`），到期后由 Thread Runner routePending() 重新激活 Limbic 执行渠道降级。Thread Runner 本身不内置定时器，DEFER 超时通过 pending 机制实现。
+7. **信号捕获**：检测到已知的触发信号（确定性规则 + Haiku fallback）→ 写入 `pending_observations`，由 Thread Runner 下次扫描时路由执行
 
 **资源消耗**：轻量，每次只读最新增量（`created_at > last_processed`）
 
@@ -475,6 +501,8 @@ DMN pending：合同 C-2847 在第 28 天需要付款核查
 **写入语义与冲突解决**：Amygdala 写入是 provisional——即时生效，best-effort，不持锁，不等待 DMN。DMN 心跳整合是最终仲裁者，负责将语义重叠的条目合并为 canonical 记录。冲突合并规则：tag 取并集，`base_importance` 取较高值，被合并的旧记录通过 `supersedes_ids` 软删除。
 
 Amygdala 宁可多一条冗余记录也不能因等锁而延迟工具拦截决策。
+
+**DMN 心跳整合与 Hippocampus Consolidation 的分工**：两者都涉及 `implicit` 记忆，但机制与触发方式不同，互补而非竞争。DMN 心跳整合是**事件驱动的行为聚类**——读取近期 episodic 增量，检测行为偏差或固化模式，通过 LLM 推断"是否要写入或调整 implicit 记录"，结论以 pending 或直接写入形式落地。Hippocampus Consolidation 是**数据驱动的数据库批处理**——按 `usage_outcomes` 计数和 `base_importance` 统计，执行条目合并、段精修和过期清理，不做行为语义判断。前者负责"发现新模式"，后者负责"维护现有数据质量"。
 
 ---
 
@@ -587,6 +615,19 @@ AIMA 的 `semantic` 记忆以**实体**（entity）为基本单位对世界建�
 | `first-party` | 从实践中生成 | 是 | 纯实例经验，无外部来源 |
 
 学习原则：观察→理解→在自己的上下文中重新表达，而非复制。`adapted` Skill 在 Cortex Skill Review 时应与原始 `reference` 对照，检查边界条件是否完整保留（LLM 改写容易引入语义漂移，如"超过 50 万需二级审批"变成"大额采购需二级审批"）。`derived_from` 引用是对照的锚点。
+
+**Skill 最小 header 规范**（框架建议，应用层执行）：
+
+```markdown
+---
+type: reference | adapted | first-party
+scope: <适用场景一句话>
+derived_from: <reference_skill_id>   # adapted 类型必填
+version: <语义版本号>
+---
+```
+
+header 是 Cortex Skill Review 和 `derived_from` 对照的前提。"涌现式结构"是内容区域的灵活性，不是 header 的灵活性——没有结构化 header，LLM 对 Skill 的元认知质量会显著下降。
 
 ### Skill 生命周期
 

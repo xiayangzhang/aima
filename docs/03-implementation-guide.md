@@ -20,8 +20,15 @@ interface BrainAdapter {
   abort(): void
 }
 
+// BrainType 的双重角色：
+// 1. 事件字段标识（Event Bus 的 brain 字段）——五脑 + dmn 都是合法值，用于标注事件来源
+// 2. BrainAdapter 实例化——仅限 limbic | cortex | brainstem 三个认知脑区
+//    DMN / Amygdala / Hippocampus 不走 BrainAdapter，不持有 LLM session，不在 brainSessions Map 中
+type BrainType = 'limbic' | 'cortex' | 'brainstem' | 'amygdala' | 'dmn'  // 事件标识用，完整枚举
+type CognitiveBrainType = 'limbic' | 'cortex' | 'brainstem'              // BrainAdapter 实例化用
+
 interface BrainRunParams {
-  brain:          BrainType       // limbic | cortex | brainstem | amygdala | dmn
+  brain:          CognitiveBrainType  // 只有认知脑区走 BrainAdapter
   thread_id:      string          // 所属 Thread（session key = brain:thread_id）
   system_prompt:  string          // Context Assembly 组装结果（Block 1-4）
   initial_prompt?: string         // 本次激活的触发内容；不传则调用 agent.continue()
@@ -420,8 +427,12 @@ class ThreadRunner {
   // DMN 负责在写入时将预测时间转换为具体 timestamp，Thread Runner 只做确定性时间比较。
   private async routePending() {
     const pending = await this.workspace.getPendingObservations()
+    const now = new Date()
+    // 过期条目（expires_at <= now）直接删除，不路由
+    await this.workspace.removeExpiredPending(now)
+    const pending = await this.workspace.getPendingObservations()
     for (const item of pending) {
-      if (item.trigger_at === null || item.trigger_at <= new Date()) {
+      if (item.trigger_at === null || item.trigger_at <= now) {
         const thread = await this.workspace.createThread({ trigger: item.note, initiated_by: 'dmn' })
         await this.activateBrain(item.target_brain, thread.thread_id)
         await this.workspace.removePending(item.id)

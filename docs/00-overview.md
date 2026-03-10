@@ -305,7 +305,7 @@ const session = await createAIMASession({ instance, sessionKey, tools, toolIndex
 
 **治理而非约束**：给 Agent 目标和政策，不给操作手册。Amygdala 守住硬底线，其余信任 Agent 判断。
 
-**事后审计 > 事前拦截**：不追求零错误，追求完整可追溯。COMPLIANCE 事件 → WORM 存储是不可变的审计底座。
+**事后审计 > 事前拦截（可逆操作）；不可逆操作事前拦截不可跳过**：对可撤销、可重做的操作，不追求零错误，追求完整可追溯——COMPLIANCE 事件 → WORM 是不可变审计底座。对不可逆操作（发送外部消息、提交审批、删除数据、超额金融操作），Amygdala 的事前拦截是硬底线，不因"事后审计"原则而削弱。这是 Amygdala 存在的根本原因。
 
 **Context 精准注入**：Block 1/2 静态身份走 prompt cache，Block 3/4 每轮动态注入工作空间状态和记忆检索结果。不压缩 context 换 token 省钱。
 
