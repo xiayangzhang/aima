@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: CognitiveWorkspace — Thread & Slot
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks:
 - T018
@@ -10,8 +10,8 @@ subtasks:
 - T021
 phase: Phase 2 - Core DAO
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude"
+shell_pid: "13938"
 review_status: ''
 reviewed_by: ''
 history:
@@ -439,3 +439,4 @@ bun test tests/unit/workspace/thread-slot.test.ts
 ## Activity Log
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T10:19:03Z – claude – shell_pid=13938 – lane=doing – Started implementation via workflow command
