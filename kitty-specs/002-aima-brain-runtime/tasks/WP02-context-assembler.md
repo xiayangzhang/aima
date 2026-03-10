@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: ContextAssembler（Block 1-4）
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T007, T008, T009, T010, T011]
 agent: "claude"
@@ -200,3 +200,4 @@ spec-kitty agent tasks move-task WP02 --to for_review --note "Ready: <summary>"
 ## Activity Log
 
 - 2026-03-10T13:03:09Z – claude – shell_pid=32355 – lane=doing – Started implementation via workflow command
+- 2026-03-10T13:05:38Z – claude – shell_pid=32355 – lane=for_review – Ready for review: ContextAssembler implemented with 4 blocks (cache-safe prefix, workspace state, brain-routed memory retrieval, merge). 74 unit tests passing, typecheck + biome clean.
