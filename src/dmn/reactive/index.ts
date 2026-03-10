@@ -1,5 +1,6 @@
+import { randomUUID } from 'node:crypto'
 import type { BrainEvent } from '../../adapters/index'
-import type { BrainType } from '../../types/index'
+import type { BrainType, UsageOutcome } from '../../types/index'
 import type { CognitiveWorkspace } from '../../workspace/index'
 import type { DmnConfig } from '../index'
 import { callLlm, parseLlmJson } from '../llm'
@@ -37,9 +38,19 @@ type DmnReactiveConfig = DmnConfig & {
   signalRules?: SignalRule[]
 }
 
+// ─── Segment state (process-level, resets on restart) ────────────────────────
+
+interface SegmentState {
+  segmentId: string
+  nextSeq: number
+}
+
+// ─── DmnReactive ─────────────────────────────────────────────────────────────
+
 export class DmnReactive {
   private unsubscribe: (() => void) | undefined = undefined
   private readonly inFlightHandlers = new Set<Promise<void>>()
+  private readonly threadSegments = new Map<string, SegmentState>()
 
   constructor(private readonly config: DmnReactiveConfig) {}
 
@@ -97,7 +108,214 @@ export class DmnReactive {
       await this.handleSignalCapture(event)
     }
 
-    // Responsibilities 2/3/4/5 implemented in WP03 (brain.complete routing)
+    // Responsibilities 2/3/4/5: brain.complete four-way parallel
+    if (event_type === 'brain.complete') {
+      await this.handleBrainComplete(event)
+    }
+  }
+
+  // ── brain.complete: four responsibilities in parallel ──────────────────────
+
+  private async handleBrainComplete(event: BrainEvent): Promise<void> {
+    await Promise.all([
+      this.assignSegmentAndWriteEpisodic(event), // Responsibility 3 + 4
+      this.feedbackMemoryUsage(event), // Responsibility 5
+      this.retroactiveCorrection(event), // Responsibility 2
+    ])
+  }
+
+  // ── Responsibility 3 + 4: Segment assignment + episodic write + significance ─
+
+  private async assignSegmentAndWriteEpisodic(event: BrainEvent): Promise<void> {
+    const { brain, thread_id, payload } = event
+    if (!thread_id) return
+    const workspace = this.config.workspace
+
+    const needNewSegment = await this.shouldStartNewSegment(event)
+    let segState = this.threadSegments.get(thread_id)
+    if (!segState || needNewSegment) {
+      segState = { segmentId: randomUUID(), nextSeq: 0 }
+      this.threadSegments.set(thread_id, segState)
+    }
+
+    const { segmentId } = segState
+    const segmentSeq = segState.nextSeq++
+
+    const significanceBoost = (payload.significance_boost as number | undefined) ?? 0
+    const baseImportance = Math.min(1.0, 0.5 + significanceBoost)
+
+    await workspace.writeMemory({
+      type: 'episodic',
+      sourceBrain: brain,
+      threadId: thread_id,
+      segmentId,
+      segmentSeq,
+      content: this.buildEpisodicContent(event),
+      baseImportance,
+      tags: ['brain_complete', brain, `thread:${thread_id}`],
+    })
+
+    // Significance mark (Responsibility 4): extra record when boost present
+    if (significanceBoost > 0) {
+      await workspace.writeMemory({
+        type: 'episodic',
+        sourceBrain: brain,
+        threadId: thread_id,
+        segmentId,
+        segmentSeq: segState.nextSeq++,
+        content: JSON.stringify({
+          event_type: 'significance_mark',
+          boost: significanceBoost,
+          trigger: 'amygdala',
+          original_brain: brain,
+        }),
+        baseImportance: Math.min(1.0, 0.7 + significanceBoost),
+        tags: ['significance_mark', 'amygdala', `thread:${thread_id}`],
+      })
+    }
+  }
+
+  private async shouldStartNewSegment(event: BrainEvent): Promise<boolean> {
+    const { thread_id, payload } = event
+
+    if (!thread_id || !this.threadSegments.has(thread_id)) return true
+
+    const outputSlot = payload.outputSlot as Record<string, unknown> | undefined
+    if (outputSlot?.status === 'error') return true
+
+    const output = outputSlot?.output as Record<string, unknown> | undefined
+    if (output?.mode === 'ROUTE' && output.needs_analysis) return true
+
+    // Topic switch check: only on RESPOND output with enough context
+    const segState = this.threadSegments.get(thread_id)
+    if (output?.mode === 'RESPOND' && segState && segState.nextSeq > 5) {
+      return await this.isTopicSwitch(event)
+    }
+
+    return false
+  }
+
+  private async isTopicSwitch(event: BrainEvent): Promise<boolean> {
+    if (!event.thread_id) return false
+
+    const recent = await this.config.workspace.searchMemory({
+      type: 'episodic',
+      tags: ['brain_complete', `thread:${event.thread_id}`],
+      limit: 3,
+      excludeInvalid: true,
+    })
+    if (recent.length < 2) return false
+
+    const outputSlot = event.payload.outputSlot as Record<string, unknown> | undefined
+    const prompt = `Compare these two consecutive brain outputs and determine if the topic has significantly shifted.
+
+Previous output summary: ${recent[1]?.content.slice(0, 200) ?? 'N/A'}
+Current output: ${JSON.stringify(outputSlot?.output ?? {}).slice(0, 200)}
+
+Respond with JSON: {"topic_switched": boolean, "reason": string}`
+
+    const response = await callLlm(prompt, this.config.llm)
+    const result = parseLlmJson<{ topic_switched: boolean }>(response, { topic_switched: false })
+    return result.topic_switched
+  }
+
+  private buildEpisodicContent(event: BrainEvent): string {
+    const { brain, thread_id, payload } = event
+    const outputSlot = payload.outputSlot as Record<string, unknown> | undefined
+    const output = outputSlot?.output as Record<string, unknown> | undefined
+    return JSON.stringify({
+      brain,
+      threadId: thread_id,
+      status: outputSlot?.status,
+      mode: output?.mode,
+      intent: output?.intent,
+      stopReason: payload.stopReason,
+      timestamp: new Date().toISOString(),
+    })
+  }
+
+  // ── Responsibility 5: Memory usage feedback ────────────────────────────────
+
+  private async feedbackMemoryUsage(event: BrainEvent): Promise<void> {
+    const injectedIds = event.payload.injectedMemoryIds as string[] | undefined
+    if (!injectedIds || injectedIds.length === 0) return
+
+    const outcome = this.evaluateOutcome(event)
+    await this.config.workspace.markMemoryUsed(injectedIds, outcome)
+  }
+
+  private evaluateOutcome(event: BrainEvent): UsageOutcome {
+    const outputSlot = event.payload.outputSlot as Record<string, unknown> | undefined
+    const output = outputSlot?.output as Record<string, unknown> | undefined
+
+    if (outputSlot?.status === 'error') return 'negative'
+    if (event.payload.stopReason === 'error') return 'negative'
+    if (output?.mode === 'RESPOND') return 'positive'
+    if (output?.mode === 'EXECUTE') return 'positive'
+
+    return 'neutral'
+  }
+
+  // ── Responsibility 2: Retroactive correction ───────────────────────────────
+
+  private async retroactiveCorrection(event: BrainEvent): Promise<void> {
+    const { brain, thread_id, payload } = event
+    if (!thread_id) return
+
+    const windowSize = this.config.retroactionWindowSize ?? 20
+
+    const recentEvents = await this.config.workspace.searchMemory({
+      type: 'episodic',
+      tags: ['brain_complete', `thread:${thread_id}`],
+      limit: windowSize,
+      excludeInvalid: true,
+    })
+
+    if (recentEvents.length < 2) return
+
+    const outputSlot = payload.outputSlot as Record<string, unknown> | undefined
+    const prompt = `You are reviewing recent brain activity for potential errors requiring correction.
+
+Brain: ${brain}
+Thread: ${thread_id}
+Recent activity (most recent last):
+${recentEvents
+  .map((e) => e.content)
+  .slice(-5)
+  .join('\n---\n')}
+
+Current output: ${JSON.stringify(outputSlot?.output ?? {})}
+
+Determine if any correction is needed. Respond with JSON:
+{
+  "needs_correction": boolean,
+  "correction_type": "factual_error" | "reasoning_error" | "task_deviation" | null,
+  "correction_message": string
+}
+
+Only set needs_correction=true if there is a clear, significant error. Be conservative.`
+
+    const response = await callLlm(prompt, this.config.llm)
+    const result = parseLlmJson<{
+      needs_correction: boolean
+      correction_type: string | null
+      correction_message: string
+    }>(response, { needs_correction: false, correction_type: null, correction_message: '' })
+
+    if (result.needs_correction && result.correction_message) {
+      this.config.workspace.pushSignal({
+        type: 'dmn_correction',
+        message: result.correction_message,
+      })
+
+      this.config.eventBus.emit({
+        event_type: 'dmn.correction_issued',
+        level: 'COMPLIANCE',
+        brain: 'dmn',
+        thread_id,
+        payload: { correctionType: result.correction_type, targetBrain: brain },
+      })
+    }
   }
 
   // ── Responsibility 1: Error recovery ───────────────────────────────────────
