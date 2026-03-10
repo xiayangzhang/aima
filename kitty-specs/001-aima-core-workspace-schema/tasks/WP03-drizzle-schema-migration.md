@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: Drizzle Schema + Migration
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks:
 - T012
@@ -14,8 +14,8 @@ phase: Phase 1 - Foundation
 assignee: ''
 agent: "claude"
 shell_pid: "10053"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-10T00:00:00Z'
   lane: planned
@@ -380,3 +380,4 @@ bun run db:migrate
 - 2026-03-10T10:08:58Z – claude – shell_pid=97661 – lane=doing – Started implementation via workflow command
 - 2026-03-10T10:13:30Z – claude – shell_pid=97661 – lane=for_review – Ready for review: 4 schema files (threads/slots/memories/pending_observations) + schema/index.ts. db:generate ✓ (0000_huge_legion.sql), db:migrate ✓ (4 tables + 4 enums). slots UNIQUE constraint ✓, memories GIN index ✓, partial index WHERE t_invalid IS NULL ✓. Note: tsconfig changed NodeNext→Bundler (needed for drizzle-kit CJS compat + tsup bundled lib pattern)
 - 2026-03-10T10:16:20Z – claude – shell_pid=10053 – lane=doing – Started review via workflow command
+- 2026-03-10T10:16:54Z – claude – shell_pid=10053 – lane=done – Review passed: 4 schema files correct, migration SQL matches data-model.md. tags default '{}'::text[] ✓, usageOutcomes JSONB ✓, slots UNIQUE ✓, memories GIN+partial index ✓, AnyPgColumn self-ref FK ✓, pending targetBrain as text ✓. drizzle-kit compat via Bundler moduleResolution and individual schema files in config.
