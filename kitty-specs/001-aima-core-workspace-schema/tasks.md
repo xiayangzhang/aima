@@ -167,7 +167,7 @@
 - [x] T026 `src/workspace/memory.ts`：writeMemory（含 supersedes_id 事务原子失效）
 - [x] T027 实现 searchMemory（type + tags GIN 过滤 + entityId + segmentId + excludeInvalid + limit，按 base_importance DESC 排序）
 - [x] T028 实现 markMemoryUsed（UPDATE usage_outcomes 的对应计数器 +1，用 jsonb_set 或应用层 merge）
-- [ ] T029 实现 clearWorkingMemory（DELETE WHERE type='working' AND thread_id=$threadId）
+- [x] T029 实现 clearWorkingMemory（DELETE WHERE type='working' AND thread_id=$threadId）
 - [ ] T030 `tests/unit/workspace/memory.test.ts`：覆盖 write、supersedes 失效、search 过滤、markUsed、clearWorking
 
 ### Implementation Notes
