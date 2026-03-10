@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { BrainEventBus, getEventBus } from '../../src/eventbus/index'
 import type { BrainEvent } from '../../src/adapters/index'
+import { BrainEventBus, getEventBus } from '../../src/eventbus/index'
 
 describe('BrainEventBus', () => {
   test('emit returns a well-formed BrainEvent', () => {

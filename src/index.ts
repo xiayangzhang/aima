@@ -42,3 +42,12 @@ export type {
   EventLevel,
 } from './adapters/index'
 export { BrainEventBus, getEventBus } from './eventbus/index'
+
+// ── Amygdala ──────────────────────────────────────────────────────────────────
+export type {
+  ToolRiskLevel,
+  AmygdalaDecision,
+  AmygdalaRule,
+  AmygdalaConfig,
+} from './amygdala/index'
+export { Amygdala } from './amygdala/index'
