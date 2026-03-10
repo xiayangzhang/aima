@@ -22,7 +22,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 **目标**：建立 DMN 模块的基础结构：类型定义、一次性 Haiku 调用封装、DmnService 顶层生命周期类。
 
 子任务：
-- [ ] T001: DmnConfig 类型（consolidationInterval, maxRetries, llmModel, apiKey）
+- [x] T001: DmnConfig 类型（consolidationInterval, maxRetries, llmModel, apiKey）
 - [ ] T002: callHaiku(prompt, config) 一次性 LLM 调用封装（@anthropic-ai/sdk 直调，无对话历史）
 - [ ] T003: DmnService 类骨架（start/stop/runConsolidationNow，组合 Reactive + Consolidation）
 - [ ] T004: AIMAInstance 集成（config.enableDmn，start() 时条件启动 DmnService）
