@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: DmnReactive — 错误恢复 + DEFER + 信号捕获
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T005, T006, T007, T008, T009]
 agent: "claude"
@@ -317,3 +317,4 @@ spec-kitty implement WP02 --base WP01
 ## Activity Log
 
 - 2026-03-10T14:35:42Z – claude – shell_pid=52157 – lane=doing – Started implementation via workflow command
+- 2026-03-10T14:53:40Z – claude – shell_pid=52157 – lane=for_review – Ready for review: DmnReactive full implementation — event subscription with handler isolation, error recovery (retry via working memory), DEFER scheduling, signal capture with rule engine + Haiku fallback. 7 unit tests passing.
