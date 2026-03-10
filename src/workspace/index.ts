@@ -1,6 +1,6 @@
-import { eq, inArray, not } from 'drizzle-orm'
+import { asc, eq, gte, inArray, lt, not, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
-import { slots, threads } from '../schema/index'
+import { pendingObservations, slots, threads } from '../schema/index'
 import type * as schema from '../schema/index'
 import type {
   BrainType,
@@ -37,6 +37,18 @@ function mapThreadRow(row: typeof threads.$inferSelect): Thread {
     trigger: row.trigger,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+  }
+}
+
+function mapPendingRow(row: typeof pendingObservations.$inferSelect): PendingObservation {
+  return {
+    id: row.id,
+    targetBrain: row.targetBrain as BrainType,
+    note: row.note,
+    triggerAt: row.triggerAt,
+    expiresAt: row.expiresAt,
+    baseImportance: row.baseImportance,
+    addedAt: row.addedAt,
   }
 }
 
@@ -147,22 +159,71 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     return rows.map(mapSlotRow)
   }
 
-  // ── Pending Observations — implemented in WP05 ───────────────────────────────
+  // ── Pending Observations ────────────────────────────────────────────────────
 
-  async writePending(_params: CreatePendingParams): Promise<PendingObservation> {
-    throw new Error('Not implemented')
+  async writePending(params: CreatePendingParams): Promise<PendingObservation> {
+    return await this.db.transaction(async (tx) => {
+      // 1. Acquire transaction-level advisory lock — serializes concurrent writes
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('aima_pending_write'))`)
+
+      // 2. Count valid (non-expired) records
+      const now = new Date()
+      const [countResult] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(pendingObservations)
+        .where(gte(pendingObservations.expiresAt, now))
+
+      const currentCount = countResult?.count ?? 0
+
+      // 3. Evict lowest-priority records when at capacity
+      if (currentCount >= this.pendingCapacity) {
+        const excess = currentCount - this.pendingCapacity + 1
+        const toEvict = await tx
+          .select({ id: pendingObservations.id })
+          .from(pendingObservations)
+          .where(gte(pendingObservations.expiresAt, now))
+          .orderBy(asc(pendingObservations.baseImportance), asc(pendingObservations.addedAt))
+          .limit(excess)
+
+        if (toEvict.length > 0) {
+          const evictIds = toEvict.map((r) => r.id)
+          await tx.delete(pendingObservations).where(inArray(pendingObservations.id, evictIds))
+        }
+      }
+
+      // 4. Insert the new record
+      const [row] = await tx
+        .insert(pendingObservations)
+        .values({
+          targetBrain: params.targetBrain,
+          note: params.note,
+          triggerAt: params.triggerAt ?? null,
+          expiresAt: params.expiresAt,
+          baseImportance: params.baseImportance ?? 0.5,
+        })
+        .returning()
+
+      if (!row) throw new Error('Insert returned no rows')
+      return mapPendingRow(row)
+    })
   }
 
   async getPendingObservations(): Promise<PendingObservation[]> {
-    throw new Error('Not implemented')
+    const now = new Date()
+    const rows = await this.db
+      .select()
+      .from(pendingObservations)
+      .where(gte(pendingObservations.expiresAt, now))
+      .orderBy(sql`${pendingObservations.triggerAt} ASC NULLS FIRST`)
+    return rows.map(mapPendingRow)
   }
 
-  async removeExpiredPending(_now: Date): Promise<void> {
-    throw new Error('Not implemented')
+  async removeExpiredPending(now: Date): Promise<void> {
+    await this.db.delete(pendingObservations).where(lt(pendingObservations.expiresAt, now))
   }
 
-  async removePending(_id: string): Promise<void> {
-    throw new Error('Not implemented')
+  async removePending(id: string): Promise<void> {
+    await this.db.delete(pendingObservations).where(eq(pendingObservations.id, id))
   }
 
   // ── Memory — implemented in WP06 ────────────────────────────────────────────
