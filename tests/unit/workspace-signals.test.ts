@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { CognitiveWorkspace } from '../../src/workspace/index'
 import type { BrainSignal } from '../../src/adapters/index'
+import { CognitiveWorkspace } from '../../src/workspace/index'
 
 // Minimal mock DB — Signals are purely in-memory, no DB calls needed
 const mockDb = {} as Parameters<typeof CognitiveWorkspace>[0]
