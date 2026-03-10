@@ -50,3 +50,7 @@ export type {
   AssembledContext,
 } from './context/index'
 export { assembleBlock12, assembleBlock3, assembleBlock4, assembleContext } from './context/index'
+
+// ── ThreadRunner ──────────────────────────────────────────────────────────────
+export type { ThreadRunnerConfig } from './runner/index'
+export { ThreadRunner } from './runner/index'
