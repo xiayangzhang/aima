@@ -114,7 +114,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 子任务：
 - [x] T031: 集成测试 helper（mock LLM + 真实 DB + MockBrainAdapter 复用 Feature 002）
 - [x] T032: 集成测试 — 错误恢复完整周期（ALERT → retry → Thread 完成）
-- [ ] T033: 集成测试 — DEFER → pending → Limbic 重激活
+- [x] T033: 集成测试 — DEFER → pending → Limbic 重激活
 - [ ] T034: 集成测试 — brain.complete → episodic 写入 + segment_id + markUsed 计数
 - [ ] T035: Consolidation smoke test（需 ANTHROPIC_API_KEY，条件跳过）
 
