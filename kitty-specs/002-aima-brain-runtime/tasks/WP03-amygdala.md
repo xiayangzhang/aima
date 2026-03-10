@@ -1,11 +1,11 @@
 ---
 work_package_id: WP03
 title: Amygdala 守卫
-lane: "for_review"
+lane: "doing"
 dependencies: []
 subtasks: [T012, T013, T014, T015, T016]
 agent: "claude"
-shell_pid: "37606"
+shell_pid: "6508"
 history:
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -215,3 +215,4 @@ spec-kitty agent tasks move-task WP03 --to for_review --note "Ready: <summary>"
 
 - 2026-03-10T13:05:43Z – claude – shell_pid=37606 – lane=doing – Started implementation via workflow command
 - 2026-03-10T13:08:06Z – claude – shell_pid=37606 – lane=for_review – Ready for review: Amygdala guard implemented with three-stage decision (static rules → memory stub → Haiku stub), EventBus subscription, Signal push. 12 unit tests passing, typecheck + biome clean.
+- 2026-03-10T13:48:58Z – claude – shell_pid=6508 – lane=doing – Started review via workflow command
