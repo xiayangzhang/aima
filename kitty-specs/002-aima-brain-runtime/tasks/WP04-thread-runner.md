@@ -1,9 +1,11 @@
 ---
 work_package_id: WP04
 title: ThreadRunner（路由 + 崩溃恢复 + pending）
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T017, T018, T019, T020, T021, T022, T023, T024]
+agent: "claude"
+shell_pid: "41743"
 history:
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -355,3 +357,7 @@ cd /Volumes/leoyun/aima
 spec-kitty agent workflow implement --agent <name>
 spec-kitty agent tasks move-task WP04 --to for_review --note "Ready: <summary>"
 ```
+
+## Activity Log
+
+- 2026-03-10T13:08:09Z – claude – shell_pid=41743 – lane=doing – Started implementation via workflow command
