@@ -1,7 +1,7 @@
 ---
 work_package_id: WP06
 title: CognitiveWorkspace — Memory
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks:
 - T026
@@ -13,8 +13,8 @@ phase: Phase 2 - Core DAO
 assignee: ''
 agent: "claude"
 shell_pid: "69705"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-10T00:00:00Z'
   lane: planned
@@ -374,3 +374,4 @@ bun test tests/unit/workspace/memory.test.ts
 - 2026-03-10T10:19:10Z – claude – shell_pid=14517 – lane=doing – Started implementation via workflow command
 - 2026-03-10T10:48:40Z – claude – shell_pid=14517 – lane=for_review – Ready for review: writeMemory (supersedes tx), searchMemory (tags @> AND, excludeInvalid), markMemoryUsed (batch SELECT+UPDATE in tx), clearWorkingMemory (physical DELETE). 25 unit tests, all passing.
 - 2026-03-10T10:52:57Z – claude – shell_pid=69705 – lane=doing – Started review via workflow command
+- 2026-03-10T10:53:26Z – claude – shell_pid=69705 – lane=done – Review passed: all 4 methods correct — writeMemory uses db.transaction() for supersedes, searchMemory uses @> AND operator, markMemoryUsed early-returns on empty ids + wraps updates in transaction, clearWorkingMemory is physical delete. 25/25 unit tests pass.
