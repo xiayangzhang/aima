@@ -1,7 +1,7 @@
 ---
 work_package_id: WP09
 title: 集成测试 + E2E smoke test
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T052, T053, T054, T055, T056, T057]
 history:
@@ -380,3 +380,7 @@ DATABASE_URL=... ANTHROPIC_API_KEY=... bun run test:integration
 ```bash
 spec-kitty implement WP09 --base WP07
 ```
+
+## Activity Log
+
+- 2026-03-10T13:37:11Z – unknown – lane=doing – Moved to doing
