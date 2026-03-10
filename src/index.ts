@@ -51,3 +51,7 @@ export type {
   AmygdalaConfig,
 } from './amygdala/index'
 export { Amygdala } from './amygdala/index'
+
+// ── Adapters ──────────────────────────────────────────────────────────────────
+export type { PiCodingAgentAdapterConfig } from './adapters/pi-agent/index'
+export { PiCodingAgentAdapter } from './adapters/pi-agent/index'
