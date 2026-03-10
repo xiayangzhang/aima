@@ -1,0 +1,8 @@
+{
+  "feature_number": "004",
+  "slug": "004-hippocampus-memory-consolidation",
+  "friendly_name": "Hippocampus Memory Consolidation",
+  "mission": "software-dev",
+  "source_description": "Feature 004 — Hippocampus：每日批量记忆巩固（Segment 精修 + 序列回放 + usage_outcomes 收敛 + 过期清理）",
+  "created_at": "2026-03-11T00:00:00Z"
+}
