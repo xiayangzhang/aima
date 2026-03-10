@@ -19,5 +19,6 @@ dist/
 .amazonq/
 .github/copilot/
 .kittify/.dashboard
+.worktrees/
 # Prevent worktree-local kitty-specs/ (status managed in main repo)
 kitty-specs/
