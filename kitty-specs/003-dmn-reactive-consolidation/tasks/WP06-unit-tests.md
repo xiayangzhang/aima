@@ -1,7 +1,7 @@
 ---
 work_package_id: WP06
 title: 单元测试
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T025, T026, T027, T028, T029, T030]
 agent: "claude"
@@ -532,3 +532,4 @@ spec-kitty implement WP06 --base WP05
 ## Activity Log
 
 - 2026-03-10T15:08:13Z – claude – shell_pid=87885 – lane=doing – Started implementation via workflow command
+- 2026-03-10T15:14:15Z – claude – shell_pid=87885 – lane=for_review – Ready for review: helpers.ts mock factory + 39 comprehensive tests (T025-T032). All 174 unit tests pass.
