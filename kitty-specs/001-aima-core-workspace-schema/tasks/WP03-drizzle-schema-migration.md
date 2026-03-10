@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: Drizzle Schema + Migration
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks:
 - T012
@@ -12,8 +12,8 @@ subtasks:
 - T017
 phase: Phase 1 - Foundation
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude"
+shell_pid: "97661"
 review_status: ''
 reviewed_by: ''
 history:
@@ -377,3 +377,4 @@ bun run db:migrate
 ## Activity Log
 
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
+- 2026-03-10T10:08:58Z – claude – shell_pid=97661 – lane=doing – Started implementation via workflow command
