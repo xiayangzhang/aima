@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { assembleBlock12, assembleBlock4, assembleContext } from '../../src/context/index'
+import { assembleBlock4, assembleBlock12, assembleContext } from '../../src/context/index'
 import type { ContextAssemblerConfig } from '../../src/context/index'
 import type { MemoryEntry } from '../../src/types/index'
 
@@ -64,7 +64,7 @@ describe('assembleBlock4', () => {
   })
 
   test('brainstem retrieves procedural memories', async () => {
-    const semantic = makeMemory('m1', 'semantic', 'fact')
+    const _semantic = makeMemory('m1', 'semantic', 'fact')
     const procedural = makeMemory('m2', 'procedural', 'step-by-step')
 
     const mockWorkspace = {
@@ -129,7 +129,15 @@ describe('assembleContext', () => {
   test('systemPrompt contains block12 and block3 content', async () => {
     const cachedBlock12 = assembleBlock12('limbic', config)
     const mockWorkspace = {
-      getThread: async () => ({ id: 't1', state: 'active', sourceChannel: null, initiatedBy: 'test', trigger: null, createdAt: new Date(), updatedAt: new Date() }),
+      getThread: async () => ({
+        id: 't1',
+        state: 'active',
+        sourceChannel: null,
+        initiatedBy: 'test',
+        trigger: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
       getSlotsByThread: async () => [],
       searchMemory: async () => [],
     } as Parameters<typeof assembleContext>[1]

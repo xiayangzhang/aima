@@ -43,11 +43,14 @@ export type {
 } from './adapters/index'
 export { BrainEventBus, getEventBus } from './eventbus/index'
 
-// ── Amygdala ──────────────────────────────────────────────────────────────────
+// ── Context Assembler ─────────────────────────────────────────────────────────
 export type {
-  ToolRiskLevel,
-  AmygdalaDecision,
-  AmygdalaRule,
-  AmygdalaConfig,
-} from './amygdala/index'
-export { Amygdala } from './amygdala/index'
+  BrainIdentity,
+  ContextAssemblerConfig,
+  AssembledContext,
+} from './context/index'
+export { assembleBlock12, assembleBlock3, assembleBlock4, assembleContext } from './context/index'
+
+// ── ThreadRunner ──────────────────────────────────────────────────────────────
+export type { ThreadRunnerConfig } from './runner/index'
+export { ThreadRunner } from './runner/index'
