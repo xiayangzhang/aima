@@ -43,6 +43,14 @@ export type {
 } from './adapters/index'
 export { BrainEventBus, getEventBus } from './eventbus/index'
 
+// ── Context Assembler ─────────────────────────────────────────────────────────
+export type {
+  BrainIdentity,
+  ContextAssemblerConfig,
+  AssembledContext,
+} from './context/index'
+export { assembleBlock12, assembleBlock3, assembleBlock4, assembleContext } from './context/index'
+
 // ── Amygdala ──────────────────────────────────────────────────────────────────
 export type {
   ToolRiskLevel,
@@ -52,9 +60,19 @@ export type {
 } from './amygdala/index'
 export { Amygdala } from './amygdala/index'
 
+// ── ThreadRunner ──────────────────────────────────────────────────────────────
+export type { ThreadRunnerConfig } from './runner/index'
+export { ThreadRunner } from './runner/index'
+
 // ── Adapters ──────────────────────────────────────────────────────────────────
+export type { PiCodingAgentAdapterConfig } from './adapters/pi-agent/index'
+export { PiCodingAgentAdapter } from './adapters/pi-agent/index'
 export type { ClaudeAgentSDKAdapterConfig } from './adapters/claude-sdk/index'
 export { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
 
 // ── MCP Server ────────────────────────────────────────────────────────────────
 export { createAimaMcpServer } from './mcp/index'
+
+// ── AIMAInstance ──────────────────────────────────────────────────────────────
+export type { AIMAInstanceConfig, AdapterType } from './instance'
+export { AIMAInstance, createAIMAInstance } from './instance'

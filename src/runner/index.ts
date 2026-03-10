@@ -143,6 +143,11 @@ export class ThreadRunner {
 
   // ── Brain Activation ─────────────────────────────────────────────────────────
 
+  /** Trigger a brain activation from outside the routing loop (e.g. AIMAInstance.receive()). */
+  async trigger(brain: CognitiveBrainType, threadId: string): Promise<void> {
+    await this.activateBrain(brain, threadId)
+  }
+
   private async activateBrain(brain: CognitiveBrainType, threadId: string): Promise<void> {
     const adapter = this.adapters.get(brain)
     if (!adapter) throw new Error(`No adapter registered for brain: ${brain}`)
