@@ -1,9 +1,11 @@
 ---
 work_package_id: WP07
 title: 集成测试 + smoke test
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T031, T032, T033, T034, T035]
+agent: "claude"
+shell_pid: "94414"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -278,3 +280,7 @@ AIMA_TEST_DATABASE_URL=... ANTHROPIC_API_KEY=... \
 ```bash
 spec-kitty implement WP07 --base WP06
 ```
+
+## Activity Log
+
+- 2026-03-10T15:14:19Z – claude – shell_pid=94414 – lane=doing – Started implementation via workflow command
