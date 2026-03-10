@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: 核心类型定义
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks:
 - T007
@@ -13,8 +13,8 @@ phase: Phase 1 - Foundation
 assignee: ''
 agent: "claude"
 shell_pid: "9371"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-10T00:00:00Z'
   lane: planned
@@ -345,3 +345,4 @@ biome check src/types/index.ts
 - 2026-03-10T10:03:19Z – claude – shell_pid=90215 – lane=doing – Started implementation via workflow command
 - 2026-03-10T10:05:20Z – claude – shell_pid=90215 – lane=for_review – Ready for review: src/types/index.ts — all enums (BrainType/CognitiveBrainType/ThreadState/SlotStatus/Intent/ComplexityHint/MemoryType/UsageOutcome), entity interfaces (Thread/Slot/UsageOutcomes/MemoryEntry/PendingObservation), input types, ICognitiveWorkspace. typecheck ✓, biome ✓, no any
 - 2026-03-10T10:15:51Z – claude – shell_pid=9371 – lane=doing – Started review via workflow command
+- 2026-03-10T10:16:16Z – claude – shell_pid=9371 – lane=done – Review passed: src/types/index.ts complete — 8 enums, 5 entity interfaces, 5 input types, ICognitiveWorkspace. All values match contracts/workspace.ts. MemoryEntry.content comment correct. No any. Fixed tsconfig NodeNext→Bundler during review.
