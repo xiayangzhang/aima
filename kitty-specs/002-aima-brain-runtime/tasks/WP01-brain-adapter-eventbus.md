@@ -1,9 +1,11 @@
 ---
 work_package_id: "WP01"
 title: "BrainAdapter 接口 + BrainEventBus"
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks: ["T001", "T002", "T003", "T004", "T005", "T006"]
+agent: "claude"
+shell_pid: "21643"
 history:
   - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -231,3 +233,7 @@ spec-kitty agent workflow implement --agent <name>
 # 完成后：
 spec-kitty agent tasks move-task WP01 --to for_review --note "Ready: <summary>"
 ```
+
+## Activity Log
+
+- 2026-03-10T12:57:01Z – claude – shell_pid=21643 – lane=doing – Started implementation via workflow command
