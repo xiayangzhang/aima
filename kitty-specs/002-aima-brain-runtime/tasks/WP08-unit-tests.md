@@ -1,11 +1,13 @@
 ---
 work_package_id: WP08
 title: 单元测试（ThreadRunner / EventBus / ContextAssembler）
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks: [T045, T046, T047, T048, T049, T050, T051]
 agent: "claude"
 shell_pid: "8749"
+reviewed_by: "XIAYANG ZHANG"
+review_status: "approved"
 history:
 - 2026-03-10T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -533,3 +535,4 @@ spec-kitty implement WP08 --base WP04
 - 2026-03-10T13:32:02Z – unknown – lane=doing – Moved to doing
 - 2026-03-10T13:37:06Z – unknown – lane=for_review – Moved to for_review
 - 2026-03-10T13:50:09Z – claude – shell_pid=8749 – lane=doing – Started review via workflow command
+- 2026-03-10T13:50:18Z – claude – shell_pid=8749 – lane=done – Review passed: Extended unit tests for ThreadRunner (T049-T052: cortex communicate→limbic, cortex both→limbic, routePending activates brain, waitForComplete). 94 unit tests passing, typecheck + biome clean.
