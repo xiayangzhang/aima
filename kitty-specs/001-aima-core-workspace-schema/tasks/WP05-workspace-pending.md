@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: CognitiveWorkspace — Pending Observations
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks:
 - T022
@@ -12,8 +12,8 @@ phase: Phase 2 - Core DAO
 assignee: ''
 agent: "claude"
 shell_pid: "69394"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-10T00:00:00Z'
   lane: planned
@@ -287,3 +287,4 @@ bun test tests/unit/workspace/pending.test.ts
 - 2026-03-10T10:19:08Z – claude – shell_pid=14255 – lane=doing – Started implementation via workflow command
 - 2026-03-10T10:48:08Z – claude – shell_pid=14255 – lane=for_review – Ready for review: writePending (advisory lock + capacity eviction), getPendingObservations, removeExpiredPending, removePending all implemented. 15 unit tests pass, typecheck clean.
 - 2026-03-10T10:52:51Z – claude – shell_pid=69394 – lane=doing – Started review via workflow command
+- 2026-03-10T10:53:18Z – claude – shell_pid=69394 – lane=done – Review passed: advisory lock key correct, capacity count excludes expired (gte), eviction order base_importance ASC/added_at ASC correct, removeExpiredPending uses strict lt, getPendingObservations NULLS FIRST ordering correct. 15 unit tests pass.
