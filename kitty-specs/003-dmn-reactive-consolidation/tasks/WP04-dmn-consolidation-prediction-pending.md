@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: DmnConsolidation — 前瞻预测 + Pending 维护
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T015, T016, T017, T018, T019]
 agent: "claude"
@@ -282,3 +282,4 @@ spec-kitty implement WP04 --base WP01
 ## Activity Log
 
 - 2026-03-10T15:01:28Z – claude – shell_pid=79231 – lane=doing – Started implementation via workflow command
+- 2026-03-10T15:04:43Z – claude – shell_pid=79231 – lane=for_review – Ready for review: DmnConsolidation 心跳框架+前瞻预测+pending维护, createdAfter扩展, 8 tests passing
