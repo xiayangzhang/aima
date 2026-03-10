@@ -51,3 +51,10 @@ export type {
   AmygdalaConfig,
 } from './amygdala/index'
 export { Amygdala } from './amygdala/index'
+
+// ── Adapters ──────────────────────────────────────────────────────────────────
+export type { ClaudeAgentSDKAdapterConfig } from './adapters/claude-sdk/index'
+export { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
+
+// ── MCP Server ────────────────────────────────────────────────────────────────
+export { createAimaMcpServer } from './mcp/index'
