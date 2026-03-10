@@ -142,7 +142,7 @@ describeWithDb('Memory operations (integration)', () => {
 
       await ws.clearWorkingMemory(threadId)
 
-      const all = await ws.searchMemory({ excludeInvalid: false })
+      const all = await ws.searchMemory({ excludeInvalid: false, limit: 1000 })
       const workingForThread = all.filter((m) => m.type === 'working' && m.threadId === threadId)
       const semanticForThread = all.filter((m) => m.type === 'semantic' && m.threadId === threadId)
 

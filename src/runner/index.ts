@@ -79,62 +79,81 @@ export class ThreadRunner {
     slotStatus: string
   }): Promise<void> {
     if (!this.running) return
-    const { threadId, brain, slotStatus } = event
+    const { threadId, slotStatus } = event
     if (slotStatus !== 'done') return
 
-    // Thread-level serialisation: skip if already routing this Thread
+    // Thread-level serialisation: skip if already routing this Thread.
+    // The loop below drives the entire chain inside a single route() call, so
+    // inner notifySlotDone-triggered route() calls are intentionally ignored.
     if (this.processingThreads.has(threadId)) return
     this.processingThreads.add(threadId)
 
     try {
-      const thread = await this.workspace.getThread(threadId)
-      if (!thread || thread.state === 'complete' || thread.state === 'interrupted') return
+      let currentBrain: CognitiveBrainType = event.brain
 
-      const slots = await this.workspace.getSlotsByThread(threadId)
-      const slotMap = Object.fromEntries(slots.map((s) => [s.brain, s]))
+      // Drive the full routing chain iteratively so that each activateBrain()
+      // result is processed inline — avoiding the re-entrancy issue where a
+      // notifySlotDone fired inside activateBrain() would be blocked by the
+      // processingThreads lock and leave the chain stuck.
+      while (this.running) {
+        const thread = await this.workspace.getThread(threadId)
+        if (!thread || thread.state === 'complete' || thread.state === 'interrupted') return
 
-      if (brain === 'limbic') {
-        const output = slotMap.limbic?.output as Record<string, unknown> | null
-        const mode = output?.mode as string | undefined
+        const slots = await this.workspace.getSlotsByThread(threadId)
+        const slotMap = Object.fromEntries(slots.map((s) => [s.brain, s]))
 
-        if (mode === 'RESPOND' || mode === 'NO_REPLY') {
-          await this.workspace.updateThreadState(threadId, 'complete')
-          this.workspace.notifyThreadComplete(threadId)
-        } else if (mode === 'ROUTE') {
-          await this.activateBrain('cortex', threadId)
-        } else if (mode === 'EXECUTE') {
-          await this.activateBrain('brainstem', threadId)
-        } else if (mode === 'DEFER') {
-          const timeoutMs = (output?.timeout_ms as number | undefined) ?? 60_000
-          const triggerAt = new Date(Date.now() + timeoutMs)
-          await this.workspace.writePending({
-            targetBrain: 'limbic',
-            note: 'DEFER timeout — re-activate Limbic with channel downgrade',
-            triggerAt,
-            expiresAt: new Date(triggerAt.getTime() + 7 * 24 * 60 * 60 * 1000),
-          })
+        let nextBrain: CognitiveBrainType | null = null
+
+        if (currentBrain === 'limbic') {
+          const output = slotMap.limbic?.output as Record<string, unknown> | null
+          const mode = output?.mode as string | undefined
+
+          if (mode === 'RESPOND' || mode === 'NO_REPLY') {
+            await this.workspace.updateThreadState(threadId, 'complete')
+            this.workspace.notifyThreadComplete(threadId)
+            return
+          } else if (mode === 'ROUTE') {
+            nextBrain = 'cortex'
+          } else if (mode === 'EXECUTE') {
+            nextBrain = 'brainstem'
+          } else if (mode === 'DEFER') {
+            const timeoutMs = (output?.timeout_ms as number | undefined) ?? 60_000
+            const triggerAt = new Date(Date.now() + timeoutMs)
+            await this.workspace.writePending({
+              targetBrain: 'limbic',
+              note: 'DEFER timeout — re-activate Limbic with channel downgrade',
+              triggerAt,
+              expiresAt: new Date(triggerAt.getTime() + 7 * 24 * 60 * 60 * 1000),
+            })
+            return
+          }
+        } else if (currentBrain === 'cortex') {
+          const output = slotMap.cortex?.output as Record<string, unknown> | null
+          const intent = output?.intent as string | undefined
+
+          if (intent === 'communicate') {
+            nextBrain = 'limbic'
+          } else if (intent === 'execute') {
+            nextBrain = 'brainstem'
+          } else if (intent === 'both') {
+            // First activate Limbic (tentative reply); Brainstem follows when Limbic done
+            nextBrain = 'limbic'
+          }
+        } else if (currentBrain === 'brainstem') {
+          const cortexOutput = slotMap.cortex?.output as Record<string, unknown> | null
+          if (cortexOutput?.intent === 'both') {
+            // intent=both path: Brainstem done → final Limbic confirmation
+            nextBrain = 'limbic'
+          } else {
+            await this.workspace.updateThreadState(threadId, 'complete')
+            this.workspace.notifyThreadComplete(threadId)
+            return
+          }
         }
-      } else if (brain === 'cortex') {
-        const output = slotMap.cortex?.output as Record<string, unknown> | null
-        const intent = output?.intent as string | undefined
 
-        if (intent === 'communicate') {
-          await this.activateBrain('limbic', threadId)
-        } else if (intent === 'execute') {
-          await this.activateBrain('brainstem', threadId)
-        } else if (intent === 'both') {
-          // First activate Limbic (tentative reply); Brainstem follows when Limbic done
-          await this.activateBrain('limbic', threadId)
-        }
-      } else if (brain === 'brainstem') {
-        const cortexOutput = slotMap.cortex?.output as Record<string, unknown> | null
-        if (cortexOutput?.intent === 'both') {
-          // intent=both path: Brainstem done → final Limbic confirmation
-          await this.activateBrain('limbic', threadId)
-        } else {
-          await this.workspace.updateThreadState(threadId, 'complete')
-          this.workspace.notifyThreadComplete(threadId)
-        }
+        if (!nextBrain) return
+        await this.activateBrain(nextBrain, threadId)
+        currentBrain = nextBrain
       }
     } finally {
       this.processingThreads.delete(threadId)
