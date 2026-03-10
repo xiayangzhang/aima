@@ -70,7 +70,7 @@ WP04 和 WP03 可并行（都依赖 WP01）。
 - [x] T016: 读 episodic 增量（created_at > lastRunAt，分页读取）
 - [x] T017: 前瞻预测（职责1）— 读 episodic+procedural+semantic 模式 + Haiku 判断 → pending 写入
 - [x] T018: Pending 维护（职责2）— 读当前 pending + 增量 + Haiku 重评估 → 移除/保留/更新
-- [ ] T019: Consolidation 单次运行入口（runOnce）+ 三项职责并发执行框架
+- [x] T019: Consolidation 单次运行入口（runOnce）+ 三项职责并发执行框架
 
 **Prompt**: WP04-dmn-consolidation-prediction-pending.md
 
