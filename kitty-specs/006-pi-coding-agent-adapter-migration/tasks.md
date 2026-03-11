@@ -105,7 +105,7 @@
 - [x] T015 Rename `PiCodingAgentAdapter` → `PiAgentAdapter` in `src/adapters/pi-agent/index.ts`; update named export; fix any reference in `src/instance.ts`
 - [x] T016 Add `'pi-coding-agent'` to `AdapterType` union; add `import { PiCodingAgentAdapter } from './adapters/pi-coding-agent/index'` to `src/instance.ts`
 - [x] T017 Add `adapter === 'pi-coding-agent'` branch in AIMAInstance constructor — instantiates `PiCodingAgentAdapter` with workspace/eventBus/amygdala/getApiKey
-- [ ] T018 Export `PiCodingAgentAdapter` and `PiCodingAgentAdapterConfig` from `src/index.ts`; run `bun run typecheck` + `biome check --write`
+- [x] T018 Export `PiCodingAgentAdapter` and `PiCodingAgentAdapterConfig` from `src/index.ts`; run `bun run typecheck` + `biome check --write`
 
 ### Implementation Notes
 - The rename in T015 is mechanical — `sed` replacement or Edit tool; no logic changes
