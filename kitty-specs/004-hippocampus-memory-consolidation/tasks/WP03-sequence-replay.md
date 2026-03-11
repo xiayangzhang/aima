@@ -1,11 +1,12 @@
 ---
 work_package_id: WP03
 title: 步骤 2：段序列回放
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T013, T014, T015, T016, T017]
 assignee: claude
-agent: claude
+agent: "claude-sonnet-4-6"
+shell_pid: "50069"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -233,3 +234,7 @@ cd /Volumes/leoyun/aima
 spec-kitty agent workflow implement --agent <name>
 spec-kitty agent tasks move-task WP03 --to for_review --note "Ready: <summary>"
 ```
+
+## Activity Log
+
+- 2026-03-11T02:31:14Z – claude-sonnet-4-6 – shell_pid=50069 – lane=doing – Started implementation via workflow command
