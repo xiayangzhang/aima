@@ -36,7 +36,11 @@ export interface AIMAInstanceConfig {
   skillIndex?: string
   /** Per-brain identity overrides. Defaults to minimal identity strings. */
   identities?: Partial<Record<CognitiveBrainType, BrainIdentity>>
-  /** Per-brain model overrides. */
+  /** Per-brain model overrides.
+   * - limbic: defaults to 'claude-haiku-4-5-20251001' (fast routing & communication)
+   * - cortex: defaults to 'claude-sonnet-4-6' (reasoning & planning)
+   * - brainstem: defaults to 'claude-sonnet-4-6' (execution & tool use)
+   */
   brainModels?: {
     limbic?: string
     cortex?: string
@@ -263,45 +267,86 @@ export class AIMAInstance {
     const adapters = new Map<CognitiveBrainType, BrainAdapter>()
 
     if (config.adapter === 'pi-agent') {
-      // All cognitive brains share one PiAgentAdapter instance
-      // (session isolation is handled by `${brain}:${threadId}` keys internally)
-      const limbicModel = config.brainModels?.limbic ?? 'claude-sonnet-4-6'
-      const adapter = new PiAgentAdapter({
-        ...shared,
-        modelId: limbicModel,
-        getApiKey: apiKeyFn,
-      })
-      adapters.set('limbic', adapter)
-      adapters.set('cortex', adapter)
-      adapters.set('brainstem', adapter)
+      adapters.set(
+        'limbic',
+        new PiAgentAdapter({
+          ...shared,
+          modelId: config.brainModels?.limbic ?? 'claude-haiku-4-5-20251001',
+          getApiKey: apiKeyFn,
+        }),
+      )
+      adapters.set(
+        'cortex',
+        new PiAgentAdapter({
+          ...shared,
+          modelId: config.brainModels?.cortex ?? 'claude-sonnet-4-6',
+          getApiKey: apiKeyFn,
+        }),
+      )
+      adapters.set(
+        'brainstem',
+        new PiAgentAdapter({
+          ...shared,
+          modelId: config.brainModels?.brainstem ?? 'claude-sonnet-4-6',
+          getApiKey: apiKeyFn,
+        }),
+      )
       return adapters
     }
 
     if (config.adapter === 'pi-coding-agent') {
-      // All cognitive brains share one PiCodingAgentAdapter instance
-      // (session isolation is handled by `${brain}:${threadId}` keys internally)
-      const limbicModel = config.brainModels?.limbic ?? 'claude-sonnet-4-6'
-      const adapter = new PiCodingAgentAdapter({
-        ...shared,
-        modelId: limbicModel,
-        getApiKey: apiKeyFn,
-        getAllowedTools: (brain) => this.identityCache?.roles[brain]?.allowedTools ?? [],
-      })
-      adapters.set('limbic', adapter)
-      adapters.set('cortex', adapter)
-      adapters.set('brainstem', adapter)
+      adapters.set(
+        'limbic',
+        new PiCodingAgentAdapter({
+          ...shared,
+          modelId: config.brainModels?.limbic ?? 'claude-haiku-4-5-20251001',
+          getApiKey: apiKeyFn,
+          getAllowedTools: (brain) => this.identityCache?.roles[brain]?.allowedTools ?? [],
+        }),
+      )
+      adapters.set(
+        'cortex',
+        new PiCodingAgentAdapter({
+          ...shared,
+          modelId: config.brainModels?.cortex ?? 'claude-sonnet-4-6',
+          getApiKey: apiKeyFn,
+          getAllowedTools: (brain) => this.identityCache?.roles[brain]?.allowedTools ?? [],
+        }),
+      )
+      adapters.set(
+        'brainstem',
+        new PiCodingAgentAdapter({
+          ...shared,
+          modelId: config.brainModels?.brainstem ?? 'claude-sonnet-4-6',
+          getApiKey: apiKeyFn,
+          getAllowedTools: (brain) => this.identityCache?.roles[brain]?.allowedTools ?? [],
+        }),
+      )
       return adapters
     }
 
     if (config.adapter === 'claude-sdk') {
-      const limbicModel = config.brainModels?.limbic ?? 'claude-sonnet-4-6'
-      const adapter = new ClaudeAgentSDKAdapter({
-        ...shared,
-        model: limbicModel,
-      })
-      adapters.set('limbic', adapter)
-      adapters.set('cortex', adapter)
-      adapters.set('brainstem', adapter)
+      adapters.set(
+        'limbic',
+        new ClaudeAgentSDKAdapter({
+          ...shared,
+          model: config.brainModels?.limbic ?? 'claude-haiku-4-5-20251001',
+        }),
+      )
+      adapters.set(
+        'cortex',
+        new ClaudeAgentSDKAdapter({
+          ...shared,
+          model: config.brainModels?.cortex ?? 'claude-sonnet-4-6',
+        }),
+      )
+      adapters.set(
+        'brainstem',
+        new ClaudeAgentSDKAdapter({
+          ...shared,
+          model: config.brainModels?.brainstem ?? 'claude-sonnet-4-6',
+        }),
+      )
       return adapters
     }
 
