@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: AIMAInstance Integration + reloadIdentity()
-lane: planned
+lane: "doing"
 dependencies: ["WP01", "WP02", "WP03"]
 subtasks:
 - T010
@@ -12,8 +12,8 @@ subtasks:
 - T015
 phase: Phase 3 - Integration
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-sonnet-4-6"
+shell_pid: "6060"
 review_status: ''
 reviewed_by: ''
 history:
@@ -483,3 +483,7 @@ test('不传 identityDir 时现有行为不变', async () => {
 ```bash
 spec-kitty implement WP04 --base WP03
 ```
+
+## Activity Log
+
+- 2026-03-11T11:58:09Z – claude-sonnet-4-6 – shell_pid=6060 – lane=doing – Started implementation via workflow command
