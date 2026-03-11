@@ -22,7 +22,7 @@
 - [x] T002: HippocampusConfig 类型 + HippocampusConsolidation 类骨架（构造函数 + runConsolidation() 顺序调用四步 stub）
 - [x] T003: 调度器实现：start()（setTimeout 计算距 runAt 的延迟）+ stop()（60s 超时优雅退出 + running flag 防重入）
 - [x] T004: CognitiveWorkspace 扩展：getSegmentsByTimeRange + getSegmentSequence
-- [ ] T005: CognitiveWorkspace 扩展：updateMemorySegment
+- [x] T005: CognitiveWorkspace 扩展：updateMemorySegment
 - [ ] T006: CognitiveWorkspace 扩展：getMemoriesWithNonZeroOutcomes + updateMemoryImportanceAndResetOutcomes
 - [ ] T007: CognitiveWorkspace 扩展：forgetExpiredMemories；AIMAInstance 集成（enableHippocampus）；src/index.ts 导出
 
