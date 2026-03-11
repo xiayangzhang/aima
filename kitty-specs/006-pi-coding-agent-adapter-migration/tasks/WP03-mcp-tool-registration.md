@@ -2,7 +2,7 @@
 work_package_id: "WP03"
 title: "MCP Tool Registration"
 phase: "Phase 2 - Core Behavior"
-lane: "doing"
+lane: "for_review"
 dependencies: ["WP01", "WP02"]
 subtasks:
   - "T012"
@@ -213,3 +213,4 @@ biome check src/adapters/pi-coding-agent/
 
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created.
 - 2026-03-11T10:41:19Z – claude-sonnet-4-6 – shell_pid=87805 – lane=doing – Started implementation via workflow command
+- 2026-03-11T10:48:32Z – claude-sonnet-4-6 – shell_pid=87805 – lane=for_review – Ready: 6 ToolDefinition[] tools using TypeBox schemas. ok() helper returns correct AgentToolResult format (TextContent array + details:undefined). workspace_/memory_ prefix names pass through Amygdala DEFAULT_ALLOWED_TOOLS prefix rule.
