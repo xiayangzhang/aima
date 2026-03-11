@@ -2,15 +2,15 @@
 work_package_id: "WP03"
 title: "MCP Tool Registration"
 phase: "Phase 2 - Core Behavior"
-lane: "planned"
+lane: "doing"
 dependencies: ["WP01", "WP02"]
 subtasks:
   - "T012"
   - "T013"
   - "T014"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude-sonnet-4-6"
+shell_pid: "87805"
 review_status: ""
 reviewed_by: ""
 history:
@@ -212,3 +212,4 @@ biome check src/adapters/pi-coding-agent/
 ## Activity Log
 
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created.
+- 2026-03-11T10:41:19Z – claude-sonnet-4-6 – shell_pid=87805 – lane=doing – Started implementation via workflow command
