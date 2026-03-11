@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Per-Brain Adapter Instances
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks:
 - T001
@@ -234,3 +234,4 @@ if (config.adapter === 'pi-agent') {
 ## Activity Log
 
 - 2026-03-11T13:00:12Z – claude-sonnet-4-6 – shell_pid=2212 – lane=doing – Started implementation via workflow command
+- 2026-03-11T13:04:31Z – claude-sonnet-4-6 – shell_pid=2212 – lane=for_review – Ready for review: per-brain adapter instances implemented. limbic=haiku, cortex=brainstem=sonnet defaults. All 3 adapter paths fixed (pi-agent/pi-coding-agent/claude-sdk). 12 new tests covering defaults, overrides and instance independence. 319 unit tests pass, typecheck clean.
