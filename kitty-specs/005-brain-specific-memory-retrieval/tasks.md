@@ -77,7 +77,7 @@ T001/T002/T003 均为独立新方法，逻辑互不影响，可同时起草但�
 - [x] T009: `AssembleBlock4Opts` 接口
 - [x] T010: `assembleBlock4` 签名 + limbic 升级
 - [x] T011: cortex 分支升级
-- [ ] T012: brainstem 分支升级
+- [x] T012: brainstem 分支升级
 - [ ] T013: `assembleContext` 透传 opts
 - [ ] T014: `src/index.ts` 导出 `AssembleBlock4Opts`
 - [ ] T015: 单元测试
