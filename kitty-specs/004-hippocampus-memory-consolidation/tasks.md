@@ -85,7 +85,7 @@
 
 子任务：
 - [x] T022: lifecycle.test.ts：start/stop flag、timer 清除、重复 stop 不报错、running 重入保护
-- [ ] T023: segment-refine.test.ts：mock workspace + mock callLlm；merge=true 时 updateMemorySegment 被调用；LLM 失败时精修继续
+- [x] T023: segment-refine.test.ts：mock workspace + mock callLlm；merge=true 时 updateMemorySegment 被调用；LLM 失败时精修继续
 - [ ] T024: sequence-replay.test.ts：mock workspace + mock callLlm；writeMemory 被调用 3 次（类型正确）；JSON 解析失败时跳过该段
 - [ ] T025: converge-cleanup.test.ts Part A：computeNewImportance 纯函数——5 个边界值测试（上升/下降/不变/下溢/上溢）
 - [ ] T026: converge-cleanup.test.ts Part B：runOutcomesConverge mock 验证（getMemoriesWithNonZeroOutcomes 结果 → 正确 update 调用次数）
