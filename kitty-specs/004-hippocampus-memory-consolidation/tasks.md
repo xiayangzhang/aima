@@ -103,7 +103,7 @@
 子任务：
 - [x] T028: 集成测试 helper + seeder：写入已知 episodic 段数据、usage_outcomes 数据、过期数据；MockLlm（可配置返回值）
 - [x] T029: 集成测试：段精修（mock callLlm merge=true → DB 中 segment_id 被更新）
-- [ ] T030: 集成测试：序列回放（mock callLlm 返回 semantic+procedural → DB 中新记忆写入）
+- [x] T030: 集成测试：序列回放（mock callLlm 返回 semantic+procedural → DB 中新记忆写入）
 - [ ] T031: 集成测试：usage_outcomes 收敛（seeded 正向反馈 → DB base_importance 上升，outcomes 重置）
 - [ ] T032: 集成测试：过期清理（2 条 expired + 1 条 pinned → 只有 2 条 forgotten=true）
 - [ ] T033: 集成测试：全流程顺序约束（runConsolidation 完整运行，验证四步均执行且 DB 最终状态正确）
