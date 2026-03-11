@@ -2,7 +2,7 @@
 work_package_id: WP04
 title: AIMAInstance Integration + reloadIdentity()
 lane: planned
-dependencies: []
+dependencies: ["WP01", "WP02", "WP03"]
 subtasks:
 - T010
 - T011

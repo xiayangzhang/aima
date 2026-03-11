@@ -2,7 +2,7 @@
 work_package_id: WP03
 title: Extension Factory Tool Permission Override
 lane: planned
-dependencies: []
+dependencies: ["WP01"]
 subtasks:
 - T008
 - T009

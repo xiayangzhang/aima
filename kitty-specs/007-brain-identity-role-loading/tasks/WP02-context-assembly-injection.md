@@ -2,7 +2,7 @@
 work_package_id: WP02
 title: Context Assembly Block 1/2 Injection
 lane: planned
-dependencies: []
+dependencies: ["WP01"]
 subtasks:
 - T006
 - T007
