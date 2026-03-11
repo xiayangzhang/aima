@@ -180,20 +180,57 @@ type UsageOutcome = 'positive' | 'negative' | 'neutral'
 
 ## Testing Strategy
 
+### ⚠️ 强制规则：集成测试必须用真实环境
+
+**集成测试绝对禁止 mock 数据库或 mock API key。**
+
+- 任何涉及数据库读写的测试 = 集成测试 = 必须用真实 PostgreSQL
+- 任何涉及 LLM API 调用的测试 = 集成测试 = 必须用真实 Anthropic API key
+- 用 mock 替代真实环境的"集成测试"无任何价值，不要写
+
+**环境变量**（必须在运行集成测试前设置）：
+```bash
+export AIMA_TEST_DATABASE_URL="postgresql://localhost/aima_test"
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+**没有设置这两个环境变量，不要运行集成测试，更不要在 CI 中跳过它们假装通过。**
+
+---
+
 ### 单元测试（`bun test`）
-- 测试纯函数和类方法的逻辑，不依赖真实 DB
-- 文件命名：`*.test.ts`，与被测文件同目录或在 `tests/unit/`
-- Mock 数据库依赖（注入 mock `CognitiveWorkspace`）
+
+适用范围：
+- 纯函数（无 I/O，无网络，无数据库）
+- 类方法的业务逻辑（注入 mock workspace/eventBus）
+- 文件系统操作（用 `os.tmpdir()` 真实临时目录，不 mock fs）
+
+文件位置：`tests/unit/` 或与被测文件同目录
+
+Mock 规则：
+- ✅ 可 mock：`CognitiveWorkspace`（替换为 stub DAO）、`BrainEventBus`（内存实现）
+- ✅ 可 mock：LLM adapter（防止真实 API 调用）
+- ❌ 不可 mock：文件系统（用真实 tmpdir）、`crypto.randomUUID()`、时间（用真实时间）
+- ❌ 不可 mock：任何你想放进集成测试套件的东西
 
 ### 集成测试（`vitest`）
-- 测试 DAO 层、并发行为、事务正确性
-- 使用真实 PostgreSQL，通过 `AIMA_TEST_DATABASE_URL` 指定
+
+适用范围：
+- 数据库 DAO 层（CognitiveWorkspace 所有 public 方法）
+- 并发行为（SELECT FOR UPDATE、事务边界）
+- 端到端 API 调用（LLM → adapter → workspace → event bus）
+- MCP tool handler（涉及 workspace 的完整链路）
+
+运行条件：
+- 必须设置 `AIMA_TEST_DATABASE_URL`（真实 PostgreSQL）
+- LLM 相关测试必须设置 `ANTHROPIC_API_KEY`
 - 每个测试用 `BEGIN` + `ROLLBACK` 隔离，不依赖测试间顺序
-- 并发测试（如 pending_observations 写锁）是集成测试的核心场景
+
+文件位置：`tests/integration/`
 
 ### 覆盖率目标
-- `CognitiveWorkspace` 所有 public 方法：≥ 80%
-- 核心类型转换函数：100%
+- `CognitiveWorkspace` 所有 public 方法：≥ 80%（集成测试）
+- 核心类型转换函数：100%（单元测试）
 
 ---
 
