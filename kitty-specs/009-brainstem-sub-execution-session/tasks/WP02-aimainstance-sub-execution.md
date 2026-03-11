@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: AIMAInstance Sub-Execution Logic
-lane: "doing"
+lane: "done"
 dependencies: ["WP01"]
 subtasks:
 - T005
@@ -337,3 +337,4 @@ expect(completeEvent?.payload?.isSubExecution).toBe(true)
 - 2026-03-11T13:12:21Z – unknown – lane=done – Review passed: buildBlock4Opts() correctly routes limbic/cortex to situation hint and brainstem to taskType (cortex output priority then trigger fallback). trigger() now fetches thread+slots before activation. assembleContext() opts param wired in both trigger() and route(). 7 new tests cover all brain paths and edge cases. 15 total tests pass, no regressions.
 - 2026-03-11T14:07:46Z – unknown – lane=for_review – Implemented spawnSubExecution() with EventBus events, executionModel config, amygdala member, wired into claude-sdk adapter. 6 new unit tests green.
 - 2026-03-11T14:08:22Z – claude-sonnet-4-6 – shell_pid=22850 – lane=doing – Started review via workflow command
+- 2026-03-11T14:08:46Z – claude-sonnet-4-6 – shell_pid=22850 – lane=done – Review passed: executionModel config added, spawnSubExecution() has correct model priority (params > config > default), EventBus brain.activate/brain.complete with isSubExecution:true, session_id is UUID (isolated from ThreadRunner), callback injected into claude-sdk brainstem adapter. 6 tests all green.
