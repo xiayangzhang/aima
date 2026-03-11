@@ -144,9 +144,147 @@ Respond with JSON only:
     }
   }
 
-  // Step 2 (WP03 implementation)
+  // Step 2: Sequence replay — extract reusable knowledge from top-K segments
   private async runSequenceReplay(): Promise<void> {
-    // stub
+    const now = new Date()
+    const from = new Date(now.getTime() - this.config.lookbackDays * 24 * 60 * 60 * 1000)
+    const segments = await this.workspace.getSegmentsByTimeRange({ from, to: now })
+
+    // Sort by importance DESC, then recency DESC
+    segments.sort((a, b) => {
+      const importanceDiff = b.avgImportance - a.avgImportance
+      if (Math.abs(importanceDiff) > 0.01) return importanceDiff
+      return b.maxCreatedAt.getTime() - a.maxCreatedAt.getTime()
+    })
+
+    const topK = segments.slice(0, this.config.replayTopK)
+    console.log(
+      `[Hippocampus] Sequence replay: ${topK.length}/${segments.length} segments selected`,
+    )
+
+    for (const segment of topK) {
+      try {
+        await this.replaySegment(segment)
+      } catch (err) {
+        console.warn(`[Hippocampus] Replay failed for segment ${segment.segmentId}:`, err)
+      }
+    }
+  }
+
+  private async replaySegment(segment: {
+    segmentId: string
+    eventCount: number
+    avgImportance: number
+  }): Promise<void> {
+    const events = await this.workspace.getSegmentSequence(segment.segmentId)
+
+    if (events.length < 2) {
+      console.log(`[Hippocampus] Skip segment ${segment.segmentId}: only ${events.length} event(s)`)
+      return
+    }
+
+    const eventSummary = events.map((e, i) => `[${i + 1}] ${e.content.slice(0, 300)}`).join('\n\n')
+
+    const prompt = `You are analyzing a sequence of cognitive events from an AI agent to extract reusable knowledge.
+
+Segment ID: ${segment.segmentId}
+Events (${events.length} total, importance: ${segment.avgImportance.toFixed(2)}):
+
+${eventSummary}
+
+Extract reusable knowledge from this event sequence. Return JSON only:
+{
+  "semantic": [
+    {"content": "factual statement about the world or entities", "entityId": "entity-name-or-null", "tags": ["tag1"]}
+  ],
+  "procedural": [
+    {"content": "step-by-step procedure for a task type", "tags": ["tag1", "tag2"]}
+  ],
+  "implicit": [
+    {"content": "behavioral pattern or risk pattern to watch for", "tags": ["risk", "pattern"]}
+  ]
+}
+
+Rules:
+- semantic: facts, relationships, entity attributes that are generally true
+- procedural: repeatable task procedures with clear steps
+- implicit: behavioral tendencies, risk patterns, warning signs
+- Omit arrays that have no entries (return empty array [])
+- Keep content concise but specific (under 500 chars each)
+- Use null for entityId if the fact is not entity-specific`
+
+    const response = await callLlm(prompt, this.config.llm, { maxTokens: 2048 })
+    await this.processReplayResult(response, segment.segmentId, segment.avgImportance)
+  }
+
+  private async processReplayResult(
+    llmResponse: string,
+    segmentId: string,
+    avgImportance: number,
+  ): Promise<void> {
+    const parsed = parseLlmJson<{
+      semantic?: { content: string; entityId: string | null; tags: string[] }[]
+      procedural?: { content: string; tags: string[] }[]
+      implicit?: { content: string; tags: string[] }[]
+    }>(llmResponse, {})
+
+    for (const item of parsed.semantic ?? []) {
+      if (!item.content?.trim()) continue
+      await this.writeWithSupersedes('semantic', item.content, {
+        segmentId,
+        ...(item.entityId ? { entityId: item.entityId } : {}),
+        tags: ['replay', segmentId, ...(item.tags ?? [])],
+        baseImportance: Math.min(avgImportance + 0.05, 1.0),
+      })
+    }
+
+    for (const item of parsed.procedural ?? []) {
+      if (!item.content?.trim()) continue
+      await this.writeWithSupersedes('procedural', item.content, {
+        segmentId,
+        tags: ['replay', segmentId, ...(item.tags ?? [])],
+        baseImportance: avgImportance,
+      })
+    }
+
+    for (const item of parsed.implicit ?? []) {
+      if (!item.content?.trim()) continue
+      await this.writeWithSupersedes('implicit', item.content, {
+        segmentId,
+        tags: ['replay', segmentId, ...(item.tags ?? [])],
+        baseImportance: Math.max(avgImportance * 0.8, 0.3),
+      })
+    }
+  }
+
+  private async writeWithSupersedes(
+    type: 'semantic' | 'procedural' | 'implicit',
+    content: string,
+    params: {
+      segmentId: string
+      entityId?: string
+      tags: string[]
+      baseImportance: number
+    },
+  ): Promise<void> {
+    // Find an existing memory of the same type written for this segment
+    const existing = await this.workspace.searchMemory({
+      type,
+      tags: ['replay', params.segmentId],
+      limit: 1,
+    })
+
+    // writeMemory atomically invalidates the old record when supersedesId is provided
+    const supersedesId = existing[0]?.id
+
+    await this.workspace.writeMemory({
+      type,
+      content,
+      ...(params.entityId ? { entityId: params.entityId } : {}),
+      tags: params.tags,
+      baseImportance: params.baseImportance,
+      ...(supersedesId ? { supersedesId } : {}),
+    })
   }
 
   // Step 3 (WP04 implementation)
