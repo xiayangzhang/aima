@@ -1,15 +1,15 @@
 ---
 work_package_id: WP03
 title: Extension Factory Tool Permission Override
-lane: planned
+lane: "doing"
 dependencies: ["WP01"]
 subtasks:
 - T008
 - T009
 phase: Phase 2 - Core Features
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-sonnet-4-6"
+shell_pid: "3887"
 review_status: ''
 reviewed_by: ''
 history:
@@ -319,3 +319,7 @@ describe('createAimaExtension with allowedTools', () => {
 ```bash
 spec-kitty implement WP03 --base WP01
 ```
+
+## Activity Log
+
+- 2026-03-11T11:56:52Z – claude-sonnet-4-6 – shell_pid=3887 – lane=doing – Started implementation via workflow command
