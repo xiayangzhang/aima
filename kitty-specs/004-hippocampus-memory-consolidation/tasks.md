@@ -84,7 +84,7 @@
 **目标**：Bun test 单元测试，覆盖调度器生命周期、段精修逻辑、序列回放、收敛算法、清理逻辑（全 mock，无真实 DB/LLM）。
 
 子任务：
-- [ ] T022: lifecycle.test.ts：start/stop flag、timer 清除、重复 stop 不报错、running 重入保护
+- [x] T022: lifecycle.test.ts：start/stop flag、timer 清除、重复 stop 不报错、running 重入保护
 - [ ] T023: segment-refine.test.ts：mock workspace + mock callLlm；merge=true 时 updateMemorySegment 被调用；LLM 失败时精修继续
 - [ ] T024: sequence-replay.test.ts：mock workspace + mock callLlm；writeMemory 被调用 3 次（类型正确）；JSON 解析失败时跳过该段
 - [ ] T025: converge-cleanup.test.ts Part A：computeNewImportance 纯函数——5 个边界值测试（上升/下降/不变/下溢/上溢）
