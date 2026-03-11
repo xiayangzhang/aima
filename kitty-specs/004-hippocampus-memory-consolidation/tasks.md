@@ -24,7 +24,7 @@
 - [x] T004: CognitiveWorkspace 扩展：getSegmentsByTimeRange + getSegmentSequence
 - [x] T005: CognitiveWorkspace 扩展：updateMemorySegment
 - [x] T006: CognitiveWorkspace 扩展：getMemoriesWithNonZeroOutcomes + updateMemoryImportanceAndResetOutcomes
-- [ ] T007: CognitiveWorkspace 扩展：forgetExpiredMemories；AIMAInstance 集成（enableHippocampus）；src/index.ts 导出
+- [x] T007: CognitiveWorkspace 扩展：forgetExpiredMemories；AIMAInstance 集成（enableHippocampus）；src/index.ts 导出
 
 **Prompt**: WP01-infra-llm-migration-workspace-extensions.md
 **并行机会**: T004/T005/T006/T007 的 workspace 扩展可并行实现（独立方法），合并前类型检查即可
