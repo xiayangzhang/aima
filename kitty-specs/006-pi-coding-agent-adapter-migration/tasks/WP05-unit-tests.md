@@ -2,7 +2,7 @@
 work_package_id: "WP05"
 title: "Unit Tests ≥30"
 phase: "Phase 4 - Verification"
-lane: "planned"
+lane: "doing"
 dependencies: ["WP04"]
 subtasks:
   - "T019"
@@ -14,8 +14,8 @@ subtasks:
   - "T025"
   - "T026"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude"
+shell_pid: "10251"
 review_status: ""
 reviewed_by: ""
 history:
@@ -563,3 +563,4 @@ Expected output: ≥30 tests, all passing. Count breakdown:
 ## Activity Log
 
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created.
+- 2026-03-11T10:53:17Z – claude – shell_pid=10251 – lane=doing – Started implementation via workflow command
