@@ -19,6 +19,19 @@ export interface AssembledContext {
   injectedMemoryIds: string[] // Block 4 injected memory IDs, for DMN use
 }
 
+/**
+ * Brain-specific context for Block 4 memory retrieval.
+ * Each field is used by the corresponding brain type; unused fields are ignored.
+ */
+export interface AssembleBlock4Opts {
+  /** limbic: entity to retrieve context for */
+  entityId?: string
+  /** brainstem: task type to look up procedures for */
+  taskType?: string
+  /** cortex: situation description for similarity matching */
+  situation?: string
+}
+
 // ─── Block 1+2: Static prefix (cache-safe) ───────────────────────────────────
 
 /**
@@ -73,38 +86,62 @@ export async function assembleBlock4(
   brain: CognitiveBrainType,
   workspace: CognitiveWorkspace,
   _threadId: string,
+  opts?: AssembleBlock4Opts,
 ): Promise<{ text: string; injectedMemoryIds: string[] }> {
   let results: MemoryEntry[] = []
 
   if (brain === 'limbic') {
-    // Limbic: semantic + episodic (thread-scoped)
-    const semantic = await workspace.searchMemory({
-      type: 'semantic',
-      limit: 10,
-      excludeInvalid: true,
-    })
-    const episodic = await workspace.searchMemory({
-      type: 'episodic',
-      limit: 5,
-      excludeInvalid: true,
-    } satisfies MemorySearchFilters)
-    results = [...semantic, ...episodic]
+    if (opts?.entityId) {
+      // Brain-specific path: entity-centric retrieval
+      results = await workspace.getEntityContext(opts.entityId, { limit: 10 })
+    } else {
+      // Fallback: original behavior preserved
+      const semantic = await workspace.searchMemory({
+        type: 'semantic',
+        limit: 10,
+        excludeInvalid: true,
+      })
+      const episodic = await workspace.searchMemory({
+        type: 'episodic',
+        limit: 5,
+        excludeInvalid: true,
+      } satisfies MemorySearchFilters)
+      results = [...semantic, ...episodic]
+    }
   } else if (brain === 'cortex') {
-    // Cortex: procedural + episodic (historical context)
-    const procedural = await workspace.searchMemory({
-      type: 'procedural',
-      limit: 10,
-      excludeInvalid: true,
-    })
-    const episodic = await workspace.searchMemory({
-      type: 'episodic',
-      limit: 5,
-      excludeInvalid: true,
-    })
-    results = [...procedural, ...episodic]
+    if (opts?.situation) {
+      // Brain-specific path: situation similarity matching
+      const { episodes, procedures, facts } = await workspace.findSimilarSituations(
+        opts.situation,
+        { limit: 5 },
+      )
+      results = [...episodes, ...procedures, ...facts]
+    } else {
+      // Fallback: original behavior preserved
+      const procedural = await workspace.searchMemory({
+        type: 'procedural',
+        limit: 10,
+        excludeInvalid: true,
+      })
+      const episodic = await workspace.searchMemory({
+        type: 'episodic',
+        limit: 5,
+        excludeInvalid: true,
+      })
+      results = [...procedural, ...episodic]
+    }
   } else if (brain === 'brainstem') {
-    // Brainstem: procedural (operational flows)
-    results = await workspace.searchMemory({ type: 'procedural', limit: 10, excludeInvalid: true })
+    if (opts?.taskType) {
+      // Brain-specific path: procedure lookup
+      results = await workspace.getProcedure(opts.taskType, { limit: 10 })
+    } else {
+      // Fallback: original behavior preserved
+      results = await workspace.searchMemory({
+        type: 'procedural',
+        limit: 10,
+        excludeInvalid: true,
+      })
+    }
   }
 
   // Deduplicate by ID
@@ -130,10 +167,16 @@ export async function assembleContext(
   threadId: string,
   config: ContextAssemblerConfig,
   cachedBlock12: string, // pre-computed at construction time by caller
+  opts?: AssembleBlock4Opts,
 ): Promise<AssembledContext> {
   const tz = config.timezone ?? 'UTC'
   const block3 = await assembleBlock3(brain, workspace, threadId, tz)
-  const { text: block4Text, injectedMemoryIds } = await assembleBlock4(brain, workspace, threadId)
+  const { text: block4Text, injectedMemoryIds } = await assembleBlock4(
+    brain,
+    workspace,
+    threadId,
+    opts,
+  )
 
   const parts = [cachedBlock12, block3]
   if (block4Text) parts.push(block4Text)
