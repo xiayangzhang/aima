@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: Context Assembly Block 1/2 Injection
-lane: "doing"
+lane: "for_review"
 dependencies: ["WP01"]
 subtasks:
 - T006
@@ -281,3 +281,4 @@ spec-kitty implement WP02 --base WP01
 ## Activity Log
 
 - 2026-03-11T11:55:06Z – claude-sonnet-4-6 – shell_pid=940 – lane=doing – Started implementation via workflow command
+- 2026-03-11T11:56:46Z – claude-sonnet-4-6 – shell_pid=940 – lane=for_review – Ready for review: soul field added to ContextAssemblerConfig, assembleBlock12 prepends soul before ## Role when non-empty. 13 tests passing (7 existing + 6 new). typecheck clean, biome clean.
