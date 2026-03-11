@@ -53,7 +53,7 @@
 **目标**：实现 runSequenceReplay()，选取 top-K 高重要度段，对每段发起一次性 LLM 分析，将提炼结果写入 semantic/procedural/implicit 记忆。
 
 子任务：
-- [ ] T013: runSequenceReplay(workspace, config, llmConfig)：getSegmentsByTimeRange → 按 avgImportance DESC + maxCreatedAt DESC 排序 → 取 top-K
+- [x] T013: runSequenceReplay(workspace, config, llmConfig)：getSegmentsByTimeRange → 按 avgImportance DESC + maxCreatedAt DESC 排序 → 取 top-K
 - [ ] T014: 获取段序列并组装 LLM prompt：getSegmentSequence + content 摘录 + 要求返回三类 JSON
 - [ ] T015: LLM 调用 + parseLlmJson：解析 semantic/procedural/implicit 数组；解析失败跳过该段
 - [ ] T016: 写入 semantic + procedural 记忆：supersedesId 去重（searchMemory 先查，存在时设 supersedesId + invalidateMemory 旧记录）
