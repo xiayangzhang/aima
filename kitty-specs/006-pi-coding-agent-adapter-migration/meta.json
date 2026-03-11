@@ -1,0 +1,8 @@
+{
+  "feature_number": "006",
+  "slug": "006-pi-coding-agent-adapter-migration",
+  "friendly_name": "pi-coding-agent Adapter Migration",
+  "mission": "software-dev",
+  "source_description": "Feature 006 — 迁移到 pi-coding-agent adapter：完整 Amygdala 工具拦截、EventBus tool 事件覆盖、inject() 实时性修复，大量测试",
+  "created_at": "2026-03-11T00:00:00Z"
+}
