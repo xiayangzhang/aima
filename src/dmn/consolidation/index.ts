@@ -1,6 +1,6 @@
+import { callLlm, parseLlmJson } from '../../llm'
 import type { MemoryEntry } from '../../types/index'
 import type { DmnConfig } from '../index'
-import { callLlm, parseLlmJson } from '../llm'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -96,10 +96,7 @@ export class DmnConsolidation {
     ])
 
     const prompt = buildPredictivePrompt(increment, procedural, semantic)
-    const response = await callLlm(prompt, this.config.llm, {
-      useComplexModel: increment.length > 50,
-      maxTokens: 1024,
-    })
+    const response = await callLlm(prompt, this.config.llm, { maxTokens: 1024 })
 
     const predictions = parseLlmJson<PredictionResult[]>(response, [])
     await this.writePredictions(predictions)

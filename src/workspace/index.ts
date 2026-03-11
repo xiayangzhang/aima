@@ -3,13 +3,17 @@ import {
   and,
   arrayContains,
   asc,
+  avg,
+  count,
   desc,
   eq,
   gt,
   gte,
   inArray,
+  isNotNull,
   isNull,
   lt,
+  max,
   not,
   sql,
 } from 'drizzle-orm'
@@ -455,5 +459,115 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
       .update(memories)
       .set({ tInvalid: new Date(), updatedAt: new Date() })
       .where(eq(memories.id, id))
+  }
+
+  // ── Hippocampus Consolidation methods ────────────────────────────────────────
+
+  /** Query episodic segment summaries by time range (data source for segment refine and replay). */
+  async getSegmentsByTimeRange(range: { from: Date; to: Date }): Promise<
+    {
+      segmentId: string
+      eventCount: number
+      avgImportance: number
+      maxCreatedAt: Date
+    }[]
+  > {
+    const rows = await this.db
+      .select({
+        segmentId: memories.segmentId,
+        eventCount: count(memories.id),
+        avgImportance: avg(memories.baseImportance),
+        maxCreatedAt: max(memories.createdAt),
+      })
+      .from(memories)
+      .where(
+        and(
+          eq(memories.type, 'episodic'),
+          isNotNull(memories.segmentId),
+          eq(memories.forgotten, false),
+          gte(memories.createdAt, range.from),
+          lt(memories.createdAt, range.to),
+        ),
+      )
+      .groupBy(memories.segmentId)
+    return rows
+      .filter((r) => r.segmentId !== null)
+      .map((r) => ({
+        segmentId: r.segmentId as string,
+        eventCount: Number(r.eventCount),
+        avgImportance: Number(r.avgImportance ?? 0.5),
+        maxCreatedAt: r.maxCreatedAt ?? new Date(),
+      }))
+  }
+
+  /** Fetch the full event sequence of a segment, ordered by segmentSeq ASC. */
+  async getSegmentSequence(segmentId: string): Promise<MemoryEntry[]> {
+    const rows = await this.db
+      .select()
+      .from(memories)
+      .where(and(eq(memories.segmentId, segmentId), eq(memories.forgotten, false)))
+      .orderBy(asc(memories.segmentSeq), asc(memories.createdAt))
+    return rows.map(mapMemoryRow)
+  }
+
+  /** Update segmentId and segmentSeq for a memory entry (used by segment refine merge). */
+  async updateMemorySegment(
+    memoryId: string,
+    newSegmentId: string,
+    newSegmentSeq: number,
+  ): Promise<void> {
+    await this.db
+      .update(memories)
+      .set({ segmentId: newSegmentId, segmentSeq: newSegmentSeq, updatedAt: new Date() })
+      .where(eq(memories.id, memoryId))
+  }
+
+  /** Fetch memories with non-zero usage outcomes (convergence step data source). */
+  async getMemoriesWithNonZeroOutcomes(): Promise<MemoryEntry[]> {
+    const rows = await this.db
+      .select()
+      .from(memories)
+      .where(
+        and(
+          eq(memories.forgotten, false),
+          sql`(
+            (${memories.usageOutcomes}->>'positive')::int +
+            (${memories.usageOutcomes}->>'negative')::int
+          ) > 0`,
+        ),
+      )
+    return rows.map(mapMemoryRow)
+  }
+
+  /** Update base_importance and reset usage_outcomes to {0,0,0} after convergence. */
+  async updateMemoryImportanceAndResetOutcomes(
+    id: string,
+    newBaseImportance: number,
+  ): Promise<void> {
+    await this.db
+      .update(memories)
+      .set({
+        baseImportance: newBaseImportance,
+        usageOutcomes: { positive: 0, negative: 0, neutral: 0 },
+        updatedAt: new Date(),
+      })
+      .where(eq(memories.id, id))
+  }
+
+  /** Soft-delete expired memories: expiresAt < now AND pinned=false AND forgotten=false. */
+  async forgetExpiredMemories(now: Date): Promise<number> {
+    const result = await this.db
+      .update(memories)
+      .set({ forgotten: true, updatedAt: new Date() })
+      .where(
+        and(
+          eq(memories.forgotten, false),
+          eq(memories.pinned, false),
+          lt(memories.expiresAt, now),
+          isNotNull(memories.expiresAt),
+        ),
+      )
+      .returning({ id: memories.id })
+    return result.length
   }
 }
