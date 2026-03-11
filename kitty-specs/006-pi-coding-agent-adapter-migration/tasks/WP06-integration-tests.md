@@ -2,7 +2,7 @@
 work_package_id: "WP06"
 title: "Integration Tests ≥10"
 phase: "Phase 4 - Verification"
-lane: "doing"
+lane: "for_review"
 dependencies: ["WP04"]
 subtasks:
   - "T027"
@@ -459,3 +459,4 @@ For CI: tests that require a real model + API key should use `test.skipIf(!proce
 
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created.
 - 2026-03-11T10:58:53Z – claude – shell_pid=17422 – lane=doing – Started implementation via workflow command
+- 2026-03-11T11:03:01Z – claude – shell_pid=17422 – lane=for_review – 16 integration tests pass (1 skip for API key), no module mocking, real pi-coding-agent imports, biome+tsc clean
