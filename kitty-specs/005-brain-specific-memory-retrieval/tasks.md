@@ -79,7 +79,7 @@ T001/T002/T003 均为独立新方法，逻辑互不影响，可同时起草但�
 - [x] T011: cortex 分支升级
 - [x] T012: brainstem 分支升级
 - [x] T013: `assembleContext` 透传 opts
-- [ ] T014: `src/index.ts` 导出 `AssembleBlock4Opts`
+- [x] T014: `src/index.ts` 导出 `AssembleBlock4Opts`
 - [ ] T015: 单元测试
 
 ### 并行机会
