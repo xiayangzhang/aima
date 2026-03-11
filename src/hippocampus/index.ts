@@ -2,6 +2,41 @@ import { callLlm, parseLlmJson } from '../llm'
 import type { LlmConfig } from '../llm'
 import type { CognitiveWorkspace } from '../workspace/index'
 
+/**
+ * Adjust base_importance based on usage_outcomes counters.
+ * Pure function: no I/O, no side effects — directly unit-testable.
+ *
+ * Logic:
+ * - positive ratio > positiveThreshold → +step
+ * - negative ratio > negativeThreshold → -step
+ * - otherwise no change
+ * - result clamped to [0.0, 1.0]
+ */
+export function computeNewImportance(
+  current: number,
+  outcomes: { positive: number; negative: number; neutral: number },
+  config: {
+    convergencePositiveThreshold: number
+    convergenceNegativeThreshold: number
+    convergenceStep: number
+  },
+): number {
+  const total = outcomes.positive + outcomes.negative + outcomes.neutral
+  if (total === 0) return current
+
+  const posRatio = outcomes.positive / total
+  const negRatio = outcomes.negative / total
+
+  let delta = 0
+  if (posRatio > config.convergencePositiveThreshold) {
+    delta = config.convergenceStep
+  } else if (negRatio > config.convergenceNegativeThreshold) {
+    delta = -config.convergenceStep
+  }
+
+  return Math.max(0.0, Math.min(1.0, current + delta))
+}
+
 export interface HippocampusConfig {
   llm: LlmConfig
   /** Query window for segment refine and replay (default: 7 days) */
@@ -43,8 +78,10 @@ export class HippocampusConsolidation {
 
   async runConsolidation(): Promise<void> {
     console.log('[Hippocampus] Starting consolidation run')
+    // Step 1: refine segment boundaries → Step 2 depends on correct segment_id after refine
     await this.runSegmentRefine()
     await this.runSequenceReplay()
+    // Steps 3/4 are independent but run sequentially for consistency within one run
     await this.runOutcomesConverge()
     await this.runExpiryCleanup()
     console.log('[Hippocampus] Consolidation run complete')
@@ -287,14 +324,33 @@ Rules:
     })
   }
 
-  // Step 3 (WP04 implementation)
+  // Step 3: Usage outcomes convergence — adjust base_importance based on feedback counters
   private async runOutcomesConverge(): Promise<void> {
-    // stub
+    const entries = await this.workspace.getMemoriesWithNonZeroOutcomes()
+    let updatedCount = 0
+
+    for (const entry of entries) {
+      if (!entry.usageOutcomes) continue
+
+      const newImportance = computeNewImportance(
+        entry.baseImportance,
+        entry.usageOutcomes,
+        this.config,
+      )
+
+      // Always reset counters even when newImportance === current (no-change case)
+      await this.workspace.updateMemoryImportanceAndResetOutcomes(entry.id, newImportance)
+      updatedCount++
+    }
+
+    console.log(`[Hippocampus] Outcomes converge complete. Updated: ${updatedCount} entries`)
   }
 
-  // Step 4 (WP04 implementation)
+  // Step 4: Expiry cleanup — soft-delete memories past their expiresAt date
   private async runExpiryCleanup(): Promise<void> {
-    // stub
+    const now = new Date()
+    const forgotten = await this.workspace.forgetExpiredMemories(now)
+    console.log(`[Hippocampus] Expiry cleanup complete. Forgotten: ${forgotten} entries`)
   }
 
   start(): void {

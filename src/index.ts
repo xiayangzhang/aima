@@ -78,7 +78,7 @@ export type { DmnConfig, DmnLlmConfig } from './dmn/index'
 export { DmnService, createDmnService } from './dmn/index'
 
 // ── Hippocampus ───────────────────────────────────────────────────────────────
-export { HippocampusConsolidation } from './hippocampus/index'
+export { HippocampusConsolidation, computeNewImportance } from './hippocampus/index'
 export type { HippocampusConfig } from './hippocampus/index'
 
 // ── LLM ───────────────────────────────────────────────────────────────────────
