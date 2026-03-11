@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: Public API Export + Integration Tests
-lane: "doing"
+lane: "done"
 dependencies: ["WP01", "WP02"]
 subtasks:
 - T009
@@ -10,8 +10,8 @@ phase: Phase 3 - Public API
 assignee: ''
 agent: "claude-sonnet-4-6"
 shell_pid: "23711"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-11T00:00:00Z'
   lane: planned
@@ -161,3 +161,4 @@ expect(fn).toBeDefined()
 
 - 2026-03-11T14:07:47Z – unknown – lane=for_review – Exported SpawnExecutionSessionFn from public API. 3 integration tests green. All 385 tests pass.
 - 2026-03-11T14:08:50Z – claude-sonnet-4-6 – shell_pid=23711 – lane=doing – Started review via workflow command
+- 2026-03-11T14:09:04Z – claude-sonnet-4-6 – shell_pid=23711 – lane=done – Review passed: SpawnExecutionSessionFn exported via 'export type' (tree-shaking friendly), 3 integration tests cover success/error/type-contract paths, stub text verified absent, no regressions.
