@@ -1,7 +1,6 @@
 import { getModel } from '@mariozechner/pi-ai'
 import {
   type AgentSession,
-  type AgentSessionEvent,
   AuthStorage,
   DefaultResourceLoader,
   ModelRegistry,
@@ -13,6 +12,8 @@ import type { BrainEventBus } from '../../eventbus/index'
 import type { CognitiveBrainType } from '../../types/index'
 import type { CognitiveWorkspace } from '../../workspace/index'
 import type { BrainAdapter, BrainRunParams, BrainRunResult, BrainSignal } from '../index'
+import { createAimaExtension } from './extension'
+import { buildMcpTools } from './mcp-tools'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -76,18 +77,25 @@ export class PiCodingAgentAdapter implements BrainAdapter {
       const modelRegistry = new ModelRegistry(authStorage)
       const model = getModel('anthropic', this.config.modelId as Parameters<typeof getModel>[1])
 
-      // ResourceLoader: minimal, no disk access; system prompt served via mutable ref
+      // Extension: Amygdala interception + EventBus bridge
+      const extensionFactory = createAimaExtension(
+        brain,
+        threadId,
+        this.config.amygdala,
+        this.config.eventBus,
+      )
+
+      // ResourceLoader: minimal no-disk setup; extension wired via factory
       const loader = new DefaultResourceLoader({
-        noExtensions: true,
         noSkills: true,
         noPromptTemplates: true,
         noThemes: true,
         systemPromptOverride: () => systemPromptRef.value,
+        extensionFactories: [extensionFactory],
       })
       await loader.reload()
 
-      // Custom MCP tools (stub in WP01, implemented in WP03)
-      const { buildMcpTools } = await import('./mcp-tools')
+      // Custom MCP tools (stub in WP01/WP02, implemented in WP03)
       const mcpTools = buildMcpTools(this.config.workspace)
 
       // Per-session in-memory SessionManager preserves conversation history
@@ -102,8 +110,6 @@ export class PiCodingAgentAdapter implements BrainAdapter {
         customTools: mcpTools,
       })
 
-      this.registerEventBridge(session, brain, threadId)
-
       state = { session, systemPromptRef }
       this.sessions.set(key, state)
     } else {
@@ -116,9 +122,6 @@ export class PiCodingAgentAdapter implements BrainAdapter {
         await state.session.steer(`[AMYGDALA INTERRUPT] ${interruptSignal.message}`)
       }
     }
-
-    // Always refresh API key in case it rotated between activations
-    // (no-op if key unchanged — setRuntimeApiKey overwrites)
 
     if (initialPrompt !== undefined) {
       await state.session.prompt(initialPrompt)
@@ -165,51 +168,5 @@ export class PiCodingAgentAdapter implements BrainAdapter {
       void state.session.abort()
       this.sessions.delete(key)
     }
-  }
-
-  // ── EventBus Bridge ──────────────────────────────────────────────────────────
-
-  private registerEventBridge(
-    session: AgentSession,
-    brain: CognitiveBrainType,
-    threadId: string,
-  ): void {
-    const eb = this.config.eventBus
-
-    session.subscribe((event: AgentSessionEvent) => {
-      if (event.type === 'tool_execution_start') {
-        eb.emit({
-          event_type: 'tool.pre_use',
-          level: 'INFO',
-          brain,
-          thread_id: threadId,
-          payload: {
-            tool: event.toolName,
-            toolCallId: event.toolCallId,
-            args: event.args as Record<string, unknown>,
-          },
-        })
-      } else if (event.type === 'tool_execution_end') {
-        eb.emit({
-          event_type: 'tool.post_use',
-          level: 'INFO',
-          brain,
-          thread_id: threadId,
-          payload: {
-            tool: event.toolName,
-            toolCallId: event.toolCallId,
-            isError: event.isError,
-          },
-        })
-      } else if (event.type === 'agent_end') {
-        eb.emit({
-          event_type: 'brain.loop_end',
-          level: 'INFO',
-          brain,
-          thread_id: threadId,
-          payload: {},
-        })
-      }
-    })
   }
 }
