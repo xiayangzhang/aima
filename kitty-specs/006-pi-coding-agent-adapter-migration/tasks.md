@@ -169,7 +169,7 @@
 - [x] T028 Session creation + resumption: two consecutive runs share conversation history (~2 tests)
 - [x] T029 Extension `tool_call` event fires when mock tool is invoked via real session (~1 test)
 - [x] T030 Block decision: `tool_call` returns `{ block: true }` → `tool_execution_end` does NOT fire; `tool.blocked` EventBus event received (~2 tests)
-- [ ] T031 Allow decision: `tool_call` returns `undefined` → both `tool_execution_start` and `tool_execution_end` fire; `tool.pre_use` + `tool.post_use` EventBus events received (~2 tests)
+- [x] T031 Allow decision: `tool_call` returns `undefined` → both `tool_execution_start` and `tool_execution_end` fire; `tool.pre_use` + `tool.post_use` EventBus events received (~2 tests)
 - [ ] T032 `steer()` injects content into active session; `followUp()` queues content for next turn (~1 test each = 2 tests)
 - [ ] T033 MCP tool registered in Extension `registeredTools` is callable; its `execute()` is invoked and result returned to session (~1 test)
 - [ ] T034 Multi-session isolation: two sessions with different `brain:threadId` keys maintain independent histories (~1 test)
