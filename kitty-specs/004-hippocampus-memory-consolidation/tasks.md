@@ -38,7 +38,7 @@
 
 子任务：
 - [x] T008: runSegmentRefine(workspace, config, llmConfig)：获取 lookbackDays 内的段列表，形成相邻段对（限制 50 对）
-- [ ] T009: 段合并 LLM 调用：prompt 组装（两段 context 摘录）+ callLlm + parseLlmJson（失败默认 merge: false）
+- [x] T009: 段合并 LLM 调用：prompt 组装（两段 context 摘录）+ callLlm + parseLlmJson（失败默认 merge: false）
 - [ ] T010: 执行合并更新：merge=true 时将第二段所有 episodic 记录 segment_id 改为第一段，重新编号 segment_seq
 - [ ] T011: 幂等保护：in-memory Set 跟踪本次已更新的段，防止重复合并
 - [ ] T012: 错误处理：单对合并失败不中断整体，warn 日志继续下一对；在 runConsolidation 中注册为步骤 1
