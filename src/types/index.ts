@@ -166,4 +166,13 @@ export interface ICognitiveWorkspace {
   markMemoryUsed(ids: string[], outcome: UsageOutcome): Promise<void>
   clearWorkingMemory(threadId: string): Promise<void>
   invalidateMemory(id: string): Promise<void>
+  getEntityContext(
+    entityId: string,
+    opts?: { types?: MemoryType[]; limit?: number },
+  ): Promise<MemoryEntry[]>
+  findSimilarSituations(
+    situation: string,
+    opts?: { limit?: number },
+  ): Promise<{ episodes: MemoryEntry[]; procedures: MemoryEntry[]; facts: MemoryEntry[] }>
+  getProcedure(taskType: string, opts?: { limit?: number }): Promise<MemoryEntry[]>
 }

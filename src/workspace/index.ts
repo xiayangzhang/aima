@@ -9,6 +9,7 @@ import {
   eq,
   gt,
   gte,
+  ilike,
   inArray,
   isNotNull,
   isNull,
@@ -32,6 +33,7 @@ import type {
   Intent,
   MemoryEntry,
   MemorySearchFilters,
+  MemoryType,
   PendingObservation,
   Slot,
   Thread,
@@ -582,5 +584,91 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
       )
       .returning({ id: memories.id })
     return result.length
+  }
+
+  // ── Brain-Specific Retrieval ─────────────────────────────────────────────────
+
+  async getEntityContext(
+    entityId: string,
+    opts?: { types?: MemoryType[]; limit?: number },
+  ): Promise<MemoryEntry[]> {
+    const conditions = [
+      eq(memories.entityId, entityId),
+      eq(memories.forgotten, false),
+      isNull(memories.tInvalid),
+    ]
+
+    if (opts?.types && opts.types.length > 0) {
+      conditions.push(inArray(memories.type, opts.types))
+    }
+
+    const rows = await this.db
+      .select()
+      .from(memories)
+      .where(and(...conditions))
+      .orderBy(desc(memories.baseImportance), desc(memories.lastAccessedAt))
+      .limit(opts?.limit ?? 10)
+
+    return rows.map(mapMemoryRow)
+  }
+
+  async findSimilarSituations(
+    situation: string,
+    opts?: { limit?: number },
+  ): Promise<{ episodes: MemoryEntry[]; procedures: MemoryEntry[]; facts: MemoryEntry[] }> {
+    const lim = opts?.limit ?? 5
+    const pattern = `%${situation}%`
+
+    const baseConditions = (type: MemoryType) => [
+      eq(memories.type, type),
+      eq(memories.forgotten, false),
+      isNull(memories.tInvalid),
+      ilike(memories.content, pattern),
+    ]
+
+    const [episodeRows, procedureRows, factRows] = await Promise.all([
+      this.db
+        .select()
+        .from(memories)
+        .where(and(...baseConditions('episodic')))
+        .orderBy(desc(memories.baseImportance))
+        .limit(lim),
+      this.db
+        .select()
+        .from(memories)
+        .where(and(...baseConditions('procedural')))
+        .orderBy(desc(memories.baseImportance))
+        .limit(lim),
+      this.db
+        .select()
+        .from(memories)
+        .where(and(...baseConditions('semantic')))
+        .orderBy(desc(memories.baseImportance))
+        .limit(lim),
+    ])
+
+    return {
+      episodes: episodeRows.map(mapMemoryRow),
+      procedures: procedureRows.map(mapMemoryRow),
+      facts: factRows.map(mapMemoryRow),
+    }
+  }
+
+  async getProcedure(taskType: string, opts?: { limit?: number }): Promise<MemoryEntry[]> {
+    const rows = await this.db
+      .select()
+      .from(memories)
+      .where(
+        and(
+          eq(memories.type, 'procedural'),
+          eq(memories.forgotten, false),
+          isNull(memories.tInvalid),
+          ilike(memories.content, `%${taskType}%`),
+        ),
+      )
+      .orderBy(desc(memories.baseImportance), desc(memories.lastAccessedAt))
+      .limit(opts?.limit ?? 3)
+
+    return rows.map(mapMemoryRow)
   }
 }
