@@ -50,7 +50,7 @@
 - [x] T005: `src/index.ts` 导出
 - [x] T006: 单元测试 - getEntityContext
 - [x] T007: 单元测试 - findSimilarSituations
-- [ ] T008: 单元测试 - getProcedure
+- [x] T008: 单元测试 - getProcedure
 
 ### 并行机会
 
