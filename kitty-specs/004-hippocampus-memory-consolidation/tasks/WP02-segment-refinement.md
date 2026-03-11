@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: 步骤 1：段精修
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T008, T009, T010, T011, T012]
 assignee: claude
@@ -171,3 +171,4 @@ spec-kitty agent tasks move-task WP02 --to for_review --note "Ready: <summary>"
 ## Activity Log
 
 - 2026-03-11T02:29:18Z – claude-sonnet-4-6 – shell_pid=47449 – lane=doing – Started implementation via workflow command
+- 2026-03-11T02:31:09Z – claude-sonnet-4-6 – shell_pid=47449 – lane=for_review – Ready for review: runSegmentRefine fully implemented. Adjacent segment pairs (max 50), LLM merge judgment with conservative fallback, executeMerge re-sequences source entries, within-run idempotency via mergedSegmentIds Set, per-pair error isolation. typecheck + biome pass.
