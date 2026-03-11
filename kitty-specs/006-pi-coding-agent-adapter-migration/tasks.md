@@ -75,7 +75,7 @@
 
 ### Included Subtasks
 - [x] T012 Find `createAimaMcpServer` export path in `src/`; implement `buildMcpTools(workspace): AgentTool[]` in `mcp-tools.ts`
-- [ ] T013 Update `createAimaExtension` to accept optional `registeredTools?: AgentTool[]` parameter + wire to Extension's `registeredTools` field
+- [x] T013 Update `createAimaExtension` to accept optional `registeredTools?: AgentTool[]` parameter + wire to Extension's `registeredTools` field
 - [ ] T014 Update `run()` in index.ts to call `buildMcpTools(this.config.workspace)` and pass to `createAimaExtension`
 
 ### Implementation Notes
