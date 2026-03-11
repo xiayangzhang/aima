@@ -8,7 +8,7 @@ import type { BrainAdapter, BrainRunParams, BrainRunResult, BrainSignal } from '
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-export interface PiCodingAgentAdapterConfig {
+export interface PiAgentAdapterConfig {
   /** Anthropic model ID, e.g. 'claude-sonnet-4-6' */
   modelId: string
   workspace: CognitiveWorkspace
@@ -17,7 +17,7 @@ export interface PiCodingAgentAdapterConfig {
   getApiKey: () => string | undefined
 }
 
-// ─── PiCodingAgentAdapter ─────────────────────────────────────────────────────
+// ─── PiAgentAdapter ───────────────────────────────────────────────────────────
 
 /**
  * Adapts pi-agent-core's Agent class to AIMA's BrainAdapter interface.
@@ -27,12 +27,12 @@ export interface PiCodingAgentAdapterConfig {
  * by `${brain}:${threadId}`) so the conversation history is preserved.
  * Process restart loses in-memory sessions — ThreadRunner handles crash recovery.
  */
-export class PiCodingAgentAdapter implements BrainAdapter {
-  private readonly config: PiCodingAgentAdapterConfig
+export class PiAgentAdapter implements BrainAdapter {
+  private readonly config: PiAgentAdapterConfig
   // `${brain}:${threadId}` → live Agent instance
   private readonly agentInstances: Map<string, Agent> = new Map()
 
-  constructor(config: PiCodingAgentAdapterConfig) {
+  constructor(config: PiAgentAdapterConfig) {
     this.config = config
   }
 

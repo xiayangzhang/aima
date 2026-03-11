@@ -1,0 +1,135 @@
+import type { ExtensionFactory, ToolCallEvent } from '@mariozechner/pi-coding-agent'
+import type { Amygdala } from '../../amygdala/index'
+import type { BrainEventBus } from '../../eventbus/index'
+import type { CognitiveBrainType } from '../../types/index'
+
+// ─── Default Tool Policy ──────────────────────────────────────────────────────
+
+/** Blocked by default without calling amygdala.check() (high-risk built-in tools) */
+const DEFAULT_BLOCKED_TOOLS = new Set(['bash', 'edit', 'write'])
+
+/** Always allowed without calling amygdala.check() (read-only, low-risk) */
+const DEFAULT_ALLOWED_TOOLS = new Set(['read', 'grep', 'find', 'ls'])
+
+// ─── Extension Factory ────────────────────────────────────────────────────────
+
+/**
+ * Creates an AIMA ExtensionFactory that wires:
+ * 1. Amygdala per-tool interception via tool_call handler
+ * 2. EventBus bridge via tool_execution_end and agent_end handlers
+ *
+ * Pass the returned factory to DefaultResourceLoader via extensionFactories option.
+ */
+export function createAimaExtension(
+  brain: CognitiveBrainType,
+  threadId: string,
+  amygdala: Amygdala,
+  eventBus: BrainEventBus,
+): ExtensionFactory {
+  return (pi) => {
+    // ── tool_call: Amygdala interception ──────────────────────────────────────
+
+    pi.on('tool_call', async (event: ToolCallEvent) => {
+      const { toolCallId, toolName } = event
+      const input = event.input as Record<string, unknown>
+
+      // Stage 1: Default policy — block high-risk tools without Amygdala check
+      if (DEFAULT_BLOCKED_TOOLS.has(toolName)) {
+        const reason = `${toolName} blocked by default policy`
+        eventBus.emit({
+          event_type: 'tool.pre_use',
+          level: 'INFO',
+          brain,
+          thread_id: threadId,
+          payload: { tool: toolName, toolCallId, args: input },
+        })
+        eventBus.emit({
+          event_type: 'tool.blocked',
+          level: 'COMPLIANCE',
+          brain,
+          thread_id: threadId,
+          payload: { tool: toolName, toolCallId, reason },
+        })
+        return { block: true, reason }
+      }
+
+      // Emit tool.pre_use for all non-default-blocked tools
+      eventBus.emit({
+        event_type: 'tool.pre_use',
+        level: 'INFO',
+        brain,
+        thread_id: threadId,
+        payload: { tool: toolName, toolCallId, args: input },
+      })
+
+      // Stage 2: Default allow — skip Amygdala check for known-safe tools
+      if (DEFAULT_ALLOWED_TOOLS.has(toolName)) {
+        return undefined
+      }
+
+      // Stage 3: Dynamic Amygdala check for all other tools (MCP, custom, etc.)
+      const result = await amygdala.check(toolName, input)
+
+      if (result.decision === 'allow') {
+        return undefined
+      }
+
+      if (result.decision === 'escalate') {
+        eventBus.emit({
+          event_type: 'amygdala.escalation',
+          level: 'ALERT',
+          brain,
+          thread_id: threadId,
+          payload: { tool: toolName, toolCallId, reason: result.reason },
+        })
+        eventBus.emit({
+          event_type: 'tool.blocked',
+          level: 'COMPLIANCE',
+          brain,
+          thread_id: threadId,
+          payload: { tool: toolName, toolCallId, reason: result.reason },
+        })
+        return { block: true, reason: result.reason }
+      }
+
+      // decision === 'block'
+      eventBus.emit({
+        event_type: 'tool.blocked',
+        level: 'COMPLIANCE',
+        brain,
+        thread_id: threadId,
+        payload: { tool: toolName, toolCallId, reason: result.reason },
+      })
+      return { block: true, reason: result.reason }
+    })
+
+    // ── tool_execution_end: emit tool.post_use ────────────────────────────────
+    // Fires only for ALLOWED tools (blocked ones never reach execution)
+
+    pi.on('tool_execution_end', (event) => {
+      eventBus.emit({
+        event_type: 'tool.post_use',
+        level: 'INFO',
+        brain,
+        thread_id: threadId,
+        payload: {
+          tool: event.toolName,
+          toolCallId: event.toolCallId,
+          isError: event.isError,
+        },
+      })
+    })
+
+    // ── agent_end: emit brain.loop_end ────────────────────────────────────────
+
+    pi.on('agent_end', (_event) => {
+      eventBus.emit({
+        event_type: 'brain.loop_end',
+        level: 'INFO',
+        brain,
+        thread_id: threadId,
+        payload: {},
+      })
+    })
+  }
+}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { PiCodingAgentAdapter } from '../../src/adapters/pi-agent/index'
+import { PiAgentAdapter } from '../../src/adapters/pi-agent/index'
 import { Amygdala } from '../../src/amygdala/index'
 import { BrainEventBus } from '../../src/eventbus/index'
 import { CognitiveWorkspace } from '../../src/workspace/index'
@@ -10,7 +10,7 @@ function makeAdapter() {
   const workspace = new CognitiveWorkspace(mockDb)
   const eventBus = new BrainEventBus()
   const amygdala = new Amygdala({}, workspace, eventBus)
-  return new PiCodingAgentAdapter({
+  return new PiAgentAdapter({
     modelId: 'claude-haiku-4-5-20251001',
     workspace,
     eventBus,
@@ -19,7 +19,7 @@ function makeAdapter() {
   })
 }
 
-describe('PiCodingAgentAdapter', () => {
+describe('PiAgentAdapter', () => {
   test('can be instantiated without errors', () => {
     const adapter = makeAdapter()
     expect(adapter).toBeDefined()

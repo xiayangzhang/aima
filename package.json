@@ -28,6 +28,7 @@
     "@anthropic-ai/claude-agent-sdk": "^0.2.72",
     "@mariozechner/pi-agent-core": "^0.57.1",
     "@mariozechner/pi-ai": "^0.57.1",
+    "@mariozechner/pi-coding-agent": "/tmp/mariozechner-pi-coding-agent-0.57.1.tgz",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "drizzle-orm": "^0.38.0",
     "postgres": "^3.4.0"
