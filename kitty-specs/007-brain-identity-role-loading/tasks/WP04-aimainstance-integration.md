@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: AIMAInstance Integration + reloadIdentity()
-lane: "doing"
+lane: "for_review"
 dependencies: ["WP01", "WP02", "WP03"]
 subtasks:
 - T010
@@ -487,3 +487,4 @@ spec-kitty implement WP04 --base WP03
 ## Activity Log
 
 - 2026-03-11T11:58:09Z – claude-sonnet-4-6 – shell_pid=6060 – lane=doing – Started implementation via workflow command
+- 2026-03-11T12:04:57Z – claude-sonnet-4-6 – shell_pid=6060 – lane=for_review – Ready for review: AIMAInstance integrated with IdentityLoader. identityDir/reloadOnRun config, lazy-load on receive(), reloadIdentity() method, getAllowedTools callback to PiCodingAgentAdapter, ThreadRunner.updateAssemblerConfig(). 15 integration tests (scenarios A-D + backwards compat). 329 total unit tests passing. typecheck clean, biome clean.
