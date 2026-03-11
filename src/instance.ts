@@ -2,7 +2,8 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
 import type { BrainAdapter } from './adapters/index'
-import { PiCodingAgentAdapter } from './adapters/pi-agent/index'
+import { PiAgentAdapter } from './adapters/pi-agent/index'
+import { PiCodingAgentAdapter } from './adapters/pi-coding-agent/index'
 import { Amygdala } from './amygdala/index'
 import type { BrainIdentity, ContextAssemblerConfig } from './context/index'
 import type { DmnConfig } from './dmn/index'
@@ -18,7 +19,7 @@ import { CognitiveWorkspace } from './workspace/index'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-export type AdapterType = 'pi-agent' | 'claude-sdk'
+export type AdapterType = 'pi-agent' | 'pi-coding-agent' | 'claude-sdk'
 
 export interface AIMAInstanceConfig {
   /** Anthropic API key. Falls back to ANTHROPIC_API_KEY env var if omitted. */
@@ -185,6 +186,21 @@ export class AIMAInstance {
     const adapters = new Map<CognitiveBrainType, BrainAdapter>()
 
     if (config.adapter === 'pi-agent') {
+      // All cognitive brains share one PiAgentAdapter instance
+      // (session isolation is handled by `${brain}:${threadId}` keys internally)
+      const limbicModel = config.brainModels?.limbic ?? 'claude-sonnet-4-6'
+      const adapter = new PiAgentAdapter({
+        ...shared,
+        modelId: limbicModel,
+        getApiKey: apiKeyFn,
+      })
+      adapters.set('limbic', adapter)
+      adapters.set('cortex', adapter)
+      adapters.set('brainstem', adapter)
+      return adapters
+    }
+
+    if (config.adapter === 'pi-coding-agent') {
       // All cognitive brains share one PiCodingAgentAdapter instance
       // (session isolation is handled by `${brain}:${threadId}` keys internally)
       const limbicModel = config.brainModels?.limbic ?? 'claude-sonnet-4-6'

@@ -66,8 +66,10 @@ export type { ThreadRunnerConfig } from './runner/index'
 export { ThreadRunner } from './runner/index'
 
 // ── Adapters ──────────────────────────────────────────────────────────────────
-export type { PiCodingAgentAdapterConfig } from './adapters/pi-agent/index'
-export { PiCodingAgentAdapter } from './adapters/pi-agent/index'
+export type { PiAgentAdapterConfig } from './adapters/pi-agent/index'
+export { PiAgentAdapter } from './adapters/pi-agent/index'
+export type { PiCodingAgentAdapterConfig } from './adapters/pi-coding-agent/index'
+export { PiCodingAgentAdapter } from './adapters/pi-coding-agent/index'
 export type { ClaudeAgentSDKAdapterConfig } from './adapters/claude-sdk/index'
 export { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
 
