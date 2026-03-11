@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: AIMAInstance Sub-Execution Logic
-lane: "planned"
+lane: "done"
 dependencies: ["WP01"]
 subtasks:
 - T005
@@ -12,8 +12,8 @@ phase: Phase 2 - Instance Layer
 assignee: ''
 agent: ''
 shell_pid: ''
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-11T00:00:00Z'
   lane: planned
@@ -331,3 +331,7 @@ expect(completeEvent?.payload?.isSubExecution).toBe(true)
 3. model 优先级是否正确（params > config > default）
 4. 如何确保子执行不污染主 Brainstem session 的对话历史
 5. `createAimaMcpServer()` 是否正确注入了回调
+
+## Activity Log
+
+- 2026-03-11T13:12:21Z – unknown – lane=done – Review passed: buildBlock4Opts() correctly routes limbic/cortex to situation hint and brainstem to taskType (cortex output priority then trigger fallback). trigger() now fetches thread+slots before activation. assembleContext() opts param wired in both trigger() and route(). 7 new tests cover all brain paths and edge cases. 15 total tests pass, no regressions.
