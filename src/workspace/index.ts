@@ -406,6 +406,8 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
       conditions.push(isNull(memories.tInvalid))
     }
 
+    conditions.push(eq(memories.forgotten, false))
+
     if (filters.createdAfter !== undefined) {
       conditions.push(gt(memories.createdAt, filters.createdAfter))
     }
