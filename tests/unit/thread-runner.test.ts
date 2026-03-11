@@ -278,6 +278,75 @@ describe('ThreadRunner routing — extended', () => {
   })
 })
 
+// ─── buildBlock4Opts unit tests ───────────────────────────────────────────────
+
+describe('ThreadRunner.buildBlock4Opts', () => {
+  // Access private method for unit testing
+  function callBuildBlock4Opts(
+    runner: ThreadRunner,
+    brain: CognitiveBrainType,
+    trigger: string | null,
+    cortexOutput: Record<string, unknown> | null = null,
+  ) {
+    const thread = { trigger }
+    const slotMap: Record<string, { output: unknown } | undefined> =
+      cortexOutput !== null ? { cortex: { output: cortexOutput } } : {}
+    // biome-ignore lint/suspicious/noExplicitAny: accessing private method for unit testing
+    return (runner as unknown as Record<string, any>).buildBlock4Opts(brain, thread, slotMap)
+  }
+
+  function makeTestRunner() {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    return makeRunner(adapters, workspace, eventBus)
+  }
+
+  test('limbic + trigger present → { situation: trigger }', () => {
+    const runner = makeTestRunner()
+    const result = callBuildBlock4Opts(runner, 'limbic', 'user said hello')
+    expect(result).toEqual({ situation: 'user said hello' })
+  })
+
+  test('limbic + trigger null → undefined', () => {
+    const runner = makeTestRunner()
+    const result = callBuildBlock4Opts(runner, 'limbic', null)
+    expect(result).toBeUndefined()
+  })
+
+  test('cortex + trigger present → { situation: trigger }', () => {
+    const runner = makeTestRunner()
+    const result = callBuildBlock4Opts(runner, 'cortex', 'plan this task')
+    expect(result).toEqual({ situation: 'plan this task' })
+  })
+
+  test('cortex + trigger null → undefined', () => {
+    const runner = makeTestRunner()
+    const result = callBuildBlock4Opts(runner, 'cortex', null)
+    expect(result).toBeUndefined()
+  })
+
+  test('brainstem + cortex slot has task_type → { taskType: cortex task_type } (ignores trigger)', () => {
+    const runner = makeTestRunner()
+    const result = callBuildBlock4Opts(runner, 'brainstem', 'user trigger', {
+      task_type: 'document_prep',
+    })
+    expect(result).toEqual({ taskType: 'document_prep' })
+  })
+
+  test('brainstem + cortex slot has no task_type → fallback to trigger', () => {
+    const runner = makeTestRunner()
+    const result = callBuildBlock4Opts(runner, 'brainstem', 'user trigger', { intent: 'execute' })
+    expect(result).toEqual({ taskType: 'user trigger' })
+  })
+
+  test('brainstem + no cortex slot and no trigger → undefined', () => {
+    const runner = makeTestRunner()
+    const result = callBuildBlock4Opts(runner, 'brainstem', null)
+    expect(result).toBeUndefined()
+  })
+})
+
 describe('CognitiveWorkspace.waitForComplete', () => {
   test('resolves when thread_complete event fires', async () => {
     const workspace = new CognitiveWorkspace(mockDb)

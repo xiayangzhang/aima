@@ -1,8 +1,8 @@
 import type { BrainAdapter, BrainRunParams } from '../adapters/index'
 import { assembleBlock12, assembleContext } from '../context/index'
-import type { ContextAssemblerConfig } from '../context/index'
+import type { AssembleBlock4Opts, ContextAssemblerConfig } from '../context/index'
 import type { BrainEventBus } from '../eventbus/index'
-import type { CognitiveBrainType } from '../types/index'
+import type { CognitiveBrainType, Slot, Thread } from '../types/index'
 import type { CognitiveWorkspace } from '../workspace/index'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -163,7 +163,8 @@ export class ThreadRunner {
         }
 
         if (!nextBrain) return
-        await this.activateBrain(nextBrain, threadId)
+        const opts = this.buildBlock4Opts(nextBrain, thread, slotMap)
+        await this.activateBrain(nextBrain, threadId, opts)
         currentBrain = nextBrain
       }
     } finally {
@@ -175,10 +176,21 @@ export class ThreadRunner {
 
   /** Trigger a brain activation from outside the routing loop (e.g. AIMAInstance.receive()). */
   async trigger(brain: CognitiveBrainType, threadId: string): Promise<void> {
-    await this.activateBrain(brain, threadId)
+    const thread = await this.workspace.getThread(threadId)
+    if (!thread) throw new Error(`Thread not found: ${threadId}`)
+
+    const slots = await this.workspace.getSlotsByThread(threadId)
+    const slotMap = Object.fromEntries(slots.map((s) => [s.brain, s]))
+
+    const opts = this.buildBlock4Opts(brain, thread, slotMap)
+    await this.activateBrain(brain, threadId, opts)
   }
 
-  private async activateBrain(brain: CognitiveBrainType, threadId: string): Promise<void> {
+  private async activateBrain(
+    brain: CognitiveBrainType,
+    threadId: string,
+    opts?: AssembleBlock4Opts,
+  ): Promise<void> {
     const adapter = this.adapters.get(brain)
     if (!adapter) throw new Error(`No adapter registered for brain: ${brain}`)
 
@@ -191,6 +203,7 @@ export class ThreadRunner {
       threadId,
       this.assemblerConfig,
       this.cachedBlock12[brain],
+      opts,
     )
 
     this.eventBus.emit({
@@ -222,6 +235,31 @@ export class ThreadRunner {
       session_id: result.sessionId,
       payload: { brain, threadId, stopReason: result.stopReason, injectedMemoryIds },
     })
+  }
+
+  /**
+   * Build Block 4 context hints for a brain activation.
+   * Returns undefined when no meaningful hints are available (Block 4 falls back to generic retrieval).
+   */
+  private buildBlock4Opts(
+    brain: CognitiveBrainType,
+    thread: Pick<Thread, 'trigger'>,
+    slotMap: Record<string, Pick<Slot, 'output'> | undefined>,
+  ): AssembleBlock4Opts | undefined {
+    if (brain === 'limbic' || brain === 'cortex') {
+      if (!thread.trigger) return undefined
+      return { situation: thread.trigger }
+    }
+
+    if (brain === 'brainstem') {
+      const cortexOutput = slotMap.cortex?.output as Record<string, unknown> | null | undefined
+      const taskType = cortexOutput?.task_type as string | undefined
+      const hint = taskType ?? thread.trigger ?? undefined
+      if (!hint) return undefined
+      return { taskType: hint }
+    }
+
+    return undefined
   }
 
   // ── Pending Observations Routing ─────────────────────────────────────────────
