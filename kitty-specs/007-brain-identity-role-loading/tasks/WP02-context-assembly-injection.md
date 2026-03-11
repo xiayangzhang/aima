@@ -1,15 +1,15 @@
 ---
 work_package_id: WP02
 title: Context Assembly Block 1/2 Injection
-lane: planned
+lane: "doing"
 dependencies: ["WP01"]
 subtasks:
 - T006
 - T007
 phase: Phase 2 - Core Features
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-sonnet-4-6"
+shell_pid: "940"
 review_status: ''
 reviewed_by: ''
 history:
@@ -277,3 +277,7 @@ describe('assembleBlock12 with soul', () => {
 ```bash
 spec-kitty implement WP02 --base WP01
 ```
+
+## Activity Log
+
+- 2026-03-11T11:55:06Z – claude-sonnet-4-6 – shell_pid=940 – lane=doing – Started implementation via workflow command
