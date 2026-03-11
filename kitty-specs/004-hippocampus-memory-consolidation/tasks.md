@@ -70,7 +70,7 @@
 
 子任务：
 - [x] T018: computeNewImportance 纯函数（posRatio/negRatio 阈值比对 → delta → clamp 0.0-1.0）
-- [ ] T019: runOutcomesConverge(workspace, config)：getMemoriesWithNonZeroOutcomes → computeNewImportance → updateMemoryImportanceAndResetOutcomes；日志记录调整数量
+- [x] T019: runOutcomesConverge(workspace, config)：getMemoriesWithNonZeroOutcomes → computeNewImportance → updateMemoryImportanceAndResetOutcomes；日志记录调整数量
 - [ ] T020: runExpiryCleanup(workspace, config)：forgetExpiredMemories(now) → 日志记录数量；在 runConsolidation 注册为步骤 3 + 步骤 4
 - [ ] T021: 顺序约束验证：runConsolidation 中步骤 1-4 按顺序 await，步骤 N 抛出时后续不执行；幂等文档注释
 
