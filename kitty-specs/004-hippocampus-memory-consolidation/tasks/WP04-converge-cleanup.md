@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: 步骤 3+4：usage_outcomes 收敛 + 过期清理
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T018, T019, T020, T021]
 assignee: claude
@@ -164,3 +164,4 @@ spec-kitty agent tasks move-task WP04 --to for_review --note "Ready: <summary>"
 ## Activity Log
 
 - 2026-03-11T02:34:56Z – claude-sonnet-4-6 – shell_pid=55178 – lane=doing – Started implementation via workflow command
+- 2026-03-11T02:36:24Z – claude-sonnet-4-6 – shell_pid=55178 – lane=for_review – Ready for review: computeNewImportance exported pure fn (ratio thresholds, clamp), runOutcomesConverge batch-updates and resets counters, runExpiryCleanup delegates to forgetExpiredMemories, runConsolidation order comments added. typecheck + biome pass.
