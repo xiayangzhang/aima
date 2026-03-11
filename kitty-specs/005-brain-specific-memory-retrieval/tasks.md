@@ -74,7 +74,7 @@ T001/T002/T003 均为独立新方法，逻辑互不影响，可同时起草但�
 
 ### 子任务清单
 
-- [ ] T009: `AssembleBlock4Opts` 接口
+- [x] T009: `AssembleBlock4Opts` 接口
 - [ ] T010: `assembleBlock4` 签名 + limbic 升级
 - [ ] T011: cortex 分支升级
 - [ ] T012: brainstem 分支升级
