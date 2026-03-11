@@ -1,12 +1,14 @@
 ---
 work_package_id: WP02
 title: assembleBlock4 升级为脑区专属路由
-lane: "for_review"
+lane: "done"
 dependencies: [WP01]
 subtasks: [T009, T010, T011, T012, T013, T014, T015]
 assignee: claude
 agent: "claude-sonnet-4-6"
 shell_pid: "85538"
+reviewed_by: "XIAYANG ZHANG"
+review_status: "approved"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -410,3 +412,4 @@ spec-kitty agent tasks move-task WP02 --to for_review --note "Ready: <summary>"
 
 - 2026-03-11T05:46:30Z – claude-sonnet-4-6 – shell_pid=85538 – lane=doing – Started implementation via workflow command
 - 2026-03-11T05:48:50Z – claude-sonnet-4-6 – shell_pid=85538 – lane=for_review – Ready: AssembleBlock4Opts interface, brain-specific routing (limbic→getEntityContext, cortex→findSimilarSituations, brainstem→getProcedure), fallbacks preserved, exported from index.ts, 9 unit tests, 229 total passing, biome+typecheck clean.
+- 2026-03-11T06:51:21Z – claude-sonnet-4-6 – shell_pid=85538 – lane=done – Merged to main: AssembleBlock4Opts, brain-specific routing with fallbacks, 9 unit tests
