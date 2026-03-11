@@ -1,12 +1,14 @@
 ---
 work_package_id: WP04
 title: 步骤 3+4：usage_outcomes 收敛 + 过期清理
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks: [T018, T019, T020, T021]
 assignee: claude
 agent: "claude"
 shell_pid: "69320"
+reviewed_by: "XIAYANG ZHANG"
+review_status: "approved"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -166,3 +168,4 @@ spec-kitty agent tasks move-task WP04 --to for_review --note "Ready: <summary>"
 - 2026-03-11T02:34:56Z – claude-sonnet-4-6 – shell_pid=55178 – lane=doing – Started implementation via workflow command
 - 2026-03-11T02:36:24Z – claude-sonnet-4-6 – shell_pid=55178 – lane=for_review – Ready for review: computeNewImportance exported pure fn (ratio thresholds, clamp), runOutcomesConverge batch-updates and resets counters, runExpiryCleanup delegates to forgetExpiredMemories, runConsolidation order comments added. typecheck + biome pass.
 - 2026-03-11T02:47:43Z – claude – shell_pid=69320 – lane=doing – Started review via workflow command
+- 2026-03-11T02:48:12Z – claude – shell_pid=69320 – lane=done – Review passed: computeNewImportance is a correct pure function (ratio thresholds, clamp [0,1], total=0 guard), exported from both hippocampus/index.ts and src/index.ts. runOutcomesConverge and runExpiryCleanup match spec. 13 unit tests pass. typecheck and biome clean.
