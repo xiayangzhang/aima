@@ -1,12 +1,14 @@
 ---
 work_package_id: WP03
 title: 集成测试（真实 PostgreSQL）
-lane: "doing"
+lane: "done"
 dependencies: [WP01, WP02]
 subtasks: [T016, T017, T018, T019]
 assignee: claude
 agent: "claude-sonnet-4-6"
 shell_pid: "89460"
+reviewed_by: "XIAYANG ZHANG"
+review_status: "approved"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -488,3 +490,4 @@ spec-kitty agent tasks move-task WP03 --to for_review --note "Ready: <summary>"
 ## Activity Log
 
 - 2026-03-11T05:48:55Z – claude-sonnet-4-6 – shell_pid=89460 – lane=doing – Started implementation via workflow command
+- 2026-03-11T06:51:21Z – claude-sonnet-4-6 – shell_pid=89460 – lane=done – Merged to main: 22 integration tests against real PostgreSQL, all green
