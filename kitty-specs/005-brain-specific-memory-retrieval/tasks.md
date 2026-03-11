@@ -49,7 +49,7 @@
 - [x] T004: `ilike` 导入 + `ICognitiveWorkspace` 接口同步
 - [x] T005: `src/index.ts` 导出
 - [x] T006: 单元测试 - getEntityContext
-- [ ] T007: 单元测试 - findSimilarSituations
+- [x] T007: 单元测试 - findSimilarSituations
 - [ ] T008: 单元测试 - getProcedure
 
 ### 并行机会
