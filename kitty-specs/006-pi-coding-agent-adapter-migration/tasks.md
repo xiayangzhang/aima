@@ -137,7 +137,7 @@
 - [x] T022 `adapter.test.ts` — `abort()` clears all sessions; `abortSession()` clears specific key (~2 tests)
 - [x] T023 `extension.test.ts` — `tool_call` allow decision → returns `undefined`; block → returns `{ block: true }`; escalate → returns `{ block: true }` + ALERT event (~3 tests)
 - [x] T024 `extension.test.ts` — default policy: `bash` → blocked without `amygdala.check()` call; `read` → `amygdala.check()` called; `edit` → blocked; `grep` → allowed (~4 tests)
-- [ ] T025 `extension.test.ts` — EventBus events: `tool.pre_use` (INFO), `tool.post_use` (INFO), `tool.blocked` (COMPLIANCE), `amygdala.escalation` (ALERT), `brain.loop_end` (INFO); verify brain/thread_id/payload shape (~5 tests)
+- [x] T025 `extension.test.ts` — EventBus events: `tool.pre_use` (INFO), `tool.post_use` (INFO), `tool.blocked` (COMPLIANCE), `amygdala.escalation` (ALERT), `brain.loop_end` (INFO); verify brain/thread_id/payload shape (~5 tests)
 - [ ] T026 `mcp-tools.test.ts` — `buildMcpTools()` returns AgentTool[]; each tool has name/description/execute; execute() calls workspace method correctly (~3 tests + ~2 edge cases = ~5 tests)
 
 ### Implementation Notes
