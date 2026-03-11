@@ -131,7 +131,7 @@
 **Estimated size**: ~550 lines
 
 ### Included Subtasks
-- [ ] T019 Create `tests/unit/adapters/pi-coding-agent/` directory + `adapter.test.ts` structure with mock session factory
+- [x] T019 Create `tests/unit/adapters/pi-coding-agent/` directory + `adapter.test.ts` structure with mock session factory
 - [ ] T020 `adapter.test.ts` — `run()` tests: first-run creates session, second-run resumes, systemPrompt refreshed, multi-brain isolation (~5 tests)
 - [ ] T021 `adapter.test.ts` — `inject()` tests: amygdala_interrupt → steer(); dmn_correction → followUp(); no active session → workspace fallback (~3 tests)
 - [ ] T022 `adapter.test.ts` — `abort()` clears all sessions; `abortSession()` clears specific key (~2 tests)
