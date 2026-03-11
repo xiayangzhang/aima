@@ -57,7 +57,7 @@
 - [x] T014: 获取段序列并组装 LLM prompt：getSegmentSequence + content 摘录 + 要求返回三类 JSON
 - [x] T015: LLM 调用 + parseLlmJson：解析 semantic/procedural/implicit 数组；解析失败跳过该段
 - [x] T016: 写入 semantic + procedural 记忆：supersedesId 去重（searchMemory 先查，存在时设 supersedesId + invalidateMemory 旧记录）
-- [ ] T017: 写入 implicit 记忆 + 错误处理：base_importance = 段 avgImportance × 0.8；单段失败不中断；在 runConsolidation 注册为步骤 2
+- [x] T017: 写入 implicit 记忆 + 错误处理：base_importance = 段 avgImportance × 0.8；单段失败不中断；在 runConsolidation 注册为步骤 2
 
 **Prompt**: WP03-sequence-replay.md
 **依赖**: WP01
