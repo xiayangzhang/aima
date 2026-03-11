@@ -2,7 +2,7 @@
 work_package_id: "WP04"
 title: "AIMAInstance Integration + Old Adapter Rename"
 phase: "Phase 3 - Integration"
-lane: "planned"
+lane: "doing"
 dependencies: ["WP01", "WP02", "WP03"]
 subtasks:
   - "T015"
@@ -10,8 +10,8 @@ subtasks:
   - "T017"
   - "T018"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude-sonnet-4-6"
+shell_pid: "1912"
 review_status: ""
 reviewed_by: ""
 history:
@@ -248,3 +248,4 @@ All tests from Feature 001-005 must remain green. The new adapter will be tested
 ## Activity Log
 
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created.
+- 2026-03-11T10:48:37Z – claude-sonnet-4-6 – shell_pid=1912 – lane=doing – Started implementation via workflow command
