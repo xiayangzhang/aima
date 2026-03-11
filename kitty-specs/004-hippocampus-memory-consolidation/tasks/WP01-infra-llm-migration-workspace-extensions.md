@@ -1,11 +1,12 @@
 ---
 work_package_id: WP01
 title: callLlm 迁移 + 基础设施 + CognitiveWorkspace 扩展
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks: [T001, T002, T003, T004, T005, T006, T007]
-agent: "claude"
+agent: "claude-sonnet-4-6"
 assignee: "claude"
+shell_pid: "93501"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -373,3 +374,7 @@ cd /Volumes/leoyun/aima
 spec-kitty agent workflow implement --agent <name>
 spec-kitty agent tasks move-task WP01 --to for_review --note "Ready: <summary>"
 ```
+
+## Activity Log
+
+- 2026-03-11T01:25:30Z – claude-sonnet-4-6 – shell_pid=93501 – lane=doing – Started implementation via workflow command
