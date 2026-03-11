@@ -1,12 +1,14 @@
 ---
 work_package_id: WP03
 title: 集成测试（真实 PostgreSQL）
-lane: "for_review"
+lane: "done"
 dependencies: [WP01, WP02]
 subtasks: [T016, T017, T018, T019]
 assignee: claude
 agent: "claude-sonnet-4-6"
 shell_pid: "89460"
+reviewed_by: "XIAYANG ZHANG"
+review_status: "approved"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -489,3 +491,4 @@ spec-kitty agent tasks move-task WP03 --to for_review --note "Ready: <summary>"
 
 - 2026-03-11T05:48:55Z – claude-sonnet-4-6 – shell_pid=89460 – lane=doing – Started implementation via workflow command
 - 2026-03-11T05:50:48Z – claude-sonnet-4-6 – shell_pid=89460 – lane=for_review – Ready: 22 integration tests against real PostgreSQL. Covers getEntityContext (7 tests), findSimilarSituations (5 tests), getProcedure (6 tests), assembleBlock4 routing (4 tests). ILIKE case-insensitivity, importance ordering, limit truncation, tInvalid filter all verified with real SQL semantics.
+- 2026-03-11T06:49:33Z – claude-sonnet-4-6 – shell_pid=89460 – lane=done – Review passed: 22 integration tests verified against real PostgreSQL (localhost:5434). ILIKE case-insensitivity, importance ordering, limit truncation, tInvalid filter, entity isolation, 3-group parallelism, type purity — all verified with real SQL semantics. Full suite: 229 unit + 70 integration tests green.
