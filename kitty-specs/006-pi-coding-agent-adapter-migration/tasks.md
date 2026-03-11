@@ -165,7 +165,7 @@
 **Estimated size**: ~430 lines
 
 ### Included Subtasks
-- [ ] T027 Setup: `tests/integration/adapters/pi-coding-agent/session.test.ts` — real `SessionManager.inMemory()`, mock tool factory (`wrapRegisteredTool`), `describeWithPiAgent` helper (skip if package unavailable)
+- [x] T027 Setup: `tests/integration/adapters/pi-coding-agent/session.test.ts` — real `SessionManager.inMemory()`, mock tool factory (`wrapRegisteredTool`), `describeWithPiAgent` helper (skip if package unavailable)
 - [ ] T028 Session creation + resumption: two consecutive runs share conversation history (~2 tests)
 - [ ] T029 Extension `tool_call` event fires when mock tool is invoked via real session (~1 test)
 - [ ] T030 Block decision: `tool_call` returns `{ block: true }` → `tool_execution_end` does NOT fire; `tool.blocked` EventBus event received (~2 tests)
