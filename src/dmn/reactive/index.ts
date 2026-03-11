@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import type { BrainEvent } from '../../adapters/index'
+import { callLlm, parseLlmJson } from '../../llm'
 import type { BrainType, UsageOutcome } from '../../types/index'
 import type { CognitiveWorkspace } from '../../workspace/index'
 import type { DmnConfig } from '../index'
-import { callLlm, parseLlmJson } from '../llm'
 
 // ─── SignalRule ───────────────────────────────────────────────────────────────
 

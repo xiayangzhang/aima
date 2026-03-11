@@ -112,7 +112,8 @@ export class ThreadRunner {
             await this.workspace.updateThreadState(threadId, 'complete')
             this.workspace.notifyThreadComplete(threadId)
             return
-          } else if (mode === 'ROUTE') {
+          }
+          if (mode === 'ROUTE') {
             nextBrain = 'cortex'
           } else if (mode === 'EXECUTE') {
             nextBrain = 'brainstem'
