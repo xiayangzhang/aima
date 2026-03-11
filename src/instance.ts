@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { query } from '@anthropic-ai/claude-agent-sdk'
+import Anthropic from '@anthropic-ai/sdk'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
@@ -290,25 +290,15 @@ export class AIMAInstance {
     if (this._config._subQueryFn) {
       result = await this._config._subQueryFn(params.taskDescription, resolvedModel)
     } else {
-      const q = query({
-        prompt: params.taskDescription,
-        options: {
-          model: resolvedModel,
-          canUseTool: async (toolName, input) => {
-            const { decision, reason } = await this.amygdala.check(toolName, input)
-            if (decision === 'block' || decision === 'escalate') {
-              return { behavior: 'deny', message: reason }
-            }
-            return { behavior: 'allow' }
-          },
-        },
+      const apiKey = this._config.apiKey ?? process.env.ANTHROPIC_API_KEY
+      const client = new Anthropic({ ...(apiKey !== undefined ? { apiKey } : {}) })
+      const response = await client.messages.create({
+        model: resolvedModel,
+        max_tokens: 8192,
+        messages: [{ role: 'user', content: params.taskDescription }],
       })
-      result = ''
-      for await (const msg of q) {
-        if (msg.type === 'result' && msg.subtype === 'success') {
-          result = msg.result
-        }
-      }
+      const textBlock = response.content.find((b) => b.type === 'text')
+      result = textBlock?.type === 'text' ? textBlock.text : ''
     }
 
     this.eventBus.emit({
