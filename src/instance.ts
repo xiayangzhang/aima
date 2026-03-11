@@ -240,6 +240,42 @@ export class AIMAInstance {
     return { threadId: thread.id }
   }
 
+  /**
+   * Continue an existing Thread with new input.
+   * Reuses the existing Limbic session (conversation history preserved).
+   *
+   * Supported Thread states: 'complete', 'interrupted'.
+   * Call receive() to start a new Thread instead.
+   *
+   * @throws {Error} if Thread does not exist
+   * @throws {Error} if Thread is in 'active' or 'waiting' state
+   */
+  async continue(
+    threadId: string,
+    input: {
+      content: string
+      channel?: string
+      externalId?: string
+    },
+  ): Promise<{ threadId: string }> {
+    // Identity lazy init (same as receive())
+    if (this.identityLoader) {
+      if (this.identityCache === null || this._config.reloadOnRun) {
+        this.identityCache = await this.identityLoader.load()
+        this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
+      }
+    }
+
+    // Reopen Thread with new trigger
+    await this.workspace.reopenThread(threadId, input.content)
+
+    // Same routing path as receive()
+    await this.threadRunner.trigger('limbic', threadId)
+    await this.workspace.waitForComplete(threadId)
+
+    return { threadId }
+  }
+
   // ── Identity ─────────────────────────────────────────────────────────────────
 
   /**

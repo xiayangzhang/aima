@@ -147,6 +147,7 @@ export interface ICognitiveWorkspace {
   createThread(params: CreateThreadParams): Promise<Thread>
   getThread(id: string): Promise<Thread | null>
   updateThreadState(id: string, state: ThreadState): Promise<void>
+  reopenThread(id: string, trigger: string): Promise<void>
   getActiveThreads(): Promise<Thread[]> // state NOT IN ('complete')
 
   // ── Slot ────────────────────────────────────────────────────────────────

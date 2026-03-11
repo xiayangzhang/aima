@@ -232,6 +232,25 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     await this.db.update(threads).set({ state, updatedAt: new Date() }).where(eq(threads.id, id))
   }
 
+  /**
+   * Reopen a completed or interrupted Thread for continuation.
+   * Atomically resets state to 'active' and updates the trigger to the new content.
+   *
+   * @throws {Error} if Thread does not exist
+   * @throws {Error} if Thread is in 'active' or 'waiting' state (concurrent protection)
+   */
+  async reopenThread(id: string, trigger: string): Promise<void> {
+    const thread = await this.getThread(id)
+    if (!thread) throw new Error(`Thread not found: ${id}`)
+    if (thread.state === 'active' || thread.state === 'waiting') {
+      throw new Error(`Cannot reopen Thread in state '${thread.state}': ${id}`)
+    }
+    await this.db
+      .update(threads)
+      .set({ state: 'active', trigger, updatedAt: new Date() })
+      .where(eq(threads.id, id))
+  }
+
   async getActiveThreads(): Promise<Thread[]> {
     const rows = await this.db
       .select()
