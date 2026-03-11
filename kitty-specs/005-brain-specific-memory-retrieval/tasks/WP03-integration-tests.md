@@ -2,7 +2,7 @@
 work_package_id: WP03
 title: 集成测试（真实 PostgreSQL）
 lane: planned
-dependencies: []
+dependencies: [WP01, WP02]
 subtasks: [T016, T017, T018, T019]
 assignee: claude
 agent: claude

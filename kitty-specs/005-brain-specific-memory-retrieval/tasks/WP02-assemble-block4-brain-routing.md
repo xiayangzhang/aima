@@ -2,7 +2,7 @@
 work_package_id: WP02
 title: assembleBlock4 升级为脑区专属路由
 lane: planned
-dependencies: []
+dependencies: [WP01]
 subtasks: [T009, T010, T011, T012, T013, T014, T015]
 assignee: claude
 agent: claude
