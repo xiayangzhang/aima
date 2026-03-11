@@ -1,0 +1,8 @@
+{
+  "feature_number": "010",
+  "slug": "010-thread-continue-multi-turn",
+  "friendly_name": "Thread Continue (Multi-Turn Dialog)",
+  "mission": "software-dev",
+  "source_description": "Feature 010 — 实现 AIMAInstance.continue()：向已有 Thread 注入新内容，重新激活 Limbic，复用已有脑区 session（保留对话历史），支持 complete/interrupted 状态的 Thread 续接",
+  "created_at": "2026-03-12T00:00:00Z"
+}
