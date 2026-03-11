@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: Public API Export + Integration Tests
-lane: "planned"
+lane: "for_review"
 dependencies: ["WP01", "WP02"]
 subtasks:
 - T009
@@ -156,3 +156,7 @@ expect(fn).toBeDefined()
 1. `src/index.ts` 中的导出是否使用 `export type`（非 `export`）
 2. 集成测试是否真正验证了完整调用链路（不只是 unit mock）
 3. 旧的 stub 文本是否已完全消失（场景 B 验证）
+
+## Activity Log
+
+- 2026-03-11T14:07:47Z – unknown – lane=for_review – Exported SpawnExecutionSessionFn from public API. 3 integration tests green. All 385 tests pass.
