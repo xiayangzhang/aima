@@ -24,6 +24,8 @@ export interface PiCodingAgentAdapterConfig {
   eventBus: BrainEventBus
   amygdala: Amygdala
   getApiKey: () => string | undefined
+  /** Testing escape hatch: override session creation to inject a mock AgentSession. */
+  _createSession?: () => Promise<AgentSession>
 }
 
 // ─── Session State ────────────────────────────────────────────────────────────
@@ -101,14 +103,18 @@ export class PiCodingAgentAdapter implements BrainAdapter {
       // Per-session in-memory SessionManager preserves conversation history
       const sessionManager = SessionManager.inMemory()
 
-      const { session } = await createAgentSession({
-        model,
-        authStorage,
-        modelRegistry,
-        sessionManager,
-        resourceLoader: loader,
-        customTools: mcpTools,
-      })
+      const session = this.config._createSession
+        ? await this.config._createSession()
+        : (
+            await createAgentSession({
+              model,
+              authStorage,
+              modelRegistry,
+              sessionManager,
+              resourceLoader: loader,
+              customTools: mcpTools,
+            })
+          ).session
 
       state = { session, systemPromptRef }
       this.sessions.set(key, state)
