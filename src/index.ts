@@ -75,6 +75,7 @@ export { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
 
 // ── MCP Server ────────────────────────────────────────────────────────────────
 export { createAimaMcpServer } from './mcp/index'
+export type { SpawnExecutionSessionFn } from './mcp/index'
 
 // ── DMN ───────────────────────────────────────────────────────────────────────
 export type { DmnConfig, DmnLlmConfig } from './dmn/index'
