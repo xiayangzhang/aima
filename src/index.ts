@@ -87,6 +87,10 @@ export type { HippocampusConfig } from './hippocampus/index'
 // ── LLM ───────────────────────────────────────────────────────────────────────
 export type { LlmConfig } from './llm'
 
+// ── Identity ──────────────────────────────────────────────────────────────────
+export { IdentityLoader } from './identity/index'
+export type { IdentityCache, RoleEntry } from './identity/index'
+
 // ── AIMAInstance ──────────────────────────────────────────────────────────────
 export type { AIMAInstanceConfig, AdapterType } from './instance'
 export { AIMAInstance, createAIMAInstance } from './instance'
