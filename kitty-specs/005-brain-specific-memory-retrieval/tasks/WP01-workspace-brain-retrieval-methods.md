@@ -1,12 +1,14 @@
 ---
 work_package_id: WP01
 title: CognitiveWorkspace 专属检索方法实现
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks: [T001, T002, T003, T004, T005, T006, T007, T008]
 assignee: claude
 agent: "claude-sonnet-4-6"
 shell_pid: "81351"
+reviewed_by: "XIAYANG ZHANG"
+review_status: "approved"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -469,3 +471,4 @@ spec-kitty agent tasks move-task WP01 --to for_review --note "Ready: <summary>"
 
 - 2026-03-11T05:43:49Z – claude-sonnet-4-6 – shell_pid=81351 – lane=doing – Started implementation via workflow command
 - 2026-03-11T05:46:21Z – claude-sonnet-4-6 – shell_pid=81351 – lane=for_review – Ready for review: getEntityContext (entity+types filter, limit 10), findSimilarSituations (3 parallel ILIKE queries, limit 5 per group), getProcedure (procedural ILIKE, limit 3). ICognitiveWorkspace interface updated. 16 unit tests, 220 total passing. biome clean on modified files.
+- 2026-03-11T06:51:20Z – claude-sonnet-4-6 – shell_pid=81351 – lane=done – Merged to main: 3 brain-specific retrieval methods (getEntityContext/findSimilarSituations/getProcedure), 16 unit tests
