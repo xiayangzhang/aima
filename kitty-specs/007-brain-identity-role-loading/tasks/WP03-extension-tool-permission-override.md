@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: Extension Factory Tool Permission Override
-lane: "done"
+lane: "for_review"
 dependencies: ["WP01"]
 subtasks:
 - T008
@@ -9,9 +9,9 @@ subtasks:
 phase: Phase 2 - Core Features
 assignee: ''
 agent: "claude-sonnet-4-6"
-shell_pid: "54585"
-review_status: "approved"
-reviewed_by: "XIAYANG ZHANG"
+shell_pid: "3887"
+review_status: ''
+reviewed_by: ''
 history:
 - timestamp: '2026-03-11T00:00:00Z'
   lane: planned
@@ -324,5 +324,3 @@ spec-kitty implement WP03 --base WP01
 
 - 2026-03-11T11:56:52Z – claude-sonnet-4-6 – shell_pid=3887 – lane=doing – Started implementation via workflow command
 - 2026-03-11T11:58:04Z – claude-sonnet-4-6 – shell_pid=3887 – lane=for_review – Ready for review: allowedTools param added to createAimaExtension, Stage 1 bypassed for listed tools, backwards compatible. 25 tests passing (20 existing + 5 new). typecheck clean, biome clean.
-- 2026-03-11T12:34:08Z – claude-sonnet-4-6 – shell_pid=54585 – lane=doing – Started review via workflow command
-- 2026-03-11T12:34:13Z – claude-sonnet-4-6 – shell_pid=54585 – lane=done – Review passed: allowedTools param added to createAimaExtension, Stage 1 bypass when tool in allowedSet. 25 tests (20 existing + 5 new). Backwards compatible. typecheck clean, biome clean.

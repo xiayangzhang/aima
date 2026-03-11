@@ -20,8 +20,8 @@ export class ThreadRunner {
   private readonly workspace: CognitiveWorkspace
   private readonly eventBus: BrainEventBus
   private readonly adapters: Map<CognitiveBrainType, BrainAdapter>
-  private readonly assemblerConfig: ContextAssemblerConfig
-  private readonly cachedBlock12: Record<CognitiveBrainType, string>
+  private assemblerConfig: ContextAssemblerConfig
+  private cachedBlock12: Record<CognitiveBrainType, string>
   // `${brain}:${threadId}` → sessionId (resumes existing session within Thread)
   private readonly brainSessions: Map<string, string> = new Map()
   // Prevents concurrent routing for the same Thread
@@ -61,6 +61,16 @@ export class ThreadRunner {
         payload: { threadId },
       })
     })
+  }
+
+  /** Update assembler config and rebuild cached Block 1+2 prefixes. */
+  updateAssemblerConfig(config: ContextAssemblerConfig): void {
+    this.assemblerConfig = config
+    this.cachedBlock12 = {
+      limbic: assembleBlock12('limbic', config),
+      cortex: assembleBlock12('cortex', config),
+      brainstem: assembleBlock12('brainstem', config),
+    }
   }
 
   stop(): void {

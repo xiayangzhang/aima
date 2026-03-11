@@ -9,6 +9,12 @@ export interface BrainIdentity {
 }
 
 export interface ContextAssemblerConfig {
+  /**
+   * Block 1 prefix (full content of soul.md).
+   * When non-empty, prepended before ## Role with a blank line separator.
+   * Omitting or passing an empty string preserves the original output (backwards compatible).
+   */
+  soul?: string
   identities: Record<CognitiveBrainType, BrainIdentity>
   skillIndex?: string // Skill index text (static, may be empty)
   timezone?: string // e.g. 'Australia/Sydney', defaults to 'UTC'
@@ -41,7 +47,14 @@ export interface AssembleBlock4Opts {
  */
 export function assembleBlock12(brain: CognitiveBrainType, config: ContextAssemblerConfig): string {
   const identity = config.identities[brain]
-  const lines: string[] = ['## Role', identity.role, '', '## Instructions', identity.instructions]
+  const lines: string[] = []
+
+  if (config.soul && config.soul.trim() !== '') {
+    lines.push(config.soul.trim(), '')
+  }
+
+  lines.push('## Role', identity.role, '', '## Instructions', identity.instructions)
+
   if (config.skillIndex) {
     lines.push('', '## Skill Index', config.skillIndex)
   }

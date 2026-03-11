@@ -24,6 +24,12 @@ export interface PiCodingAgentAdapterConfig {
   eventBus: BrainEventBus
   amygdala: Amygdala
   getApiKey: () => string | undefined
+  /**
+   * Optional. Returns the allowed tool names for a given brain.
+   * Sourced from identity role file allowed_tools frontmatter.
+   * When omitted, default blocking policy applies unchanged.
+   */
+  getAllowedTools?: (brain: CognitiveBrainType) => string[]
   /** Testing escape hatch: override session creation to inject a mock AgentSession. */
   _createSession?: () => Promise<AgentSession>
 }
@@ -85,6 +91,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
         threadId,
         this.config.amygdala,
         this.config.eventBus,
+        this.config.getAllowedTools?.(brain),
       )
 
       // ResourceLoader: minimal no-disk setup; extension wired via factory

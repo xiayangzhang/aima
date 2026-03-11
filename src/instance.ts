@@ -12,6 +12,8 @@ import { getEventBus } from './eventbus/index'
 import type { BrainEventBus } from './eventbus/index'
 import { HippocampusConsolidation } from './hippocampus/index'
 import type { HippocampusConfig } from './hippocampus/index'
+import { IdentityLoader } from './identity/index'
+import type { IdentityCache } from './identity/index'
 import { ThreadRunner } from './runner/index'
 import * as schema from './schema/index'
 import type { CognitiveBrainType } from './types/index'
@@ -48,6 +50,38 @@ export interface AIMAInstanceConfig {
   enableHippocampus?: boolean
   /** Hippocampus configuration. Requires enableHippocampus: true. */
   hippocampus?: HippocampusConfig
+  /**
+   * Optional. Absolute path to identity directory.
+   * soul.md / skill-index.md / {brain}.md in this directory override Block 1/2 content.
+   * When omitted, behaviour is identical to the previous version.
+   */
+  identityDir?: string
+  /**
+   * Optional. Defaults to false.
+   * When true, reloadIdentity() is called automatically before each receive().
+   * Adds file I/O latency; intended for development/debugging only.
+   */
+  reloadOnRun?: boolean
+}
+
+// ─── Default identities ───────────────────────────────────────────────────────
+
+const DEFAULT_IDENTITIES: Record<CognitiveBrainType, BrainIdentity> = {
+  limbic: {
+    role: 'Limbic — Communication & Routing',
+    instructions:
+      'You are the Limbic brain. Parse user intent, route to appropriate brain areas, and compose final responses.',
+  },
+  cortex: {
+    role: 'Cortex — Reasoning & Planning',
+    instructions:
+      'You are the Cortex brain. Analyze context, make routing decisions, and plan complex tasks.',
+  },
+  brainstem: {
+    role: 'Brainstem — Execution',
+    instructions:
+      'You are the Brainstem brain. Execute tasks using available tools and report results.',
+  },
 }
 
 // ─── AIMAInstance ─────────────────────────────────────────────────────────────
@@ -70,8 +104,13 @@ export class AIMAInstance {
   private pgClient: ReturnType<typeof postgres> | null = null
   private dmnService?: DmnService
   private hippocampusConsolidation?: HippocampusConsolidation
+  private readonly _config: AIMAInstanceConfig
+  private readonly identityLoader?: IdentityLoader
+  private identityCache: IdentityCache | null = null
 
   constructor(config: AIMAInstanceConfig) {
+    this._config = config
+
     // Database
     const pgClient = postgres(config.databaseUrl)
     this.pgClient = pgClient
@@ -84,11 +123,16 @@ export class AIMAInstance {
     // Amygdala (default rules)
     const amygdala = new Amygdala({}, this.workspace, this.eventBus)
 
+    // Identity loader (optional)
+    if (config.identityDir) {
+      this.identityLoader = new IdentityLoader(config.identityDir)
+    }
+
     // Adapters
     const adapters = this.buildAdapters(config, amygdala)
 
-    // ContextAssembler config
-    const assemblerConfig = buildAssemblerConfig(config)
+    // ContextAssembler config (built without identity at construction — lazy init on receive())
+    const assemblerConfig = this.buildAssemblerConfig()
 
     // ThreadRunner
     this.threadRunner = new ThreadRunner({
@@ -154,6 +198,14 @@ export class AIMAInstance {
     channel?: string
     externalId?: string
   }): Promise<{ threadId: string }> {
+    // Identity lazy init / reload
+    if (this.identityLoader) {
+      if (this.identityCache === null || this._config.reloadOnRun) {
+        this.identityCache = await this.identityLoader.load()
+        this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
+      }
+    }
+
     const thread = await this.workspace.createThread({
       initiatedBy: 'external',
       ...(input.channel !== undefined ? { sourceChannel: input.channel } : {}),
@@ -167,6 +219,31 @@ export class AIMAInstance {
     await this.workspace.waitForComplete(thread.id)
 
     return { threadId: thread.id }
+  }
+
+  // ── Identity ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Reload all identity files from identityDir and refresh the in-memory cache.
+   * New sessions created after this call will use the updated identity.
+   *
+   * Note: already-running sessions retain their original Extension tool policy;
+   * only new brain:thread sessions pick up the new allowedTools.
+   *
+   * If identityDir is not configured, this method is a no-op.
+   */
+  async reloadIdentity(): Promise<void> {
+    if (!this.identityLoader) return
+    this.identityCache = await this.identityLoader.load()
+    this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
+  }
+
+  /**
+   * Returns the current identity cache.
+   * @internal Used for testing and introspection.
+   */
+  getIdentityCache(): IdentityCache | null {
+    return this.identityCache
   }
 
   // ── Internals ────────────────────────────────────────────────────────────────
@@ -208,6 +285,7 @@ export class AIMAInstance {
         ...shared,
         modelId: limbicModel,
         getApiKey: apiKeyFn,
+        getAllowedTools: (brain) => this.identityCache?.roles[brain]?.allowedTools ?? [],
       })
       adapters.set('limbic', adapter)
       adapters.set('cortex', adapter)
@@ -229,6 +307,35 @@ export class AIMAInstance {
 
     throw new Error(`Unknown adapter type: ${config.adapter satisfies never}`)
   }
+
+  private buildAssemblerConfig(): ContextAssemblerConfig {
+    const config = this._config
+    const cache = this.identityCache
+
+    const buildIdentity = (brain: CognitiveBrainType): BrainIdentity => {
+      const roleEntry = cache?.roles[brain]
+      const configOverride = config.identities?.[brain]
+      const defaults = DEFAULT_IDENTITIES[brain]
+      return {
+        role: configOverride?.role ?? defaults.role,
+        instructions: roleEntry?.body || configOverride?.instructions || defaults.instructions,
+      }
+    }
+
+    const soulRaw = cache?.soul || undefined
+    const skillIndex = cache?.skillIndex || config.skillIndex
+
+    return {
+      ...(soulRaw !== undefined ? { soul: soulRaw } : {}),
+      identities: {
+        limbic: buildIdentity('limbic'),
+        cortex: buildIdentity('cortex'),
+        brainstem: buildIdentity('brainstem'),
+      },
+      ...(skillIndex !== undefined ? { skillIndex } : {}),
+      ...(config.timezone !== undefined ? { timezone: config.timezone } : {}),
+    }
+  }
 }
 
 // ─── Factory ─────────────────────────────────────────────────────────────────
@@ -241,35 +348,4 @@ export async function createAIMAInstance(config: AIMAInstanceConfig): Promise<AI
   const instance = new AIMAInstance(config)
   await instance.start()
   return instance
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function buildAssemblerConfig(config: AIMAInstanceConfig): ContextAssemblerConfig {
-  const defaultIdentities: Record<CognitiveBrainType, BrainIdentity> = {
-    limbic: {
-      role: 'Limbic — Communication & Routing',
-      instructions:
-        'You are the Limbic brain. Parse user intent, route to appropriate brain areas, and compose final responses.',
-    },
-    cortex: {
-      role: 'Cortex — Reasoning & Planning',
-      instructions:
-        'You are the Cortex brain. Analyze context, make routing decisions, and plan complex tasks.',
-    },
-    brainstem: {
-      role: 'Brainstem — Execution',
-      instructions:
-        'You are the Brainstem brain. Execute tasks using available tools and report results.',
-    },
-  }
-
-  return {
-    identities: {
-      ...defaultIdentities,
-      ...config.identities,
-    },
-    ...(config.skillIndex !== undefined ? { skillIndex: config.skillIndex } : {}),
-    ...(config.timezone !== undefined ? { timezone: config.timezone } : {}),
-  }
 }

@@ -125,6 +125,61 @@ describe('assembleBlock4', () => {
   })
 })
 
+describe('assembleBlock12 with soul', () => {
+  const baseConfig: ContextAssemblerConfig = {
+    identities: {
+      limbic: { role: 'Limbic Brain', instructions: 'Understand emotions' },
+      cortex: { role: 'Cortex Brain', instructions: 'Synthesize information' },
+      brainstem: { role: 'Brainstem Brain', instructions: 'Execute tasks' },
+    },
+  }
+
+  test('soul non-empty appears before ## Role', () => {
+    const cfg = { ...baseConfig, soul: '你是 Alex，一个尽职的财务助理' }
+    const output = assembleBlock12('limbic', cfg)
+    const soulIdx = output.indexOf('你是 Alex')
+    const roleIdx = output.indexOf('## Role')
+    expect(soulIdx).toBeGreaterThanOrEqual(0)
+    expect(soulIdx).toBeLessThan(roleIdx)
+  })
+
+  test('soul absent: output starts with ## Role (backwards compatible)', () => {
+    const output = assembleBlock12('limbic', baseConfig)
+    expect(output.startsWith('## Role')).toBe(true)
+  })
+
+  test('soul empty string: output starts with ## Role', () => {
+    const cfg = { ...baseConfig, soul: '' }
+    const output = assembleBlock12('limbic', cfg)
+    expect(output.startsWith('## Role')).toBe(true)
+  })
+
+  test('soul whitespace-only: output starts with ## Role', () => {
+    const cfg = { ...baseConfig, soul: '   \n   ' }
+    const output = assembleBlock12('limbic', cfg)
+    expect(output.startsWith('## Role')).toBe(true)
+  })
+
+  test('no frontmatter markers in output when soul is plain body text', () => {
+    const cfg = { ...baseConfig, soul: '你是 Alex' }
+    const output = assembleBlock12('limbic', cfg)
+    expect(output).not.toMatch(/^---/m)
+  })
+
+  test('soul + skillIndex: all sections present in correct order', () => {
+    const cfg = { ...baseConfig, soul: 'Soul content', skillIndex: 'Skills list' }
+    const output = assembleBlock12('limbic', cfg)
+    const soulIdx = output.indexOf('Soul content')
+    const roleIdx = output.indexOf('## Role')
+    const instrIdx = output.indexOf('## Instructions')
+    const skillIdx = output.indexOf('## Skill Index')
+    expect(soulIdx).toBeLessThan(roleIdx)
+    expect(roleIdx).toBeLessThan(instrIdx)
+    expect(instrIdx).toBeLessThan(skillIdx)
+    expect(output).toContain('Skills list')
+  })
+})
+
 describe('assembleContext', () => {
   test('systemPrompt contains block12 and block3 content', async () => {
     const cachedBlock12 = assembleBlock12('limbic', config)
