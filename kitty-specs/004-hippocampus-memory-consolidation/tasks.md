@@ -101,7 +101,7 @@
 **目标**：Vitest 集成测试，真实 DB（AIMA_TEST_DATABASE_URL），验证四步完整流程和各步骤的 DB 状态变更。
 
 子任务：
-- [ ] T028: 集成测试 helper + seeder：写入已知 episodic 段数据、usage_outcomes 数据、过期数据；MockLlm（可配置返回值）
+- [x] T028: 集成测试 helper + seeder：写入已知 episodic 段数据、usage_outcomes 数据、过期数据；MockLlm（可配置返回值）
 - [ ] T029: 集成测试：段精修（mock callLlm merge=true → DB 中 segment_id 被更新）
 - [ ] T030: 集成测试：序列回放（mock callLlm 返回 semantic+procedural → DB 中新记忆写入）
 - [ ] T031: 集成测试：usage_outcomes 收敛（seeded 正向反馈 → DB base_importance 上升，outcomes 重置）
