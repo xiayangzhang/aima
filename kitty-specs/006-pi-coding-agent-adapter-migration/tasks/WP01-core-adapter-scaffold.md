@@ -2,7 +2,7 @@
 work_package_id: "WP01"
 title: "Core Adapter Scaffold"
 phase: "Phase 1 - Foundation"
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks:
   - "T001"
@@ -13,8 +13,8 @@ subtasks:
 assignee: ""
 agent: "claude-sonnet-4-6"
 shell_pid: "45840"
-review_status: ""
-reviewed_by: ""
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
   - timestamp: "2026-03-11T00:00:00Z"
     lane: "planned"
@@ -364,3 +364,4 @@ Reviewers: check that:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created.
 - 2026-03-11T10:15:37Z – claude-sonnet-4-6 – shell_pid=45840 – lane=doing – Started implementation via workflow command
 - 2026-03-11T10:22:22Z – claude-sonnet-4-6 – shell_pid=45840 – lane=for_review – Ready for review: PiCodingAgentAdapter scaffold complete. Installed pi-coding-agent@0.57.1 from local tarball. Adapter uses DefaultResourceLoader with mutable systemPromptRef for dynamic system prompts, per-session SessionManager.inMemory(), AuthStorage+ModelRegistry for API key injection. EventBus bridge wired to AgentSession events. Stubs for extension.ts and mcp-tools.ts created. bun run typecheck: zero errors, biome check src/adapters/pi-coding-agent/: clean.
+- 2026-03-11T10:35:21Z – claude-sonnet-4-6 – shell_pid=45840 – lane=done – Reviewed: all criteria met. Session key pattern correct, system prompt refresh correct, inject iterates all sessions, stubs signatures correct. Per-session SessionManager.inMemory() preferred for isolation over single shared manager.
