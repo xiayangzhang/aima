@@ -18,7 +18,7 @@
 **目标**：将 callLlm 提取到共享工具层；建立 HippocampusConsolidation 类骨架、调度器、生命周期；扩展 CognitiveWorkspace 6 个新方法；更新 AIMAInstance。
 
 子任务：
-- [ ] T001: 将 callLlm + parseLlmJson 从 src/dmn/llm.ts 迁移至 src/llm.ts（LlmConfig 类型），更新 DMN 所有 import 路径，删除 src/dmn/llm.ts
+- [x] T001: 将 callLlm + parseLlmJson 从 src/dmn/llm.ts 迁移至 src/llm.ts（LlmConfig 类型），更新 DMN 所有 import 路径，删除 src/dmn/llm.ts
 - [ ] T002: HippocampusConfig 类型 + HippocampusConsolidation 类骨架（构造函数 + runConsolidation() 顺序调用四步 stub）
 - [ ] T003: 调度器实现：start()（setTimeout 计算距 runAt 的延迟）+ stop()（60s 超时优雅退出 + running flag 防重入）
 - [ ] T004: CognitiveWorkspace 扩展：getSegmentsByTimeRange + getSegmentSequence
