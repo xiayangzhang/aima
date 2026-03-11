@@ -43,7 +43,7 @@
 **Estimated size**: ~420 lines
 
 ### Included Subtasks
-- [ ] T006 `createAimaExtension(brain, threadId, amygdala, eventBus)` function signature + empty handlers
+- [x] T006 `createAimaExtension(brain, threadId, amygdala, eventBus)` function signature + empty handlers
 - [ ] T007 `tool_call` handler — default policy table (bash/edit/write BLOCK; read/grep/find/ls ALLOW) + `amygdala.check()` for non-default tools
 - [ ] T008 Block/escalate decision paths — `{ block: true, message }` return + `tool.blocked`/`amygdala.escalation` EventBus events
 - [ ] T009 `tool_execution_start` → emit `tool.pre_use` (INFO) with `brain`, `thread_id`, `tool`, `toolCallId`, `args`
