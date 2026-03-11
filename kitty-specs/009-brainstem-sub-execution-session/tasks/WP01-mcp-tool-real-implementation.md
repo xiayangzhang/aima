@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: MCP Tool Real Implementation
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks:
 - T001
@@ -12,8 +12,8 @@ phase: Phase 1 - MCP Layer
 assignee: ''
 agent: "claude-sonnet-4-6"
 shell_pid: "52203"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-11T00:00:00Z'
   lane: planned
@@ -286,3 +286,4 @@ const handler = findTool(server, 'workspace_read_slot')
 ## Activity Log
 
 - 2026-03-11T12:33:27Z – claude-sonnet-4-6 – shell_pid=52203 – lane=doing – Started review via workflow command
+- 2026-03-11T13:11:27Z – claude-sonnet-4-6 – shell_pid=52203 – lane=done – Review passed: all 3 adapter paths fixed, correct defaults (limbic=haiku, cortex/brainstem=sonnet), independent instances per brain verified. 12 tests cover modelId/model correctness and instance independence. No regressions. Code is clean and minimal.
