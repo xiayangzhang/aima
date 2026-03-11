@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: MCP Tool Real Implementation
-lane: "for_review"
+lane: "doing"
 dependencies: []
 subtasks:
 - T001
@@ -11,7 +11,7 @@ subtasks:
 phase: Phase 1 - MCP Layer
 assignee: ''
 agent: "claude-sonnet-4-6"
-shell_pid: "52203"
+shell_pid: "22078"
 review_status: "approved"
 reviewed_by: "XIAYANG ZHANG"
 history:
@@ -288,3 +288,4 @@ const handler = findTool(server, 'workspace_read_slot')
 - 2026-03-11T12:33:27Z – claude-sonnet-4-6 – shell_pid=52203 – lane=doing – Started review via workflow command
 - 2026-03-11T13:11:27Z – claude-sonnet-4-6 – shell_pid=52203 – lane=done – Review passed: all 3 adapter paths fixed, correct defaults (limbic=haiku, cortex/brainstem=sonnet), independent instances per brain verified. 12 tests cover modelId/model correctness and instance independence. No regressions. Code is clean and minimal.
 - 2026-03-11T14:07:41Z – claude-sonnet-4-6 – shell_pid=52203 – lane=for_review – Implemented SpawnExecutionSessionFn type, replaced stub handler, backward-compatible opts param. 5 new unit tests green.
+- 2026-03-11T14:08:03Z – claude-sonnet-4-6 – shell_pid=22078 – lane=doing – Started review via workflow command
