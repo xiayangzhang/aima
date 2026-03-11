@@ -2,7 +2,7 @@
 work_package_id: "WP01"
 title: "Core Adapter Scaffold"
 phase: "Phase 1 - Foundation"
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks:
   - "T001"
@@ -11,8 +11,8 @@ subtasks:
   - "T004"
   - "T005"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude-sonnet-4-6"
+shell_pid: "45840"
 review_status: ""
 reviewed_by: ""
 history:
@@ -362,3 +362,4 @@ Reviewers: check that:
 ## Activity Log
 
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created.
+- 2026-03-11T10:15:37Z – claude-sonnet-4-6 – shell_pid=45840 – lane=doing – Started implementation via workflow command
