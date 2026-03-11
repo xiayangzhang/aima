@@ -1,0 +1,8 @@
+{
+  "feature_number": "005",
+  "slug": "005-brain-specific-memory-retrieval",
+  "friendly_name": "Brain-Specific Memory Retrieval",
+  "mission": "software-dev",
+  "source_description": "Feature 005 — 脑区专属检索：getEntityContext / findSimilarSituations / getProcedure + Context Assembly Block 4 升级",
+  "created_at": "2026-03-11T00:00:00Z"
+}
