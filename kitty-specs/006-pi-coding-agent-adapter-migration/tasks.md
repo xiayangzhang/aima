@@ -167,7 +167,7 @@
 ### Included Subtasks
 - [x] T027 Setup: `tests/integration/adapters/pi-coding-agent/session.test.ts` — real `SessionManager.inMemory()`, mock tool factory (`wrapRegisteredTool`), `describeWithPiAgent` helper (skip if package unavailable)
 - [x] T028 Session creation + resumption: two consecutive runs share conversation history (~2 tests)
-- [ ] T029 Extension `tool_call` event fires when mock tool is invoked via real session (~1 test)
+- [x] T029 Extension `tool_call` event fires when mock tool is invoked via real session (~1 test)
 - [ ] T030 Block decision: `tool_call` returns `{ block: true }` → `tool_execution_end` does NOT fire; `tool.blocked` EventBus event received (~2 tests)
 - [ ] T031 Allow decision: `tool_call` returns `undefined` → both `tool_execution_start` and `tool_execution_end` fire; `tool.pre_use` + `tool.post_use` EventBus events received (~2 tests)
 - [ ] T032 `steer()` injects content into active session; `followUp()` queues content for next turn (~1 test each = 2 tests)
