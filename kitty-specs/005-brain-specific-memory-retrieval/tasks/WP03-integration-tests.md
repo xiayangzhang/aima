@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: 集成测试（真实 PostgreSQL）
-lane: "doing"
+lane: "for_review"
 dependencies: [WP01, WP02]
 subtasks: [T016, T017, T018, T019]
 assignee: claude
@@ -488,3 +488,4 @@ spec-kitty agent tasks move-task WP03 --to for_review --note "Ready: <summary>"
 ## Activity Log
 
 - 2026-03-11T05:48:55Z – claude-sonnet-4-6 – shell_pid=89460 – lane=doing – Started implementation via workflow command
+- 2026-03-11T05:50:48Z – claude-sonnet-4-6 – shell_pid=89460 – lane=for_review – Ready: 22 integration tests against real PostgreSQL. Covers getEntityContext (7 tests), findSimilarSituations (5 tests), getProcedure (6 tests), assembleBlock4 routing (4 tests). ILIKE case-insensitivity, importance ordering, limit truncation, tInvalid filter all verified with real SQL semantics.
