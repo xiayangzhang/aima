@@ -1,11 +1,12 @@
 ---
 work_package_id: WP03
 title: 集成测试（真实 PostgreSQL）
-lane: planned
+lane: "doing"
 dependencies: [WP01, WP02]
 subtasks: [T016, T017, T018, T019]
 assignee: claude
-agent: claude
+agent: "claude-sonnet-4-6"
+shell_pid: "89460"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -483,3 +484,7 @@ spec-kitty agent tasks move-task WP03 --to for_review --note "Ready: <summary>"
 2. 每个 `describeWithDb` 块必须有独立的 `createTestDb()` 和 `afterAll(() => client.end())`，不要在块之间共享 client
 3. 如果 T019 中 `assembleBlock4` 的 fallback 路径因为 DB 中已有数据导致不可预测，改用更宽泛的断言（`typeof text === 'string'`）而不是精确匹配内容
 4. 集成测试文件用 `import { afterAll, beforeAll, expect, test } from 'vitest'`（参见现有 `tests/integration/workspace/memory.test.ts`）
+
+## Activity Log
+
+- 2026-03-11T05:48:55Z – claude-sonnet-4-6 – shell_pid=89460 – lane=doing – Started implementation via workflow command
