@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+import { query } from '@anthropic-ai/claude-agent-sdk'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
@@ -14,6 +16,7 @@ import { HippocampusConsolidation } from './hippocampus/index'
 import type { HippocampusConfig } from './hippocampus/index'
 import { IdentityLoader } from './identity/index'
 import type { IdentityCache } from './identity/index'
+import type { SpawnExecutionSessionFn } from './mcp/index'
 import { ThreadRunner } from './runner/index'
 import * as schema from './schema/index'
 import type { CognitiveBrainType } from './types/index'
@@ -55,6 +58,11 @@ export interface AIMAInstanceConfig {
   /** Hippocampus configuration. Requires enableHippocampus: true. */
   hippocampus?: HippocampusConfig
   /**
+   * Model to use for sub-execution sessions spawned via spawn_execution_session tool.
+   * Defaults to 'claude-sonnet-4-6'. Override with e.g. 'claude-opus-4-6' for deep reasoning.
+   */
+  executionModel?: string
+  /**
    * Optional. Absolute path to identity directory.
    * soul.md / skill-index.md / {brain}.md in this directory override Block 1/2 content.
    * When omitted, behaviour is identical to the previous version.
@@ -66,6 +74,11 @@ export interface AIMAInstanceConfig {
    * Adds file I/O latency; intended for development/debugging only.
    */
   reloadOnRun?: boolean
+  /**
+   * @internal Testing escape hatch: override the LLM query used for sub-execution.
+   * Prevents real API calls in unit tests.
+   */
+  _subQueryFn?: (prompt: string, model: string) => Promise<string>
 }
 
 // ─── Default identities ───────────────────────────────────────────────────────
@@ -105,6 +118,7 @@ export class AIMAInstance {
   private readonly workspace: CognitiveWorkspace
   private readonly eventBus: BrainEventBus
   private readonly threadRunner: ThreadRunner
+  private readonly amygdala: Amygdala
   private pgClient: ReturnType<typeof postgres> | null = null
   private dmnService?: DmnService
   private hippocampusConsolidation?: HippocampusConsolidation
@@ -125,7 +139,8 @@ export class AIMAInstance {
     this.eventBus = getEventBus()
 
     // Amygdala (default rules)
-    const amygdala = new Amygdala({}, this.workspace, this.eventBus)
+    this.amygdala = new Amygdala({}, this.workspace, this.eventBus)
+    const amygdala = this.amygdala
 
     // Identity loader (optional)
     if (config.identityDir) {
@@ -250,6 +265,63 @@ export class AIMAInstance {
     return this.identityCache
   }
 
+  // ── Sub-Execution ─────────────────────────────────────────────────────────────
+
+  /**
+   * Spawn an independent sub-execution session.
+   * Used as the SpawnExecutionSessionFn injected into createAimaMcpServer().
+   */
+  private async spawnSubExecution(params: {
+    taskDescription: string
+    model?: string
+  }): Promise<{ executionSessionId: string; result: string }> {
+    const executionSessionId = randomUUID()
+    const resolvedModel = params.model ?? this._config.executionModel ?? 'claude-sonnet-4-6'
+
+    this.eventBus.emit({
+      event_type: 'brain.activate',
+      level: 'INFO',
+      brain: 'brainstem',
+      session_id: executionSessionId,
+      payload: { isSubExecution: true },
+    })
+
+    let result: string
+    if (this._config._subQueryFn) {
+      result = await this._config._subQueryFn(params.taskDescription, resolvedModel)
+    } else {
+      const q = query({
+        prompt: params.taskDescription,
+        options: {
+          model: resolvedModel,
+          canUseTool: async (toolName, input) => {
+            const { decision, reason } = await this.amygdala.check(toolName, input)
+            if (decision === 'block' || decision === 'escalate') {
+              return { behavior: 'deny', message: reason }
+            }
+            return { behavior: 'allow' }
+          },
+        },
+      })
+      result = ''
+      for await (const msg of q) {
+        if (msg.type === 'result' && msg.subtype === 'success') {
+          result = msg.result
+        }
+      }
+    }
+
+    this.eventBus.emit({
+      event_type: 'brain.complete',
+      level: 'INFO',
+      brain: 'brainstem',
+      session_id: executionSessionId,
+      payload: { isSubExecution: true, executionSessionId },
+    })
+
+    return { executionSessionId, result }
+  }
+
   // ── Internals ────────────────────────────────────────────────────────────────
 
   private buildAdapters(
@@ -345,6 +417,7 @@ export class AIMAInstance {
         new ClaudeAgentSDKAdapter({
           ...shared,
           model: config.brainModels?.brainstem ?? 'claude-sonnet-4-6',
+          spawnExecutionSession: this.spawnSubExecution.bind(this) as SpawnExecutionSessionFn,
         }),
       )
       return adapters

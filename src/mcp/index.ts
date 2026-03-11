@@ -3,6 +3,20 @@ import { z } from 'zod/v4'
 import type { CognitiveBrainType, MemoryType, SlotStatus } from '../types/index'
 import type { CognitiveWorkspace } from '../workspace/index'
 
+// ─── Sub-Execution Session ────────────────────────────────────────────────────
+
+/**
+ * Callback for spawning an independent sub-execution session.
+ * Implemented by AIMAInstance and injected into createAimaMcpServer.
+ */
+export type SpawnExecutionSessionFn = (params: {
+  taskDescription: string
+  model?: string
+}) => Promise<{
+  executionSessionId: string
+  result: string
+}>
+
 // ─── AIMA MCP Server ──────────────────────────────────────────────────────────
 
 type BrainEnum = 'limbic' | 'cortex' | 'brainstem' | 'amygdala' | 'dmn'
@@ -12,7 +26,10 @@ type MemoryTypeEnum = 'semantic' | 'episodic' | 'procedural' | 'working' | 'impl
  * Creates an in-process MCP server exposing AIMA workspace and memory tools.
  * Pass the returned config to `query()` via `options.mcpServers`.
  */
-export function createAimaMcpServer(workspace: CognitiveWorkspace) {
+export function createAimaMcpServer(
+  workspace: CognitiveWorkspace,
+  opts?: { spawnExecutionSession?: SpawnExecutionSessionFn },
+) {
   return createSdkMcpServer({
     name: 'aima-workspace',
     version: '1.0.0',
@@ -173,17 +190,33 @@ export function createAimaMcpServer(workspace: CognitiveWorkspace) {
           model: z.string().optional().describe("Model to use (default: 'claude-sonnet-4-6')"),
         },
         handler: async (args) => {
-          const { task_description } = args as { task_description: string; model?: string }
-          // Stub: returns a placeholder. Full implementation wires up a sub-query().
-          // The sub-session result and sessionId are returned for Brainstem to store in its Slot.
+          const { task_description, model } = args as { task_description: string; model?: string }
+
+          if (!opts?.spawnExecutionSession) {
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: JSON.stringify({
+                    error: 'spawn_execution_session: sub-execution not configured',
+                  }),
+                },
+              ],
+            }
+          }
+
+          const { executionSessionId, result } = await opts.spawnExecutionSession({
+            taskDescription: task_description,
+            ...(model !== undefined ? { model } : {}),
+          })
+
           return {
             content: [
               {
                 type: 'text' as const,
                 text: JSON.stringify({
-                  execution_session_id: null,
-                  result: `[spawn_execution_session stub] Task: ${task_description}`,
-                  note: 'Full sub-session execution implemented in AIMAInstance',
+                  execution_session_id: executionSessionId,
+                  result,
                 }),
               },
             ],

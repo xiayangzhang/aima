@@ -2,6 +2,7 @@ import { query } from '@anthropic-ai/claude-agent-sdk'
 import type { Amygdala } from '../../amygdala/index'
 import type { BrainEventBus } from '../../eventbus/index'
 import { createAimaMcpServer } from '../../mcp/index'
+import type { SpawnExecutionSessionFn } from '../../mcp/index'
 import type { CognitiveBrainType } from '../../types/index'
 import type { CognitiveWorkspace } from '../../workspace/index'
 import type { BrainAdapter, BrainRunParams, BrainRunResult, BrainSignal } from '../index'
@@ -14,6 +15,8 @@ export interface ClaudeAgentSDKAdapterConfig {
   workspace: CognitiveWorkspace
   eventBus: BrainEventBus
   amygdala: Amygdala
+  /** Optional callback for spawning sub-execution sessions (injected by AIMAInstance). */
+  spawnExecutionSession?: SpawnExecutionSessionFn
 }
 
 // ─── ClaudeAgentSDKAdapter ────────────────────────────────────────────────────
@@ -51,7 +54,12 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
     this.abortControllers.set(key, abortController)
 
     const existingSessionId = this.sessionIds.get(key)
-    const mcpServer = createAimaMcpServer(this.config.workspace)
+    const mcpServer = createAimaMcpServer(
+      this.config.workspace,
+      this.config.spawnExecutionSession
+        ? { spawnExecutionSession: this.config.spawnExecutionSession }
+        : undefined,
+    )
 
     const q = query({
       prompt: initialPrompt ?? '',
