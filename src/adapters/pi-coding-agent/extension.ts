@@ -25,16 +25,20 @@ export function createAimaExtension(
   threadId: string,
   amygdala: Amygdala,
   eventBus: BrainEventBus,
+  allowedTools?: string[],
 ): ExtensionFactory {
   return (pi) => {
+    // Build per-brain override set from role's allowed_tools frontmatter
+    const allowedSet = new Set(allowedTools ?? [])
+
     // ── tool_call: Amygdala interception ──────────────────────────────────────
 
     pi.on('tool_call', async (event: ToolCallEvent) => {
       const { toolCallId, toolName } = event
       const input = event.input as Record<string, unknown>
 
-      // Stage 1: Default policy — block high-risk tools without Amygdala check
-      if (DEFAULT_BLOCKED_TOOLS.has(toolName)) {
+      // Stage 1: Default policy — block high-risk tools unless role overrides
+      if (DEFAULT_BLOCKED_TOOLS.has(toolName) && !allowedSet.has(toolName)) {
         const reason = `${toolName} blocked by default policy`
         eventBus.emit({
           event_type: 'tool.pre_use',

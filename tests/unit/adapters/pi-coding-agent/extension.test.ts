@@ -186,6 +186,84 @@ describe('createAimaExtension — amygdala dynamic check', () => {
   })
 })
 
+// ─── allowedTools Override ────────────────────────────────────────────────────
+
+describe('createAimaExtension — allowedTools override', () => {
+  function makeAllowedFixture(
+    allowedTools: string[],
+    decision: 'allow' | 'block' | 'escalate' = 'allow',
+  ) {
+    const brain: CognitiveBrainType = 'brainstem'
+    const threadId = 'thread-allowed'
+    const amygdala = makeAmygdala(decision)
+    const eventBus = new BrainEventBus()
+    const emitted: unknown[] = []
+    eventBus.subscribe((e) => emitted.push(e))
+
+    const factory = createAimaExtension(brain, threadId, amygdala as never, eventBus, allowedTools)
+    const handlers = capturePiHandlers(factory)
+
+    return { brain, threadId, amygdala, eventBus, emitted, handlers }
+  }
+
+  test('bash in allowedTools is not blocked by Stage 1', async () => {
+    const { handlers, emitted } = makeAllowedFixture(['bash'])
+    const result = await (handlers.tool_call as Handler)({
+      toolCallId: 'tc-a1',
+      toolName: 'bash',
+      input: { command: 'ls' },
+    })
+    // bash should pass Stage 1, then go to amygdala.check (mock returns allow → undefined)
+    expect(result).toBeUndefined()
+    const blockedEmits = (emitted as Array<{ event_type: string }>).filter(
+      (e) => e.event_type === 'tool.blocked',
+    )
+    expect(blockedEmits).toHaveLength(0)
+  })
+
+  test('bash NOT in allowedTools is still blocked', async () => {
+    const { handlers } = makeAllowedFixture([])
+    const result = await (handlers.tool_call as Handler)({
+      toolCallId: 'tc-a2',
+      toolName: 'bash',
+      input: { command: 'rm -rf' },
+    })
+    expect((result as { block: boolean }).block).toBe(true)
+  })
+
+  test('edit in allowedTools passes through to amygdala.check', async () => {
+    const { handlers, amygdala } = makeAllowedFixture(['edit'])
+    await (handlers.tool_call as Handler)({
+      toolCallId: 'tc-a3',
+      toolName: 'edit',
+      input: {},
+    })
+    expect(amygdala.check).toHaveBeenCalledWith('edit', {})
+  })
+
+  test('tool not in DEFAULT_BLOCKED_TOOLS unaffected by allowedTools', async () => {
+    const { handlers, amygdala } = makeAllowedFixture(['custom_tool'])
+    await (handlers.tool_call as Handler)({
+      toolCallId: 'tc-a4',
+      toolName: 'custom_tool',
+      input: {},
+    })
+    // custom_tool not in DEFAULT_BLOCKED_TOOLS — goes to amygdala.check regardless
+    expect(amygdala.check).toHaveBeenCalledWith('custom_tool', {})
+  })
+
+  test('omitting allowedTools preserves original blocking behavior', async () => {
+    // Same as makeFixture() with no allowedTools arg
+    const { handlers } = makeFixture()
+    const result = await (handlers.tool_call as Handler)({
+      toolCallId: 'tc-a5',
+      toolName: 'bash',
+      input: {},
+    })
+    expect((result as { block: boolean }).block).toBe(true)
+  })
+})
+
 // ─── Event Shape Assertions ───────────────────────────────────────────────────
 
 describe('createAimaExtension — event shapes', () => {
