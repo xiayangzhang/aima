@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: reopenThread + AIMAInstance.continue()
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks:
 - T001
@@ -261,3 +261,4 @@ async continue(
 ## Activity Log
 
 - 2026-03-11T23:40:43Z – claude-sonnet-4-6 – shell_pid=16620 – lane=doing – Started implementation via workflow command
+- 2026-03-11T23:42:34Z – claude-sonnet-4-6 – shell_pid=16620 – lane=for_review – Ready for review: reopenThread() in CognitiveWorkspace with state validation, continue() in AIMAInstance reusing receive() routing path, 9 unit tests all passing (346 total, zero regressions), typecheck clean, biome clean

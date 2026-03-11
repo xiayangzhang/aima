@@ -7,47 +7,36 @@
 
 ## 一、当前实现状态
 
-`@aima/core` v0.1.1（`main` 分支，18/18 测试通过）
+`@aima/core` v0.1.x（`main` 分支，388 测试通过）
 
-| 模块 | 状态 | 备注 |
-|---|---|---|
-| Thread/Slot 持久化（PostgreSQL） | ✅ | |
-| ThreadRunner + 五脑路由 | ✅ | |
-| PiAgentAdapter（pi-agent-core） | ✅ | 暂时使用 pi-agent-core，见下方迁移说明 |
-| Event Bus（五级订阅） | ✅ | COMPLIANCE/ALERT/INFO/DEBUG/TRACE |
-| 崩溃恢复 | ✅ | at-most-once 语义，含非幂等工具保护 |
-| 测试覆盖 | ✅ | 39 个 unit + integration smoke test |
-| `continue()`（多轮对话续接） | ⏳ | |
-| `memory.search()`（只读接口） | ⏳ | |
-| `identityDir` 身份文件加载 | ⏳ | soul.md / identity.md / role.md |
-| ClaudeSDKAdapter | ⏳ | 用于多云部署（Azure / Bedrock） |
-| `@aima/crew`（OpenClaw fork） | ⏳ | 待 @aima/core 稳定后实现 |
+| Feature | 模块 | 状态 | 备注 |
+|---|---|---|---|
+| 001 | Thread/Slot 持久化（PostgreSQL）+ pi-agent 连接层 | ✅ | |
+| 002 | ThreadRunner + 五脑路由 + EventBus + 崩溃恢复 | ✅ | |
+| 003 | PiCodingAgentAdapter + Amygdala 工具策略 | ✅ | 含 Extension API tool_call 事件 |
+| 004 | Hippocampus 记忆整理（每日 batch）| ✅ | |
+| 005 | DMN（Default Mode Network）事件响应 + 整合 | ✅ | |
+| 006 | 记忆架构（MemoryService，五类记忆）| ✅ | |
+| 007 | Brain Identity & Role Loading（identityDir）| ✅ | soul.md / skill-index.md / brain.md；Amygdala 工具解锁 |
+| 008 | Per-brain 模型路由 + Block 4 上下文提示 | ✅ | buildBlock4Opts()；limbic=haiku，cortex/brainstem=sonnet |
+| 009 | Brainstem 子执行 Session（spawn_execution_session）| ✅ | SpawnExecutionSessionFn 回调注入；FR-04 偏差见注 |
+| 010 | Thread Continue 多轮对话续接（continue()）| ⏳ | spec/plan/tasks 已完成，待实现 |
+
+**注（Feature 009 FR-04 偏差）**：`spawnSubExecution` 使用原生 `@anthropic-ai/sdk messages.create()`，而非 pi-coding-agent adapter。当前子执行 session 无 Amygdala 检查、无工具注册。若需要工具访问或合规审计覆盖子执行，需另立 Feature（建议 Feature 011）修复。
 
 ---
 
-## 二、已决定但未实现
+## 二、ClaudeSDKAdapter 状态
 
-### 统一迁移到 pi-coding-agent adapter
+ClaudeSDKAdapter 已实现（Feature 002），但有已知能力差距（相比 pi-coding-agent adapter）：
 
-**决定**：放弃 pi-agent-core，统一使用 `pi-coding-agent` 作为单一 adapter。
+| 差距 | 影响 |
+|---|---|
+| `inject()` 实时性降级 | 下次 `run()` 才生效（pi-agent 立即注入） |
+| `tool.pre_use/post_use` 事件缺失 | Amygdala 无法逐工具检查；DMN 看不到工具执行 |
+| EventBus 工具事件不完整 | 审计链不完整 |
 
-**原因**：
-- pi-coding-agent 的内置工具（bash、文件 I/O）与外部工具走同一 `AgentTool` 注册路径
-- Extension API 的 `tool_call` 事件（pre-execution，可 block）让 Amygdala 覆盖所有工具，无例外
-- 无需维护两套 adapter，工具权限由 Amygdala 策略（`role.md` 中的 `permissions`）统一控制
-
-**默认工具权限**（Amygdala 内置，`role.md` 可解锁）：
-
-```
-bash          → BLOCK
-file_write    → BLOCK
-file_delete   → BLOCK
-file_read     → BLOCK
-memory_search → ALLOW
-workspace_read/write → ALLOW
-```
-
-**当前阻碍**：无，可以在 `continue()` 实现完成后进行。
+对于 secondfirst/employee 生产路径，优先使用 `pi-coding-agent` adapter。ClaudeSDKAdapter 适用于无工具需求的轻量场景（如 DMN LLM 调用）。
 
 ---
 
@@ -55,25 +44,21 @@ workspace_read/write → ALLOW
 
 ### 近期（@aima/core 功能补全）
 
-1. `continue()` — 多轮对话 Thread 续接
-2. `memory.search()` — 只读记忆接口（ILIKE 全文搜索；向量检索留后）
-3. `identityDir` — soul/identity/role 文件加载，注入 Block 1/2
-4. 迁移到 `pi-coding-agent` adapter + Amygdala 工具权限策略
+1. **Feature 010** — `continue()` 多轮对话 Thread 续接（`reopenThread()` + `AIMAInstance.continue()`）
+2. **Feature 011**（待规划）— 子执行 Session 增强：pi-coding-agent adapter 替换原生 SDK；Amygdala 覆盖子执行；工具注册
 
 ### 中期（认知能力核心）
 
-5. DMN 事件响应 — 事件监听、错误恢复、回溯纠错、信号捕获（写 pending）、Session Anchor 触发
-6. **DMN 心跳整合（含 Predictive Activation）** — 深度前瞻预测、pending_observations 维护（写/更新/清除）、implicit 聚类合并；基于历史模式主动发起 Thread、取消失效预测
-   > Predictive Activation 是 AIMA 区别于其他框架的核心能力之一，不可作为"以后再加"处理
-7. Hippocampus — 每日记忆整理（清理/权重/semantic 提炼）+ 预测反馈评估 + 定期 Skill Review（固化候选暴露、失效检测）
-8. Skill 系统 — reference / adapted / first-party 三层，Hippocampus 固化机制
+3. **Skill 系统** — reference / adapted / first-party 三层，Hippocampus 固化机制，Skill Review
+4. **DMN Predictive Activation** — 前瞻预测、pending_observations 维护、历史模式触发主动 Thread
+5. **记忆检索升级** — 脑区专属检索视图（见 docs/02-memory-architecture.md 生物化重设计计划）
 
 ### 后期
 
-9. `@aima/crew` — OpenClaw fork，换芯实现
-10. ClaudeSDKAdapter — 多云部署支持（Azure / Bedrock）
-11. 向量检索 — MemoryService 后端升级（pgvector 或 Qdrant）
-12. `subscribeInstance(instanceId, fn)` — 多租户 EventBus 便利方法
+6. **`@aima/crew`（AIMA-CLAW）** — OpenClaw fork 换芯，替换 pi-coding-agent
+7. **向量检索** — MemoryService 后端升级（pgvector 或 Qdrant）
+8. **`subscribeInstance(instanceId, fn)`** — 多租户 EventBus 便利方法
+9. **多云部署** — ClaudeSDKAdapter 差距补全（Azure Bedrock 场景）
 
 ---
 
@@ -88,3 +73,4 @@ workspace_read/write → ALLOW
 | intent=both 时 Limbic 失败后的回退流程 | 需要完整 Thread Runner 序列图 | intent=both 实现前 |
 | Skill adapted 版本更新机制 | 需要 Hippocampus Skill Review 实现时设计 | Hippocampus 实现前 |
 | 多租户 EventBus instance 级过滤 | 当前单 instance 开发不需要 | 多租户上线前 |
+| 子执行 Session Amygdala 覆盖 | Feature 009 FR-04 偏差，待 Feature 011 | Feature 011 规划前 |
