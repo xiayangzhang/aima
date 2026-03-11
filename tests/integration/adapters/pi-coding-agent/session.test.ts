@@ -292,23 +292,22 @@ describe('multi-session isolation', () => {
 const hasApiKey = !!process.env.ANTHROPIC_API_KEY
 
 describe('createAgentSession smoke (requires ANTHROPIC_API_KEY)', () => {
-  test.skipIf(!hasApiKey)(
-    'DefaultResourceLoader.reload() succeeds with custom extension',
-    async () => {
-      const { bus } = makeEventCollector()
-      const workspace = new CognitiveWorkspace(mockDb)
-      const amygdala = new Amygdala({}, workspace, bus)
-      const factory = createAimaExtension('limbic', 'thread-smoke', amygdala, bus)
+  test('DefaultResourceLoader.reload() succeeds with custom extension', async () => {
+    if (!hasApiKey) return // skip gracefully when API key is not set
 
-      const loader = new DefaultResourceLoader({
-        noSkills: true,
-        noPromptTemplates: true,
-        noThemes: true,
-        systemPromptOverride: () => 'test',
-        extensionFactories: [factory],
-      })
+    const { bus } = makeEventCollector()
+    const workspace = new CognitiveWorkspace(mockDb)
+    const amygdala = new Amygdala({}, workspace, bus)
+    const factory = createAimaExtension('limbic', 'thread-smoke', amygdala, bus)
 
-      await expect(loader.reload()).resolves.not.toThrow()
-    },
-  )
+    const loader = new DefaultResourceLoader({
+      noSkills: true,
+      noPromptTemplates: true,
+      noThemes: true,
+      systemPromptOverride: () => 'test',
+      extensionFactories: [factory],
+    })
+
+    await loader.reload()
+  })
 })
