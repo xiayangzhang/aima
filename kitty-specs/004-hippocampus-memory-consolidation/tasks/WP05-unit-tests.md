@@ -1,11 +1,12 @@
 ---
 work_package_id: WP05
 title: 单元测试
-lane: planned
+lane: "doing"
 dependencies: []
 subtasks: [T022, T023, T024, T025, T026, T027]
 assignee: claude
-agent: claude
+agent: "claude-sonnet-4-6"
+shell_pid: "57258"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -425,3 +426,7 @@ cd /Volumes/leoyun/aima
 spec-kitty agent workflow implement --agent <name>
 spec-kitty agent tasks move-task WP05 --to for_review --note "Ready: <summary>"
 ```
+
+## Activity Log
+
+- 2026-03-11T02:36:28Z – claude-sonnet-4-6 – shell_pid=57258 – lane=doing – Started implementation via workflow command
