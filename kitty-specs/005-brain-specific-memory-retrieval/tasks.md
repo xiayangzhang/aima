@@ -44,7 +44,7 @@
 ### 子任务清单
 
 - [x] T001: `getEntityContext` 实现
-- [ ] T002: `findSimilarSituations` 实现
+- [x] T002: `findSimilarSituations` 实现
 - [ ] T003: `getProcedure` 实现
 - [ ] T004: `ilike` 导入 + `ICognitiveWorkspace` 接口同步
 - [ ] T005: `src/index.ts` 导出
