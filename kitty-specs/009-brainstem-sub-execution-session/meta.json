@@ -1,0 +1,8 @@
+{
+  "feature_number": "009",
+  "slug": "009-brainstem-sub-execution-session",
+  "friendly_name": "Brainstem Sub-Execution Session",
+  "mission": "software-dev",
+  "source_description": "Feature 009 — 实现 Brainstem 双层执行：spawn_execution_session MCP tool（当前为 stub）真正创建独立子 AgentSession，使用更强模型（默认 claude-sonnet-4-6，可配置 Opus）运行深度推理任务，返回 execution_session_id + result 供 Brainstem 写入 slot",
+  "created_at": "2026-03-11T00:00:00Z"
+}

@@ -1,0 +1,8 @@
+{
+  "feature_number": "008",
+  "slug": "008-per-brain-model-routing-and-block4-hints",
+  "friendly_name": "Per-Brain Model Routing & Block 4 Contextual Hints",
+  "mission": "software-dev",
+  "source_description": "Feature 008 — 两个已知 Gap 的修复：(1) Per-Brain Model Routing：三个认知脑区使用独立模型（Limbic=Haiku，Cortex=Sonnet，Brainstem=Sonnet/Opus）；(2) Block 4 Contextual Hints：ThreadRunner 激活脑区时传入 entityId/situation/taskType，激活脑区专属记忆检索路径（当前永远走 fallback）",
+  "created_at": "2026-03-11T00:00:00Z"
+}
