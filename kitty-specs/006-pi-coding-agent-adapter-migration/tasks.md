@@ -17,7 +17,7 @@
 - [x] T002 Define `PiCodingAgentAdapterConfig` interface
 - [x] T003 `PiCodingAgentAdapter` class — `SessionManager.inMemory()`, session Map
 - [x] T004 `run()` — `createAgentSession` (first run) + resume (subsequent runs) + systemPrompt refresh
-- [ ] T005 `inject()` (steer/followUp/workspace fallback) + `abort()` + `abortSession()`
+- [x] T005 `inject()` (steer/followUp/workspace fallback) + `abort()` + `abortSession()`
 
 ### Implementation Notes
 - Create `src/adapters/pi-coding-agent/index.ts` (new file, ~130 lines)
