@@ -48,7 +48,7 @@
 - [x] T008 Block/escalate decision paths — `{ block: true, message }` return + `tool.blocked`/`amygdala.escalation` EventBus events
 - [x] T009 `tool_execution_start` → emit `tool.pre_use` (INFO) with `brain`, `thread_id`, `tool`, `toolCallId`, `args`
 - [x] T010 `tool_execution_end` → emit `tool.post_use` (INFO) with `brain`, `thread_id`, `tool`, `toolCallId`, `isError`
-- [ ] T011 `agent_end` → emit `brain.loop_end` (INFO); update `run()` in index.ts to use `createAimaExtension()`
+- [x] T011 `agent_end` → emit `brain.loop_end` (INFO); update `run()` in index.ts to use `createAimaExtension()`
 
 ### Implementation Notes
 - `extension.ts` will be ~100 lines
