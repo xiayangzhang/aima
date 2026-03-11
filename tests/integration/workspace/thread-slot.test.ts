@@ -119,4 +119,59 @@ describeWithDb('Thread lifecycle (integration)', () => {
       expect(slot).toBeNull()
     })
   })
+
+  test('reopenThread: resets state to active and updates trigger in DB', async () => {
+    await withTransaction(testDb.db, async (ws) => {
+      const thread = await ws.createThread({ initiatedBy: 'external', trigger: 'first message' })
+      await ws.updateThreadState(thread.id, 'complete')
+
+      await ws.reopenThread(thread.id, 'second message')
+
+      const updated = await ws.getThread(thread.id)
+      expect(updated?.state).toBe('active')
+      expect(updated?.trigger).toBe('second message')
+      expect(updated?.updatedAt.getTime()).toBeGreaterThanOrEqual(thread.updatedAt.getTime())
+    })
+  })
+
+  test('reopenThread: works from interrupted state', async () => {
+    await withTransaction(testDb.db, async (ws) => {
+      const thread = await ws.createThread({ initiatedBy: 'external', trigger: 'original' })
+      await ws.updateThreadState(thread.id, 'interrupted')
+
+      await ws.reopenThread(thread.id, 'retry input')
+
+      const updated = await ws.getThread(thread.id)
+      expect(updated?.state).toBe('active')
+      expect(updated?.trigger).toBe('retry input')
+    })
+  })
+
+  test('reopenThread: throws when Thread not found', async () => {
+    await withTransaction(testDb.db, async (ws) => {
+      await expect(
+        ws.reopenThread('00000000-0000-0000-0000-000000000000', 'trigger'),
+      ).rejects.toThrow('Thread not found')
+    })
+  })
+
+  test('reopenThread: throws when Thread is active', async () => {
+    await withTransaction(testDb.db, async (ws) => {
+      const thread = await ws.createThread({ initiatedBy: 'external' })
+      // Thread starts as active — should reject immediately
+      await expect(ws.reopenThread(thread.id, 'new trigger')).rejects.toThrow(
+        "Cannot reopen Thread in state 'active'",
+      )
+    })
+  })
+
+  test('reopenThread: throws when Thread is waiting', async () => {
+    await withTransaction(testDb.db, async (ws) => {
+      const thread = await ws.createThread({ initiatedBy: 'external' })
+      await ws.updateThreadState(thread.id, 'waiting')
+      await expect(ws.reopenThread(thread.id, 'new trigger')).rejects.toThrow(
+        "Cannot reopen Thread in state 'waiting'",
+      )
+    })
+  })
 })
