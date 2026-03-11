@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: MCP Tool Real Implementation
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks:
 - T001
@@ -10,8 +10,8 @@ subtasks:
 - T004
 phase: Phase 1 - MCP Layer
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-sonnet-4-6"
+shell_pid: "52203"
 review_status: ''
 reviewed_by: ''
 history:
@@ -282,3 +282,7 @@ const handler = findTool(server, 'workspace_read_slot')
 3. `createAimaMcpServer` 签名是否向后兼容（opts 可选）
 4. model 参数是否正确透传（存在时传，不存在时不传 undefined）
 5. 测试是否 mock 了回调并验证了调用参数
+
+## Activity Log
+
+- 2026-03-11T12:33:27Z – claude-sonnet-4-6 – shell_pid=52203 – lane=doing – Started review via workflow command
