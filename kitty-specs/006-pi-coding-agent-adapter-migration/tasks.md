@@ -13,7 +13,7 @@
 **Estimated size**: ~350 lines
 
 ### Included Subtasks
-- [ ] T001 Install `@mariozechner/pi-coding-agent@0.57.1` via `bun add`
+- [x] T001 Install `@mariozechner/pi-coding-agent@0.57.1` via `bun add`
 - [ ] T002 Define `PiCodingAgentAdapterConfig` interface
 - [ ] T003 `PiCodingAgentAdapter` class — `SessionManager.inMemory()`, session Map
 - [ ] T004 `run()` — `createAgentSession` (first run) + resume (subsequent runs) + systemPrompt refresh
