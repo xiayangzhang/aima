@@ -1,11 +1,12 @@
 ---
 work_package_id: WP02
 title: assembleBlock4 升级为脑区专属路由
-lane: planned
+lane: "doing"
 dependencies: [WP01]
 subtasks: [T009, T010, T011, T012, T013, T014, T015]
 assignee: claude
-agent: claude
+agent: "claude-sonnet-4-6"
+shell_pid: "85538"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -404,3 +405,7 @@ spec-kitty agent tasks move-task WP02 --to for_review --note "Ready: <summary>"
 2. `tests/unit/context/` 目录可能不存在，需要创建：`mkdir -p tests/unit/context`
 3. `bun:test` 的 `mock()` 函数用于创建 spy，与 Jest 的 `jest.fn()` 对应，支持 `toHaveBeenCalled` / `toHaveBeenCalledWith`
 4. 如果 `bun:test` 不支持 `toHaveBeenCalled`，改用计数器模式（spy 函数内部递增 callCount）
+
+## Activity Log
+
+- 2026-03-11T05:46:30Z – claude-sonnet-4-6 – shell_pid=85538 – lane=doing – Started implementation via workflow command
