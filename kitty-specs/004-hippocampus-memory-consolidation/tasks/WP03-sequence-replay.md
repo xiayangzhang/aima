@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: 步骤 2：段序列回放
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T013, T014, T015, T016, T017]
 assignee: claude
@@ -238,3 +238,4 @@ spec-kitty agent tasks move-task WP03 --to for_review --note "Ready: <summary>"
 ## Activity Log
 
 - 2026-03-11T02:31:14Z – claude-sonnet-4-6 – shell_pid=50069 – lane=doing – Started implementation via workflow command
+- 2026-03-11T02:34:51Z – claude-sonnet-4-6 – shell_pid=50069 – lane=for_review – Ready for review: runSequenceReplay + replaySegment + processReplayResult + writeWithSupersedes all implemented. Top-K sort, LLM JSON extraction, dedup by segment tag, exactOptionalPropertyTypes fixed. typecheck + biome pass.
