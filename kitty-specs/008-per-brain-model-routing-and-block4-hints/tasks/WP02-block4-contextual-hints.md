@@ -10,17 +10,32 @@ subtasks:
 - T007
 - T008
 phase: Phase 1 - Core Fixes
-assignee: ''
+assignee: "claude-sonnet-4-6"
 agent: "claude-sonnet-4-6"
-shell_pid: "23816"
+shell_pid: "13123"
 review_status: "approved"
-reviewed_by: "XIAYANG ZHANG"
+reviewed_by: "claude-sonnet-4-6"
 history:
 - timestamp: '2026-03-11T00:00:00Z'
   lane: planned
   agent: system
   shell_pid: ''
   action: Prompt generated via /spec-kitty.tasks
+- timestamp: '2026-03-12T00:00:00Z'
+  lane: doing
+  agent: claude-sonnet-4-6
+  shell_pid: '13123'
+  action: Implementation started
+- timestamp: '2026-03-12T01:00:00Z'
+  lane: for_review
+  agent: claude-sonnet-4-6
+  shell_pid: '13123'
+  action: Implementation complete — buildBlock4Opts() wired, 7 new tests pass
+- timestamp: '2026-03-12T02:00:00Z'
+  lane: done
+  agent: claude-sonnet-4-6
+  shell_pid: '22634'
+  action: Review passed — all success criteria met
 ---
 
 # Work Package Prompt: WP02 – Block 4 Contextual Hints
