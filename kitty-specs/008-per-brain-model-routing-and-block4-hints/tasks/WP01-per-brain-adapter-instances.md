@@ -8,11 +8,11 @@ subtasks:
 - T002
 - T003
 phase: Phase 1 - Core Fixes
-assignee: "claude-sonnet-4-6"
-agent: "claude-sonnet-4-6"
+assignee: "claude"
+agent: "claude"
 shell_pid: "2212"
 review_status: "approved"
-reviewed_by: "claude-sonnet-4-6"
+reviewed_by: "claude"
 history:
 - timestamp: '2026-03-11T00:00:00Z'
   lane: planned
@@ -21,17 +21,17 @@ history:
   action: Prompt generated via /spec-kitty.tasks
 - timestamp: '2026-03-12T00:00:00Z'
   lane: doing
-  agent: claude-sonnet-4-6
+  agent: claude
   shell_pid: '2212'
   action: Implementation started
 - timestamp: '2026-03-12T01:00:00Z'
   lane: for_review
-  agent: claude-sonnet-4-6
+  agent: claude
   shell_pid: '2212'
   action: Implementation complete — 3 adapter paths fixed, 12 tests pass
 - timestamp: '2026-03-12T02:00:00Z'
   lane: done
-  agent: claude-sonnet-4-6
+  agent: claude
   shell_pid: '22634'
   action: Review passed — all success criteria met
 ---
@@ -50,7 +50,7 @@ history:
 
 **Success Criteria**:
 - `buildAdapters()` 为每个脑区创建独立 Adapter 实例（不再共享同一个）
-- 默认 model 正确：limbic=`claude-haiku-4-5-20251001`，cortex=`claude-sonnet-4-6`，brainstem=`claude-sonnet-4-6`
+- 默认 model 正确：limbic=`claude-haiku-4-5-20251001`，cortex=`claude`，brainstem=`claude`
 - `brainModels` 配置字段（cortex/brainstem）被实际读取使用
 - 三条 adapter 路径（pi-agent/pi-coding-agent/claude-sdk）均修改
 - 现有测试零 regression；新增 ≥5 测试全绿
@@ -67,7 +67,7 @@ history:
 
 ```typescript
 // pi-agent 路径（其他路径相同）
-const limbicModel = config.brainModels?.limbic ?? 'claude-sonnet-4-6'
+const limbicModel = config.brainModels?.limbic ?? 'claude'
 const adapter = new PiAgentAdapter({
   ...shared,
   modelId: limbicModel,
@@ -103,8 +103,8 @@ tests/
 ```typescript
 /** Per-brain model overrides.
  * - limbic: defaults to 'claude-haiku-4-5-20251001' (fast routing & communication)
- * - cortex: defaults to 'claude-sonnet-4-6' (reasoning & planning)
- * - brainstem: defaults to 'claude-sonnet-4-6' (execution & tool use)
+ * - cortex: defaults to 'claude' (reasoning & planning)
+ * - brainstem: defaults to 'claude' (execution & tool use)
  */
 brainModels?: {
   limbic?: string
@@ -127,8 +127,8 @@ brainModels?: {
 ```typescript
 const BRAIN_MODEL_DEFAULTS = {
   limbic: 'claude-haiku-4-5-20251001',
-  cortex: 'claude-sonnet-4-6',
-  brainstem: 'claude-sonnet-4-6',
+  cortex: 'claude',
+  brainstem: 'claude',
 } as const
 ```
 
@@ -139,8 +139,8 @@ const BRAIN_MODEL_DEFAULTS = {
 ```typescript
 if (config.adapter === 'pi-agent') {
   const limbicModel = config.brainModels?.limbic ?? 'claude-haiku-4-5-20251001'
-  const cortexModel = config.brainModels?.cortex ?? 'claude-sonnet-4-6'
-  const brainstemModel = config.brainModels?.brainstem ?? 'claude-sonnet-4-6'
+  const cortexModel = config.brainModels?.cortex ?? 'claude'
+  const brainstemModel = config.brainModels?.brainstem ?? 'claude'
 
   adapters.set('limbic', new PiAgentAdapter({
     ...shared,
@@ -193,12 +193,12 @@ if (config.adapter === 'pi-agent') {
 
 **测试 2**: 不传 `brainModels` — cortex 使用 sonnet 默认值
 ```typescript
-// 同上，验证 cortex adapter 的 modelId === 'claude-sonnet-4-6'
+// 同上，验证 cortex adapter 的 modelId === 'claude'
 ```
 
 **测试 3**: 不传 `brainModels` — brainstem 使用 sonnet 默认值
 ```typescript
-// 同上，验证 brainstem adapter 的 modelId === 'claude-sonnet-4-6'
+// 同上，验证 brainstem adapter 的 modelId === 'claude'
 ```
 
 **测试 4**: 传入 `brainModels: { limbic: 'claude-opus-4-6' }` — limbic 使用覆盖值
@@ -248,7 +248,7 @@ if (config.adapter === 'pi-agent') {
 
 ## Activity Log
 
-- 2026-03-11T13:00:12Z – claude-sonnet-4-6 – shell_pid=2212 – lane=doing – Started implementation via workflow command
-- 2026-03-11T13:04:31Z – claude-sonnet-4-6 – shell_pid=2212 – lane=for_review – Ready for review: per-brain adapter instances implemented. limbic=haiku, cortex=brainstem=sonnet defaults. All 3 adapter paths fixed (pi-agent/pi-coding-agent/claude-sdk). 12 new tests covering defaults, overrides and instance independence. 319 unit tests pass, typecheck clean.
-- 2026-03-11T13:10:55Z – claude-sonnet-4-6 – shell_pid=22634 – lane=doing – Started review via workflow command
-- 2026-03-11T13:13:34Z – claude-sonnet-4-6 – shell_pid=22634 – lane=done – Review passed: all 3 adapter paths fixed, correct defaults (limbic=haiku, cortex/brainstem=sonnet), independent instances per brain. 12 tests pass.
+- 2026-03-11T13:00:12Z – claude – shell_pid=2212 – lane=doing – Started implementation via workflow command
+- 2026-03-11T13:04:31Z – claude – shell_pid=2212 – lane=for_review – Ready for review: per-brain adapter instances implemented. limbic=haiku, cortex=brainstem=sonnet defaults. All 3 adapter paths fixed (pi-agent/pi-coding-agent/claude-sdk). 12 new tests covering defaults, overrides and instance independence. 319 unit tests pass, typecheck clean.
+- 2026-03-11T13:10:55Z – claude – shell_pid=22634 – lane=doing – Started review via workflow command
+- 2026-03-11T13:13:34Z – claude – shell_pid=22634 – lane=done – Review passed: all 3 adapter paths fixed, correct defaults (limbic=haiku, cortex/brainstem=sonnet), independent instances per brain. 12 tests pass.

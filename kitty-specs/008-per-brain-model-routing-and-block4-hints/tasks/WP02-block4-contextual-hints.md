@@ -10,11 +10,11 @@ subtasks:
 - T007
 - T008
 phase: Phase 1 - Core Fixes
-assignee: "claude-sonnet-4-6"
-agent: "claude-sonnet-4-6"
+assignee: "claude"
+agent: "claude"
 shell_pid: "13123"
 review_status: "approved"
-reviewed_by: "claude-sonnet-4-6"
+reviewed_by: "claude"
 history:
 - timestamp: '2026-03-11T00:00:00Z'
   lane: planned
@@ -23,17 +23,17 @@ history:
   action: Prompt generated via /spec-kitty.tasks
 - timestamp: '2026-03-12T00:00:00Z'
   lane: doing
-  agent: claude-sonnet-4-6
+  agent: claude
   shell_pid: '13123'
   action: Implementation started
 - timestamp: '2026-03-12T01:00:00Z'
   lane: for_review
-  agent: claude-sonnet-4-6
+  agent: claude
   shell_pid: '13123'
   action: Implementation complete — buildBlock4Opts() wired, 7 new tests pass
 - timestamp: '2026-03-12T02:00:00Z'
   lane: done
-  agent: claude-sonnet-4-6
+  agent: claude
   shell_pid: '22634'
   action: Review passed — all success criteria met
 ---
@@ -329,7 +329,7 @@ async trigger(brain: CognitiveBrainType, threadId: string): Promise<void> {
 
 ## Activity Log
 
-- 2026-03-11T13:07:12Z – claude-sonnet-4-6 – shell_pid=13123 – lane=doing – Started implementation via workflow command
-- 2026-03-11T13:10:27Z – claude-sonnet-4-6 – shell_pid=13123 – lane=for_review – Ready for review: buildBlock4Opts() adds brain-specific Block 4 hints. limbic/cortex→situation from trigger, brainstem→taskType from cortex output or fallback to trigger. activateBrain() and trigger() both pass opts to assembleContext(). 7 new tests, 326 unit tests pass, typecheck clean.
-- 2026-03-11T13:11:34Z – claude-sonnet-4-6 – shell_pid=23816 – lane=doing – Started review via workflow command
-- 2026-03-11T13:13:34Z – claude-sonnet-4-6 – shell_pid=23816 – lane=done – Review passed: buildBlock4Opts() wired in trigger() and route(). limbic/cortex→situation, brainstem→taskType. 7 new tests, 15 total pass.
+- 2026-03-11T13:07:12Z – claude – shell_pid=13123 – lane=doing – Started implementation via workflow command
+- 2026-03-11T13:10:27Z – claude – shell_pid=13123 – lane=for_review – Ready for review: buildBlock4Opts() adds brain-specific Block 4 hints. limbic/cortex→situation from trigger, brainstem→taskType from cortex output or fallback to trigger. activateBrain() and trigger() both pass opts to assembleContext(). 7 new tests, 326 unit tests pass, typecheck clean.
+- 2026-03-11T13:11:34Z – claude – shell_pid=23816 – lane=doing – Started review via workflow command
+- 2026-03-11T13:13:34Z – claude – shell_pid=23816 – lane=done – Review passed: buildBlock4Opts() wired in trigger() and route(). limbic/cortex→situation, brainstem→taskType. 7 new tests, 15 total pass.
