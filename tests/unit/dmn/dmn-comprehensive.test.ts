@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test'
 import { DmnConsolidation } from '../../../src/dmn/consolidation/index'
 import { DmnService, createDmnService } from '../../../src/dmn/index'
-import * as llmModule from '../../../src/dmn/llm'
+import * as llmModule from '../../../src/llm'
 import { DmnReactive } from '../../../src/dmn/reactive/index'
 import { makeAlertEvent, makeBrainCompleteEvent, makeDmnConfig, makeMockWorkspace } from './helpers'
 

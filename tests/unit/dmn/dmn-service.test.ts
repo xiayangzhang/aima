@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { DmnService, createDmnService } from '../../../src/dmn/index'
-import { parseLlmJson } from '../../../src/dmn/llm'
+import { parseLlmJson } from '../../../src/llm'
 
 // Minimal mock workspace and eventBus stubs
 const mockWorkspace = {
