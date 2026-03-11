@@ -1,3 +1,4 @@
+import { callLlm, parseLlmJson } from '../llm'
 import type { LlmConfig } from '../llm'
 import type { CognitiveWorkspace } from '../workspace/index'
 
@@ -49,9 +50,98 @@ export class HippocampusConsolidation {
     console.log('[Hippocampus] Consolidation run complete')
   }
 
-  // Step 1 (WP02 implementation)
+  // Step 1: Segment refinement — merge adjacent episodic segments that belong together
   private async runSegmentRefine(): Promise<void> {
-    // stub
+    const now = new Date()
+    const from = new Date(now.getTime() - this.config.lookbackDays * 24 * 60 * 60 * 1000)
+    const segments = await this.workspace.getSegmentsByTimeRange({ from, to: now })
+
+    // Sort by maxCreatedAt ascending to form adjacent pairs
+    segments.sort((a, b) => a.maxCreatedAt.getTime() - b.maxCreatedAt.getTime())
+
+    // Cap at 50 pairs to bound LLM call count
+    const pairs: [
+      { segmentId: string; eventCount: number; avgImportance: number },
+      { segmentId: string; eventCount: number; avgImportance: number },
+    ][] = []
+    for (let i = 0; i < segments.length - 1 && pairs.length < 50; i++) {
+      const segA = segments[i]
+      const segB = segments[i + 1]
+      if (segA && segB) pairs.push([segA, segB])
+    }
+
+    // Track merged source segments for idempotency within this run
+    const mergedSegmentIds = new Set<string>()
+
+    for (const [segA, segB] of pairs) {
+      if (mergedSegmentIds.has(segA.segmentId) || mergedSegmentIds.has(segB.segmentId)) continue
+      try {
+        await this.tryMergeSegments(segA, segB, mergedSegmentIds)
+      } catch (err) {
+        console.warn(
+          `[Hippocampus] Segment merge failed for ${segA.segmentId}+${segB.segmentId}:`,
+          err,
+        )
+      }
+    }
+
+    console.log(`[Hippocampus] Segment refine complete. Pairs checked: ${pairs.length}`)
+  }
+
+  private async tryMergeSegments(
+    segA: { segmentId: string; eventCount: number; avgImportance: number },
+    segB: { segmentId: string; eventCount: number; avgImportance: number },
+    mergedSet: Set<string>,
+  ): Promise<void> {
+    // Sample up to 3 events from each segment as context
+    const seqA = (await this.workspace.getSegmentSequence(segA.segmentId)).slice(0, 3)
+    const seqB = (await this.workspace.getSegmentSequence(segB.segmentId)).slice(0, 3)
+
+    const contextA = seqA.map((e) => `- ${e.content.slice(0, 200)}`).join('\n')
+    const contextB = seqB.map((e) => `- ${e.content.slice(0, 200)}`).join('\n')
+
+    const prompt = `You are analyzing two event segments from an AI cognitive system to determine if they belong to the same continuous logical flow.
+
+Segment A (${segA.eventCount} events, avg importance ${segA.avgImportance.toFixed(2)}):
+${contextA}
+
+Segment B (${segB.eventCount} events, avg importance ${segB.avgImportance.toFixed(2)}):
+${contextB}
+
+Do these two segments represent a single continuous logical episode that was incorrectly split?
+Consider: same entities, continuous reasoning chain, same goal/task, directly related cause-and-effect.
+
+Respond with JSON only:
+{"merge": true/false, "reason": "one sentence explanation"}`
+
+    const response = await callLlm(prompt, this.config.llm, { maxTokens: 256 })
+    const result = parseLlmJson<{ merge: boolean; reason: string }>(response, {
+      merge: false,
+      reason: 'parse failed',
+    })
+
+    if (result.merge) {
+      console.log(
+        `[Hippocampus] Merging segments ${segB.segmentId} → ${segA.segmentId}: ${result.reason}`,
+      )
+      await this.executeMerge(segA.segmentId, segB.segmentId)
+      mergedSet.add(segB.segmentId)
+    }
+  }
+
+  private async executeMerge(targetSegmentId: string, sourceSegmentId: string): Promise<void> {
+    // Find current length of target segment to determine new seq numbers
+    const targetSeq = await this.workspace.getSegmentSequence(targetSegmentId)
+    const offset = targetSeq.length
+
+    // Re-number source records and re-assign to target segment
+    const sourceSeq = await this.workspace.getSegmentSequence(sourceSegmentId)
+    for (let i = 0; i < sourceSeq.length; i++) {
+      const entry = sourceSeq[i]
+      if (entry) {
+        await this.workspace.updateMemorySegment(entry.id, targetSegmentId, offset + i)
+      }
+    }
   }
 
   // Step 2 (WP03 implementation)
