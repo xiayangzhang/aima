@@ -16,7 +16,7 @@
 - [x] T001 Install `@mariozechner/pi-coding-agent@0.57.1` via `bun add`
 - [x] T002 Define `PiCodingAgentAdapterConfig` interface
 - [x] T003 `PiCodingAgentAdapter` class — `SessionManager.inMemory()`, session Map
-- [ ] T004 `run()` — `createAgentSession` (first run) + resume (subsequent runs) + systemPrompt refresh
+- [x] T004 `run()` — `createAgentSession` (first run) + resume (subsequent runs) + systemPrompt refresh
 - [ ] T005 `inject()` (steer/followUp/workspace fallback) + `abort()` + `abortSession()`
 
 ### Implementation Notes
