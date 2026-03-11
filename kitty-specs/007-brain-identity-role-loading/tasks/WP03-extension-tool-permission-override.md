@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: Extension Factory Tool Permission Override
-lane: "for_review"
+lane: "done"
 dependencies: ["WP01"]
 subtasks:
 - T008

@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: DmnConsolidation — 前瞻预测 + Pending 维护
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks: [T015, T016, T017, T018, T019]
 agent: "claude"

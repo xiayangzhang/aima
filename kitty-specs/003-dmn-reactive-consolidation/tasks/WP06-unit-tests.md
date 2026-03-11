@@ -1,7 +1,7 @@
 ---
 work_package_id: WP06
 title: 单元测试
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks: [T025, T026, T027, T028, T029, T030]
 agent: "claude"

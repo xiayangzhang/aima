@@ -1,7 +1,7 @@
 ---
 work_package_id: WP07
 title: 集成测试 + smoke test
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks: [T031, T032, T033, T034, T035]
 history:

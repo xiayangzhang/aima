@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: DmnReactive — 错误恢复 + DEFER + 信号捕获
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks: [T005, T006, T007, T008, T009]
 agent: "claude"

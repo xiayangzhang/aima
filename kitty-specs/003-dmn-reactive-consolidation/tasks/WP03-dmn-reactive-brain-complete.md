@@ -1,7 +1,7 @@
 ---
 work_package_id: WP03
 title: DmnReactive — brain.complete 四联职责
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks: [T010, T011, T012, T013, T014]
 agent: "claude"

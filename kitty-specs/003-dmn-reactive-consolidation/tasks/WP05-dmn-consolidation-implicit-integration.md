@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: DmnConsolidation — Implicit 聚类 + 集成
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks: [T020, T021, T022, T023, T024]
 agent: "claude"

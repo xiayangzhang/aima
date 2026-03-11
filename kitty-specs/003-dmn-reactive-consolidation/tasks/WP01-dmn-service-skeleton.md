@@ -1,7 +1,7 @@
 ---
 work_package_id: "WP01"
 title: "DmnService 骨架 + Haiku 封装"
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks: ["T001", "T002", "T003", "T004"]
 agent: "claude"
