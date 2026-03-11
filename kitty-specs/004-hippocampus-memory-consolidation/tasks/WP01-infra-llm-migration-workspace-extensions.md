@@ -1,12 +1,14 @@
 ---
 work_package_id: WP01
 title: callLlm 迁移 + 基础设施 + CognitiveWorkspace 扩展
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks: [T001, T002, T003, T004, T005, T006, T007]
 agent: "claude"
 assignee: "claude"
 shell_pid: "66121"
+reviewed_by: "XIAYANG ZHANG"
+review_status: "approved"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -380,3 +382,4 @@ spec-kitty agent tasks move-task WP01 --to for_review --note "Ready: <summary>"
 - 2026-03-11T01:25:30Z – claude-sonnet-4-6 – shell_pid=93501 – lane=doing – Started implementation via workflow command
 - 2026-03-11T01:33:38Z – claude-sonnet-4-6 – shell_pid=93501 – lane=for_review – Ready for review: callLlm migrated to src/llm.ts (LlmConfig), DmnLlmConfig kept as alias, HippocampusConsolidation class with daily scheduler, 6 new CognitiveWorkspace methods, AIMAInstance integration, exports updated. typecheck and biome both pass.
 - 2026-03-11T02:45:35Z – claude – shell_pid=66121 – lane=doing – Started review via workflow command
+- 2026-03-11T02:46:32Z – claude – shell_pid=66121 – lane=done – Review passed: src/llm.ts extracted cleanly, backward-compat DmnLlmConfig alias preserved, all 6 CognitiveWorkspace methods correct, HippocampusConsolidation skeleton + scheduler implemented, AIMAInstance integrated, exports updated. typecheck and biome clean.
