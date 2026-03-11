@@ -89,7 +89,7 @@
 - [x] T024: sequence-replay.test.ts：mock workspace + mock callLlm；writeMemory 被调用 3 次（类型正确）；JSON 解析失败时跳过该段
 - [x] T025: converge-cleanup.test.ts Part A：computeNewImportance 纯函数——5 个边界值测试（上升/下降/不变/下溢/上溢）
 - [x] T026: converge-cleanup.test.ts Part B：runOutcomesConverge mock 验证（getMemoriesWithNonZeroOutcomes 结果 → 正确 update 调用次数）
-- [ ] T027: converge-cleanup.test.ts Part C：runExpiryCleanup mock 验证 + 顺序约束（步骤 1 抛出 → 步骤 2 未执行，通过 spy 验证）
+- [x] T027: converge-cleanup.test.ts Part C：runExpiryCleanup mock 验证 + 顺序约束（步骤 1 抛出 → 步骤 2 未执行，通过 spy 验证）
 
 **Prompt**: WP05-unit-tests.md
 **依赖**: WP01, WP02, WP03, WP04
