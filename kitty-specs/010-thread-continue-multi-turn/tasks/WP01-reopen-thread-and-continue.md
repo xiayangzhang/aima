@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: reopenThread + AIMAInstance.continue()
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks:
 - T001
@@ -9,8 +9,8 @@ subtasks:
 - T003
 phase: Phase 1 - Implementation
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-sonnet-4-6"
+shell_pid: "16620"
 review_status: ''
 reviewed_by: ''
 history:
@@ -257,3 +257,7 @@ async continue(
 3. `brainSessions` Map 是否完好保留（session 历史不丢失）
 4. 测试 6 是否真正验证了 session 续接（不是新建）
 5. `receive()` 现有测试是否仍全部通过
+
+## Activity Log
+
+- 2026-03-11T23:40:43Z – claude-sonnet-4-6 – shell_pid=16620 – lane=doing – Started implementation via workflow command
