@@ -1,12 +1,12 @@
 ---
 work_package_id: WP06
 title: 集成测试
-lane: "for_review"
+lane: "doing"
 dependencies: []
 subtasks: [T028, T029, T030, T031, T032, T033]
 assignee: claude
 agent: "claude"
-shell_pid: "58992"
+shell_pid: "70097"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -358,3 +358,4 @@ spec-kitty agent tasks move-task WP06 --to for_review --note "Ready: <summary>"
 
 - 2026-03-11T03:40:35Z – claude – shell_pid=58992 – lane=doing – Started implementation via workflow command
 - 2026-03-11T03:48:49Z – claude – shell_pid=58992 – lane=for_review – Ready for review: 11 integration tests (T028-T033) covering segment refine, sequence replay, convergence, expiry cleanup, full run + ordering constraints. All tests pass against real PostgreSQL. biome + typecheck clean.
+- 2026-03-11T03:48:55Z – claude – shell_pid=70097 – lane=doing – Started review via workflow command
