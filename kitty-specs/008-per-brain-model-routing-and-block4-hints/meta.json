@@ -7,12 +7,19 @@
       "accepted_from_commit": "a1b3c0875f038dca64b444f3fad06a474db418e1",
       "branch": "main",
       "mode": "local"
+    },
+    {
+      "accepted_at": "2026-03-11T13:22:39Z",
+      "accepted_by": "claude",
+      "accepted_from_commit": "85b135230c88b606dd2db9f5d7fbdb71d33353c0",
+      "branch": "main",
+      "mode": "local"
     }
   ],
   "acceptance_mode": "local",
-  "accepted_at": "2026-03-11T13:22:35Z",
+  "accepted_at": "2026-03-11T13:22:39Z",
   "accepted_by": "claude",
-  "accepted_from_commit": "a1b3c0875f038dca64b444f3fad06a474db418e1",
+  "accepted_from_commit": "85b135230c88b606dd2db9f5d7fbdb71d33353c0",
   "created_at": "2026-03-11T00:00:00Z",
   "feature_number": "008",
   "friendly_name": "Per-Brain Model Routing & Block 4 Contextual Hints",
