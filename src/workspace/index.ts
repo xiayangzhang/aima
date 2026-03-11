@@ -88,6 +88,16 @@ function mapPendingRow(row: typeof pendingObservations.$inferSelect): PendingObs
   }
 }
 
+/**
+ * Canonical "active memory" filter: not soft-deleted by either mechanism.
+ * - tInvalid IS NULL  → not superseded by a newer memory
+ * - forgotten = false → not expired-and-cleaned by forgetExpiredMemories
+ * Every query that should return live memories MUST use this.
+ */
+function activeMemory() {
+  return and(isNull(memories.tInvalid), eq(memories.forgotten, false))
+}
+
 function mapMemoryRow(row: typeof memories.$inferSelect): MemoryEntry {
   const outcomes = row.usageOutcomes as { positive: number; negative: number; neutral: number }
   return {
@@ -402,11 +412,12 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
       conditions.push(eq(memories.segmentId, filters.segmentId))
     }
 
+    // Always exclude forgotten memories
+    conditions.push(eq(memories.forgotten, false))
+    // Exclude superseded memories unless caller explicitly opts out
     if (filters.excludeInvalid !== false) {
       conditions.push(isNull(memories.tInvalid))
     }
-
-    conditions.push(eq(memories.forgotten, false))
 
     if (filters.createdAfter !== undefined) {
       conditions.push(gt(memories.createdAt, filters.createdAfter))
@@ -486,7 +497,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
         and(
           eq(memories.type, 'episodic'),
           isNotNull(memories.segmentId),
-          eq(memories.forgotten, false),
+          activeMemory(),
           gte(memories.createdAt, range.from),
           lt(memories.createdAt, range.to),
         ),
@@ -507,7 +518,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     const rows = await this.db
       .select()
       .from(memories)
-      .where(and(eq(memories.segmentId, segmentId), eq(memories.forgotten, false)))
+      .where(and(eq(memories.segmentId, segmentId), activeMemory()))
       .orderBy(asc(memories.segmentSeq), asc(memories.createdAt))
     return rows.map(mapMemoryRow)
   }
@@ -531,7 +542,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
       .from(memories)
       .where(
         and(
-          eq(memories.forgotten, false),
+          activeMemory(),
           sql`(
             (${memories.usageOutcomes}->>'positive')::int +
             (${memories.usageOutcomes}->>'negative')::int
