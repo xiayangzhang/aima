@@ -1,12 +1,12 @@
 ---
 work_package_id: WP03
 title: 步骤 2：段序列回放
-lane: "for_review"
+lane: "doing"
 dependencies: []
 subtasks: [T013, T014, T015, T016, T017]
 assignee: claude
-agent: "claude-sonnet-4-6"
-shell_pid: "50069"
+agent: "claude"
+shell_pid: "68538"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -239,3 +239,4 @@ spec-kitty agent tasks move-task WP03 --to for_review --note "Ready: <summary>"
 
 - 2026-03-11T02:31:14Z – claude-sonnet-4-6 – shell_pid=50069 – lane=doing – Started implementation via workflow command
 - 2026-03-11T02:34:51Z – claude-sonnet-4-6 – shell_pid=50069 – lane=for_review – Ready for review: runSequenceReplay + replaySegment + processReplayResult + writeWithSupersedes all implemented. Top-K sort, LLM JSON extraction, dedup by segment tag, exactOptionalPropertyTypes fixed. typecheck + biome pass.
+- 2026-03-11T02:47:12Z – claude – shell_pid=68538 – lane=doing – Started review via workflow command
