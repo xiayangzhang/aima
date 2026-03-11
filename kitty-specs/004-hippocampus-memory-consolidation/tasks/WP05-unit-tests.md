@@ -1,7 +1,7 @@
 ---
 work_package_id: WP05
 title: 单元测试
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T022, T023, T024, T025, T026, T027]
 assignee: claude
@@ -430,3 +430,4 @@ spec-kitty agent tasks move-task WP05 --to for_review --note "Ready: <summary>"
 ## Activity Log
 
 - 2026-03-11T02:36:28Z – claude-sonnet-4-6 – shell_pid=57258 – lane=doing – Started implementation via workflow command
+- 2026-03-11T02:43:48Z – claude-sonnet-4-6 – shell_pid=57258 – lane=for_review – Ready for review: 30 unit tests passing across 4 files (lifecycle, segment-refine, sequence-replay, converge-cleanup). Uses mock.module() + dynamic import pattern for ESM mocking. All typecheck and biome checks pass.
