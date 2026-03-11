@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Per-Brain Adapter Instances
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks:
 - T001
@@ -9,8 +9,8 @@ subtasks:
 - T003
 phase: Phase 1 - Core Fixes
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-sonnet-4-6"
+shell_pid: "2212"
 review_status: ''
 reviewed_by: ''
 history:
@@ -230,3 +230,7 @@ if (config.adapter === 'pi-agent') {
 3. 旧代码中 `cortex/brainstem` 配置未使用的 bug 是否已修复
 4. 测试是否真正验证了各脑区使用了各自 modelId（不是只验证 adapter 类型）
 5. 不传 brainModels 时行为是否向后兼容
+
+## Activity Log
+
+- 2026-03-11T13:00:12Z – claude-sonnet-4-6 – shell_pid=2212 – lane=doing – Started implementation via workflow command
