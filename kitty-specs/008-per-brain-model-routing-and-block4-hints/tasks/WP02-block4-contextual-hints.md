@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: Block 4 Contextual Hints
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks:
 - T004
@@ -315,3 +315,4 @@ async trigger(brain: CognitiveBrainType, threadId: string): Promise<void> {
 ## Activity Log
 
 - 2026-03-11T13:07:12Z – claude-sonnet-4-6 – shell_pid=13123 – lane=doing – Started implementation via workflow command
+- 2026-03-11T13:10:27Z – claude-sonnet-4-6 – shell_pid=13123 – lane=for_review – Ready for review: buildBlock4Opts() adds brain-specific Block 4 hints. limbic/cortex→situation from trigger, brainstem→taskType from cortex output or fallback to trigger. activateBrain() and trigger() both pass opts to assembleContext(). 7 new tests, 326 unit tests pass, typecheck clean.
