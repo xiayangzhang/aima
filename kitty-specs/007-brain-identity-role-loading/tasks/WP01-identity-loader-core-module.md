@@ -2,7 +2,7 @@
 work_package_id: "WP01"
 title: "IdentityLoader Core Module"
 phase: "Phase 1 - Foundation"
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks:
   - "T001"
@@ -490,3 +490,4 @@ spec-kitty implement WP01
 ## Activity Log
 
 - 2026-03-11T11:50:26Z – claude-sonnet-4-6 – shell_pid=95010 – lane=doing – Started implementation via workflow command
+- 2026-03-11T11:52:40Z – claude-sonnet-4-6 – shell_pid=95010 – lane=for_review – Ready for review: IdentityLoader core module complete. 20 tests passing (10 frontmatter + 10 loader). typecheck clean, biome check clean.
