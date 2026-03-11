@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: Block 4 Contextual Hints
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks:
 - T004
@@ -11,8 +11,8 @@ subtasks:
 - T008
 phase: Phase 1 - Core Fixes
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-sonnet-4-6"
+shell_pid: "13123"
 review_status: ''
 reviewed_by: ''
 history:
@@ -311,3 +311,7 @@ async trigger(brain: CognitiveBrainType, threadId: string): Promise<void> {
 3. `trigger()` 方法是否正确获取 thread 和 slotMap
 4. 无合适 hint 时是否返回 undefined（不强制传入 empty opts）
 5. 测试是否覆盖了 fallback 路径（无 trigger、无 cortex output 等边界情况）
+
+## Activity Log
+
+- 2026-03-11T13:07:12Z – claude-sonnet-4-6 – shell_pid=13123 – lane=doing – Started implementation via workflow command
