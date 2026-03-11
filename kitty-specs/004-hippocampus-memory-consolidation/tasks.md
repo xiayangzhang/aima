@@ -23,7 +23,7 @@
 - [x] T003: 调度器实现：start()（setTimeout 计算距 runAt 的延迟）+ stop()（60s 超时优雅退出 + running flag 防重入）
 - [x] T004: CognitiveWorkspace 扩展：getSegmentsByTimeRange + getSegmentSequence
 - [x] T005: CognitiveWorkspace 扩展：updateMemorySegment
-- [ ] T006: CognitiveWorkspace 扩展：getMemoriesWithNonZeroOutcomes + updateMemoryImportanceAndResetOutcomes
+- [x] T006: CognitiveWorkspace 扩展：getMemoriesWithNonZeroOutcomes + updateMemoryImportanceAndResetOutcomes
 - [ ] T007: CognitiveWorkspace 扩展：forgetExpiredMemories；AIMAInstance 集成（enableHippocampus）；src/index.ts 导出
 
 **Prompt**: WP01-infra-llm-migration-workspace-extensions.md
