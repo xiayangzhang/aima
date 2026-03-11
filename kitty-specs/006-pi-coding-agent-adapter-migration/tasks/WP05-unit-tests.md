@@ -2,7 +2,7 @@
 work_package_id: "WP05"
 title: "Unit Tests ≥30"
 phase: "Phase 4 - Verification"
-lane: "doing"
+lane: "for_review"
 dependencies: ["WP04"]
 subtasks:
   - "T019"
@@ -564,3 +564,4 @@ Expected output: ≥30 tests, all passing. Count breakdown:
 
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created.
 - 2026-03-11T10:53:17Z – claude – shell_pid=10251 – lane=doing – Started implementation via workflow command
+- 2026-03-11T10:58:45Z – claude – shell_pid=10251 – lane=for_review – 54 unit tests pass: adapter (run/inject/abort), extension (policy/amygdala/events), mcp-tools (all 6 tools). biome+tsc clean.
