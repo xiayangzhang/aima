@@ -1,12 +1,12 @@
 ---
 work_package_id: WP05
 title: 单元测试
-lane: "for_review"
+lane: "doing"
 dependencies: []
 subtasks: [T022, T023, T024, T025, T026, T027]
 assignee: claude
-agent: "claude-sonnet-4-6"
-shell_pid: "57258"
+agent: "claude"
+shell_pid: "70094"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -431,3 +431,4 @@ spec-kitty agent tasks move-task WP05 --to for_review --note "Ready: <summary>"
 
 - 2026-03-11T02:36:28Z – claude-sonnet-4-6 – shell_pid=57258 – lane=doing – Started implementation via workflow command
 - 2026-03-11T02:43:48Z – claude-sonnet-4-6 – shell_pid=57258 – lane=for_review – Ready for review: 30 unit tests passing across 4 files (lifecycle, segment-refine, sequence-replay, converge-cleanup). Uses mock.module() + dynamic import pattern for ESM mocking. All typecheck and biome checks pass.
+- 2026-03-11T02:48:16Z – claude – shell_pid=70094 – lane=doing – Started review via workflow command
