@@ -107,7 +107,7 @@ T010/T011/T012 是同一函数的三个 if/else 分支，逻辑上必须顺序�
 - [x] T016: 集成测试 - getEntityContext
 - [x] T017: 集成测试 - findSimilarSituations
 - [x] T018: 集成测试 - getProcedure
-- [ ] T019: 集成测试 - assembleBlock4 路由
+- [x] T019: 集成测试 - assembleBlock4 路由
 
 ### 并行机会
 
