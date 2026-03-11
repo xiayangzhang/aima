@@ -2,7 +2,7 @@
 work_package_id: "WP02"
 title: "Extension Factory — Amygdala + EventBus"
 phase: "Phase 2 - Core Behavior"
-lane: "planned"
+lane: "doing"
 dependencies: ["WP01"]
 subtasks:
   - "T006"
@@ -12,8 +12,8 @@ subtasks:
   - "T010"
   - "T011"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude-sonnet-4-6"
+shell_pid: "78919"
 review_status: ""
 reviewed_by: ""
 history:
@@ -371,3 +371,4 @@ Zero errors required before marking done.
 ## Activity Log
 
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created.
+- 2026-03-11T10:35:25Z – claude-sonnet-4-6 – shell_pid=78919 – lane=doing – Started implementation via workflow command
