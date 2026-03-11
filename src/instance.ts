@@ -9,6 +9,8 @@ import type { DmnConfig } from './dmn/index'
 import { DmnService } from './dmn/index'
 import { getEventBus } from './eventbus/index'
 import type { BrainEventBus } from './eventbus/index'
+import { HippocampusConsolidation } from './hippocampus/index'
+import type { HippocampusConfig } from './hippocampus/index'
 import { ThreadRunner } from './runner/index'
 import * as schema from './schema/index'
 import type { CognitiveBrainType } from './types/index'
@@ -41,6 +43,10 @@ export interface AIMAInstanceConfig {
   enableDmn?: boolean
   /** DMN configuration overrides. Requires enableDmn: true. */
   dmnConfig?: Partial<Pick<DmnConfig, 'consolidationIntervalMs' | 'maxRetries' | 'llm'>>
+  /** Enable Hippocampus Consolidation. Defaults to false. */
+  enableHippocampus?: boolean
+  /** Hippocampus configuration. Requires enableHippocampus: true. */
+  hippocampus?: HippocampusConfig
 }
 
 // ─── AIMAInstance ─────────────────────────────────────────────────────────────
@@ -62,6 +68,7 @@ export class AIMAInstance {
   private readonly threadRunner: ThreadRunner
   private pgClient: ReturnType<typeof postgres> | null = null
   private dmnService?: DmnService
+  private hippocampusConsolidation?: HippocampusConsolidation
 
   constructor(config: AIMAInstanceConfig) {
     // Database
@@ -103,6 +110,14 @@ export class AIMAInstance {
         ...config.dmnConfig,
       })
     }
+
+    // Hippocampus (optional)
+    if (config.enableHippocampus && config.hippocampus) {
+      this.hippocampusConsolidation = new HippocampusConsolidation(
+        this.workspace,
+        config.hippocampus,
+      )
+    }
   }
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -112,12 +127,14 @@ export class AIMAInstance {
     if (this.dmnService) {
       await this.dmnService.start()
     }
+    this.hippocampusConsolidation?.start()
   }
 
   async stop(): Promise<void> {
     if (this.dmnService) {
       await this.dmnService.stop()
     }
+    await this.hippocampusConsolidation?.stop()
     this.threadRunner.stop()
     await this.pgClient?.end()
     this.pgClient = null

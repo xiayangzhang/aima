@@ -77,6 +77,13 @@ export { createAimaMcpServer } from './mcp/index'
 export type { DmnConfig, DmnLlmConfig } from './dmn/index'
 export { DmnService, createDmnService } from './dmn/index'
 
+// ── Hippocampus ───────────────────────────────────────────────────────────────
+export { HippocampusConsolidation } from './hippocampus/index'
+export type { HippocampusConfig } from './hippocampus/index'
+
+// ── LLM ───────────────────────────────────────────────────────────────────────
+export type { LlmConfig } from './llm'
+
 // ── AIMAInstance ──────────────────────────────────────────────────────────────
 export type { AIMAInstanceConfig, AdapterType } from './instance'
 export { AIMAInstance, createAIMAInstance } from './instance'
