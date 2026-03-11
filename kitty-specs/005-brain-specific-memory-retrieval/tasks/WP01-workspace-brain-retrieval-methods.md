@@ -1,11 +1,12 @@
 ---
 work_package_id: WP01
 title: CognitiveWorkspace 专属检索方法实现
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks: [T001, T002, T003, T004, T005, T006, T007, T008]
 assignee: claude
-agent: "claude"
+agent: "claude-sonnet-4-6"
+shell_pid: "81351"
 history:
 - 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
 ---
@@ -463,3 +464,7 @@ spec-kitty agent tasks move-task WP01 --to for_review --note "Ready: <summary>"
 2. 先写实现（T001-T004），再写测试（T006-T008）
 3. 每写完一个方法立即运行 `bun run typecheck` 检查类型
 4. 最后运行 `biome check --write` 修复格式
+
+## Activity Log
+
+- 2026-03-11T05:43:49Z – claude-sonnet-4-6 – shell_pid=81351 – lane=doing – Started implementation via workflow command
