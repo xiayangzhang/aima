@@ -1,92 +1,31 @@
----
-work_package_id: WP03
-title: 集成测试（真实 PostgreSQL）
-lane: "doing"
-dependencies: [WP01, WP02]
-subtasks: [T016, T017, T018, T019]
-assignee: claude
-agent: "claude-sonnet-4-6"
-shell_pid: "89460"
-history:
-- 2026-03-11T00:00:00Z – system – lane=planned – Prompt created
----
-
-# WP03 — 集成测试（真实 PostgreSQL）
-
-## 目标
-
-用真实 PostgreSQL 验证 WP01 三个方法和 WP02 路由的 SQL 语义正确性。单元测试验证调用路径，集成测试验证数据库行为——包括 ILIKE 匹配、排序（importance/lastAccessedAt）、limit 截断、类型纯净度、forgotten/tInvalid 过滤。
-
-## 实施命令
-
-```bash
-spec-kitty implement WP03 --base WP02
-```
-
-## 上下文
-
-### 关键文件
-
-- **新建**：`tests/integration/workspace/brain-retrieval.test.ts`
-
-### 测试基础设施
-
-```typescript
-// 复用已有工具（参见 tests/integration/helpers/db.ts）：
-import { createTestDb, withTransaction } from '../helpers/db'
-import { describeWithDb } from '../helpers/skip'
-```
-
-`withTransaction` 模式在事务中运行测试，结束时强制 ROLLBACK——**所有写入自动清理，无需手动 afterEach 清理数据**。这是本项目的标准隔离模式。
-
-### 连接要求
-
-```bash
-AIMA_TEST_DATABASE_URL=postgresql://aima:aima@localhost:5434/aima_test
-```
-
-若环境变量未设置，`describeWithDb` 自动 skip（不报错）。
-
-### 文件结构
-
-```typescript
 import { afterAll, beforeAll, expect, test } from 'vitest'
+import { assembleBlock4 } from '../../../src/context/index'
 import { createTestDb, withTransaction } from '../helpers/db'
 import { describeWithDb } from '../helpers/skip'
 
-// 每个 describeWithDb 块有独立的 testDb，独立的 afterAll(() => client.end())
-// 宪法规定：不共享连接
-```
+// ─── getEntityContext ─────────────────────────────────────────────────────────
 
----
-
-## 子任务
-
-### T016 — `getEntityContext` 集成测试
-
-**测试场景**：
-
-```typescript
 describeWithDb('getEntityContext (integration)', () => {
   let testDb: ReturnType<typeof createTestDb>
-  beforeAll(() => { testDb = createTestDb() })
-  afterAll(async () => { await testDb.client.end() })
+  beforeAll(() => {
+    testDb = createTestDb()
+  })
+  afterAll(async () => {
+    await testDb.client.end()
+  })
 
   test('returns only memories with matching entityId', async () => {
     await withTransaction(testDb.db, async (ws) => {
-      // 写入 entity-A 的记忆（semantic）
       const memA = await ws.writeMemory({
         type: 'semantic',
         content: 'fact about entity A',
         entityId: 'entity-test-A',
       })
-      // 写入 entity-B 的记忆（不应出现）
       await ws.writeMemory({
         type: 'semantic',
         content: 'fact about entity B',
         entityId: 'entity-test-B',
       })
-      // 写入无 entity 的记忆（不应出现）
       await ws.writeMemory({
         type: 'semantic',
         content: 'generic fact',
@@ -128,24 +67,22 @@ describeWithDb('getEntityContext (integration)', () => {
     })
   })
 
-  test('does not return forgotten memories', async () => {
+  test('does not return invalidated memories', async () => {
     await withTransaction(testDb.db, async (ws) => {
       const mem = await ws.writeMemory({
         type: 'semantic',
-        content: 'to be forgotten',
-        entityId: 'entity-forgotten',
+        content: 'to be invalidated',
+        entityId: 'entity-invalid',
       })
-      await ws.invalidateMemory(mem.id)  // t_invalid をセット
+      await ws.invalidateMemory(mem.id)
 
-      const results = await ws.getEntityContext('entity-forgotten')
-      // t_invalid 的记忆不应出现
+      const results = await ws.getEntityContext('entity-invalid')
       expect(results.every((r) => r.tInvalid === null)).toBe(true)
     })
   })
 
   test('respects limit', async () => {
     await withTransaction(testDb.db, async (ws) => {
-      // 写入 5 条同 entity 的记忆
       for (let i = 0; i < 5; i++) {
         await ws.writeMemory({
           type: 'semantic',
@@ -187,24 +124,27 @@ describeWithDb('getEntityContext (integration)', () => {
     })
   })
 })
-```
 
----
+// ─── findSimilarSituations ────────────────────────────────────────────────────
 
-### T017 — `findSimilarSituations` 集成测试
-
-```typescript
 describeWithDb('findSimilarSituations (integration)', () => {
   let testDb: ReturnType<typeof createTestDb>
-  beforeAll(() => { testDb = createTestDb() })
-  afterAll(async () => { await testDb.client.end() })
+  beforeAll(() => {
+    testDb = createTestDb()
+  })
+  afterAll(async () => {
+    await testDb.client.end()
+  })
 
   test('returns correct groups: episodes, procedures, facts', async () => {
     await withTransaction(testDb.db, async (ws) => {
       await ws.writeMemory({ type: 'episodic', content: '客户投诉了延误问题', baseImportance: 0.7 })
-      await ws.writeMemory({ type: 'procedural', content: '处理客户投诉的步骤', baseImportance: 0.8 })
+      await ws.writeMemory({
+        type: 'procedural',
+        content: '处理客户投诉的步骤',
+        baseImportance: 0.8,
+      })
       await ws.writeMemory({ type: 'semantic', content: '投诉处理政策规定', baseImportance: 0.6 })
-      // 不含关键词的记忆（不应出现）
       await ws.writeMemory({ type: 'episodic', content: '正常会议记录', baseImportance: 0.9 })
 
       const result = await ws.findSimilarSituations('投诉')
@@ -228,7 +168,6 @@ describeWithDb('findSimilarSituations (integration)', () => {
 
       const result = await ws.findSimilarSituations('INVOICE')
 
-      // 两条都应匹配（ILIKE 大小写不敏感）
       expect(result.facts.length).toBeGreaterThanOrEqual(2)
     })
   })
@@ -247,7 +186,6 @@ describeWithDb('findSimilarSituations (integration)', () => {
 
   test('respects per-group limit', async () => {
     await withTransaction(testDb.db, async (ws) => {
-      // 写入 5 条 episodic 含关键词
       for (let i = 0; i < 5; i++) {
         await ws.writeMemory({ type: 'episodic', content: `关键词事件 ${i}` })
       }
@@ -257,7 +195,7 @@ describeWithDb('findSimilarSituations (integration)', () => {
     })
   })
 
-  test('does not return forgotten/invalid memories', async () => {
+  test('does not return invalidated memories', async () => {
     await withTransaction(testDb.db, async (ws) => {
       const mem = await ws.writeMemory({
         type: 'semantic',
@@ -271,23 +209,23 @@ describeWithDb('findSimilarSituations (integration)', () => {
     })
   })
 })
-```
 
----
+// ─── getProcedure ─────────────────────────────────────────────────────────────
 
-### T018 — `getProcedure` 集成测试
-
-```typescript
 describeWithDb('getProcedure (integration)', () => {
   let testDb: ReturnType<typeof createTestDb>
-  beforeAll(() => { testDb = createTestDb() })
-  afterAll(async () => { await testDb.client.end() })
+  beforeAll(() => {
+    testDb = createTestDb()
+  })
+  afterAll(async () => {
+    await testDb.client.end()
+  })
 
   test('returns only procedural type memories', async () => {
     await withTransaction(testDb.db, async (ws) => {
       await ws.writeMemory({ type: 'procedural', content: '报销审批流程步骤' })
-      await ws.writeMemory({ type: 'semantic', content: '报销政策说明' })  // 不应出现
-      await ws.writeMemory({ type: 'episodic', content: '报销案例记录' })  // 不应出现
+      await ws.writeMemory({ type: 'semantic', content: '报销政策说明' })
+      await ws.writeMemory({ type: 'episodic', content: '报销案例记录' })
 
       const results = await ws.getProcedure('报销')
 
@@ -323,7 +261,7 @@ describeWithDb('getProcedure (integration)', () => {
     })
   })
 
-  test('respects limit (default 3)', async () => {
+  test('respects default limit 3', async () => {
     await withTransaction(testDb.db, async (ws) => {
       for (let i = 0; i < 5; i++) {
         await ws.writeMemory({ type: 'procedural', content: `审批流程变体 ${i}` })
@@ -364,19 +302,17 @@ describeWithDb('getProcedure (integration)', () => {
     })
   })
 })
-```
 
----
+// ─── assembleBlock4 routing ───────────────────────────────────────────────────
 
-### T019 — `assembleBlock4` 集成路由测试
-
-**目的**：在真实 workspace 上验证 `assembleBlock4` 路由行为——调用正确的方法且返回内容包含正确记忆。
-
-```typescript
 describeWithDb('assembleBlock4 routing (integration)', () => {
   let testDb: ReturnType<typeof createTestDb>
-  beforeAll(() => { testDb = createTestDb() })
-  afterAll(async () => { await testDb.client.end() })
+  beforeAll(() => {
+    testDb = createTestDb()
+  })
+  afterAll(async () => {
+    await testDb.client.end()
+  })
 
   test('limbic + entityId: injects entity-specific memories', async () => {
     await withTransaction(testDb.db, async (ws) => {
@@ -386,19 +322,15 @@ describeWithDb('assembleBlock4 routing (integration)', () => {
         entityId: 'client-abc',
         baseImportance: 0.8,
       })
-      // 其他 entity 的记忆（不应出现）
       await ws.writeMemory({
         type: 'semantic',
         content: 'Client XYZ info',
         entityId: 'client-xyz',
       })
 
-      const { text, injectedMemoryIds } = await assembleBlock4(
-        'limbic',
-        ws,
-        'thread-1',
-        { entityId: 'client-abc' },
-      )
+      const { text, injectedMemoryIds } = await assembleBlock4('limbic', ws, 'thread-1', {
+        entityId: 'client-abc',
+      })
 
       expect(text).toContain('Client ABC prefers email communication')
       expect(text).not.toContain('Client XYZ info')
@@ -412,12 +344,7 @@ describeWithDb('assembleBlock4 routing (integration)', () => {
       await ws.writeMemory({ type: 'procedural', content: 'invoice dispute handling procedure' })
       await ws.writeMemory({ type: 'semantic', content: 'invoice policy document' })
 
-      const { text } = await assembleBlock4(
-        'cortex',
-        ws,
-        'thread-1',
-        { situation: 'invoice' },
-      )
+      const { text } = await assembleBlock4('cortex', ws, 'thread-1', { situation: 'invoice' })
 
       expect(text).toContain('invoice')
     })
@@ -426,65 +353,21 @@ describeWithDb('assembleBlock4 routing (integration)', () => {
   test('brainstem + taskType: injects only procedural memories matching taskType', async () => {
     await withTransaction(testDb.db, async (ws) => {
       await ws.writeMemory({ type: 'procedural', content: 'approval workflow steps for budget' })
-      await ws.writeMemory({ type: 'semantic', content: 'budget policy' })  // 不应注入
+      await ws.writeMemory({ type: 'semantic', content: 'budget policy' })
 
-      const { text } = await assembleBlock4(
-        'brainstem',
-        ws,
-        'thread-1',
-        { taskType: 'approval' },
-      )
+      const { text } = await assembleBlock4('brainstem', ws, 'thread-1', { taskType: 'approval' })
 
       expect(text).toContain('approval workflow steps for budget')
     })
   })
 
-  test('limbic without entityId: falls back to searchMemory (returns any semantic/episodic)', async () => {
+  test('limbic without entityId: falls back gracefully without error', async () => {
     await withTransaction(testDb.db, async (ws) => {
       await ws.writeMemory({ type: 'semantic', content: 'generic fact no entity' })
 
-      // 无 opts，走 fallback
       const { text } = await assembleBlock4('limbic', ws, 'thread-1')
 
-      // fallback 不报错，返回格式正确（可能包含也可能不包含该记忆，取决于 DB 中其他数据）
-      // 主要验证不抛异常，返回结构正确
       expect(typeof text).toBe('string')
     })
   })
 })
-```
-
-**注意**：T019 需要在文件顶部 import `assembleBlock4`：
-
-```typescript
-import { assembleBlock4 } from '../../../src/context/index'
-```
-
----
-
-## Definition of Done
-
-- [ ] T016: `getEntityContext` 集成测试通过（实体过滤、types 过滤、forgotten 过滤、limit、importance 排序）
-- [ ] T017: `findSimilarSituations` 集成测试通过（三组分类正确、ILIKE 匹配、limit、空结果）
-- [ ] T018: `getProcedure` 集成测试通过（type 纯净、ILIKE、limit、排序）
-- [ ] T019: `assembleBlock4` 集成路由测试通过（三种 brainType + opts 组合 + fallback）
-- [ ] 所有测试在 `AIMA_TEST_DATABASE_URL` 设置时通过，未设置时 skip（不报错）
-- [ ] `bun run typecheck` 零错误
-- [ ] `biome check` 通过
-
-## 完成命令
-
-```bash
-spec-kitty agent tasks move-task WP03 --to for_review --note "Ready: <summary>"
-```
-
-## 实施提示
-
-1. `withTransaction` 内部一定会 ROLLBACK，不需要 beforeEach/afterEach 清理
-2. 每个 `describeWithDb` 块必须有独立的 `createTestDb()` 和 `afterAll(() => client.end())`，不要在块之间共享 client
-3. 如果 T019 中 `assembleBlock4` 的 fallback 路径因为 DB 中已有数据导致不可预测，改用更宽泛的断言（`typeof text === 'string'`）而不是精确匹配内容
-4. 集成测试文件用 `import { afterAll, beforeAll, expect, test } from 'vitest'`（参见现有 `tests/integration/workspace/memory.test.ts`）
-
-## Activity Log
-
-- 2026-03-11T05:48:55Z – claude-sonnet-4-6 – shell_pid=89460 – lane=doing – Started implementation via workflow command
