@@ -1,108 +1,105 @@
-# Implementation Plan: [FEATURE]
-*Path: [templates/plan-template.md](templates/plan-template.md)*
+# Implementation Plan: Hippocampus Segment Retrieval
 
-
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
-**Input**: Feature specification from `/kitty-specs/[###-feature-name]/spec.md`
-
-**Note**: This template is filled in by the `/spec-kitty.plan` command. See `.kittify/templates/commands/plan.md` for the execution workflow.
-
-The planner will not begin until all planning questions have been answered—capture those answers in this document before progressing to later phases.
+**Branch**: `021-hippocampus-segment-retrieval` | **Date**: 2026-03-13 | **Spec**: [spec.md](spec.md)
 
 ## Summary
 
-[Extract from feature spec: primary requirement + technical approach from research]
+Add `getSegmentSequence()` and `getSegmentsByTimeRange()` to the `ICognitiveWorkspace` interface.
+Both methods are already implemented in `CognitiveWorkspace`; this feature exposes them as part of
+the public contract so all workspace consumers (consolidation, tests, adapters) can depend on them.
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
-
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
-
-## Constitution Check
-
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
-
-[Gates determined based on constitution file]
+**Language/Version**: TypeScript 5.x (Node 22)
+**Primary Dependencies**: Drizzle ORM, postgres.js
+**Storage**: PostgreSQL — `memories` table with `segment_id text`, `segment_seq integer` columns
+**Testing**: Vitest with in-memory postgres (pg-mem or test container per existing pattern)
+**Target Platform**: Node.js server (AKS)
+**Performance Goals**: Both queries use existing `idx_memories_segment_id` index; no new indexes needed
+**Constraints**: Must not break existing `ICognitiveWorkspace` consumers
 
 ## Project Structure
 
-### Documentation (this feature)
-
 ```
-kitty-specs/[###-feature]/
-├── plan.md              # This file (/spec-kitty.plan command output)
-├── research.md          # Phase 0 output (/spec-kitty.plan command)
-├── data-model.md        # Phase 1 output (/spec-kitty.plan command)
-├── quickstart.md        # Phase 1 output (/spec-kitty.plan command)
-├── contracts/           # Phase 1 output (/spec-kitty.plan command)
-└── tasks.md             # Phase 2 output (/spec-kitty.tasks command - NOT created by /spec-kitty.plan)
-```
-
-### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
-
-```
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
 src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+├── types/index.ts           — ICognitiveWorkspace interface (add two method signatures)
+└── workspace/index.ts       — CognitiveWorkspace implementation (already done; verify signatures)
 
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+src/tests/ or tests/
+└── workspace/               — unit tests for both new methods (V1–V5)
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+## Implementation Notes
 
-## Complexity Tracking
+### getSegmentSequence
 
-*Fill ONLY if Constitution Check has violations that must be justified*
+Already implemented in `CognitiveWorkspace` (lines 531–538 of `src/workspace/index.ts`):
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+```typescript
+async getSegmentSequence(segmentId: string): Promise<MemoryEntry[]> {
+  const rows = await this.db
+    .select()
+    .from(memories)
+    .where(and(eq(memories.segmentId, segmentId), activeMemory()))
+    .orderBy(asc(memories.segmentSeq), asc(memories.createdAt))
+  return rows.map(mapMemoryRow)
+}
+```
+
+The `activeMemory()` helper applies `t_invalid IS NULL AND forgotten = false`.
+`asc(memories.segmentSeq)` naturally places NULLs last in ascending order in PostgreSQL.
+
+### getSegmentsByTimeRange
+
+Already implemented in `CognitiveWorkspace` (lines 494–528 of `src/workspace/index.ts`):
+
+```typescript
+async getSegmentsByTimeRange(range: { from: Date; to: Date }): Promise<
+  { segmentId: string; eventCount: number; avgImportance: number; maxCreatedAt: Date }[]
+> {
+  const rows = await this.db
+    .select({
+      segmentId: memories.segmentId,
+      eventCount: count(memories.id),
+      avgImportance: avg(memories.baseImportance),
+      maxCreatedAt: max(memories.createdAt),
+    })
+    .from(memories)
+    .where(
+      and(
+        eq(memories.type, 'episodic'),
+        isNotNull(memories.segmentId),
+        activeMemory(),
+        gte(memories.createdAt, range.from),
+        lt(memories.createdAt, range.to),
+      ),
+    )
+    .groupBy(memories.segmentId)
+  return rows
+    .filter((r) => r.segmentId !== null)
+    .map((r) => ({
+      segmentId: r.segmentId as string,
+      eventCount: Number(r.eventCount),
+      avgImportance: Number(r.avgImportance ?? 0.5),
+      maxCreatedAt: r.maxCreatedAt ?? new Date(),
+    }))
+}
+```
+
+Note: The implementation uses Drizzle's native `count()`, `avg()`, `max()` aggregates — no raw
+`sql` template needed. The `[from, to)` range is half-open: `gte(from)` + `lt(to)`.
+
+The return type uses `maxCreatedAt` (not `latestAt`). The interface declaration must match.
+
+### Interface change
+
+Add to the `// ── DMN Segment Tracking` section of `ICognitiveWorkspace` in `src/types/index.ts`:
+
+```typescript
+getSegmentSequence(segmentId: string): Promise<MemoryEntry[]>
+getSegmentsByTimeRange(
+  range: { from: Date; to: Date }
+): Promise<Array<{ segmentId: string; eventCount: number; avgImportance: number; maxCreatedAt: Date }>>
+```
+
+No changes to `CognitiveWorkspace` implementation required — signatures already match.
