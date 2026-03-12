@@ -141,7 +141,7 @@ description: "Work package task list for Feature 013 — Brain Output Model Migr
 
 ### Included Subtasks
 - [x] T018 Global grep zero-residual check — `grep -rn "mode === '\|intent === '\|type Intent\|type ComplexityHint" src/` → fix any remaining references
-- [ ] T019 Run `bun test` full suite and achieve 407/407 — fix any remaining test breakage
+- [x] T019 Run `bun test` full suite and achieve 407/407 — fix any remaining test breakage
 - [ ] T020 Update `docs/v2/01-framework.md` — mark P1-C ⚠️ warning as fixed; update v2 doc to reference new BrainOutput structure
 
 ### Implementation Notes
