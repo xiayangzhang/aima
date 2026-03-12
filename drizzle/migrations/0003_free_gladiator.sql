@@ -1,0 +1,1 @@
+CREATE INDEX "idx_memories_session_id" ON "memories" USING btree ("session_id") WHERE session_id IS NOT NULL;

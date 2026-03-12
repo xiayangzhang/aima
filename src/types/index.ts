@@ -181,5 +181,9 @@ export interface ICognitiveWorkspace {
   ): Promise<{ episodes: MemoryEntry[]; procedures: MemoryEntry[]; facts: MemoryEntry[] }>
   getProcedure(taskType: string, opts?: { limit?: number }): Promise<MemoryEntry[]>
   // ── DMN Segment Tracking ─────────────────────────────────────────────────
+  getSessionContext(sessionId: string): Promise<{
+    anchor: MemoryEntry | null
+    events: MemoryEntry[]
+  }>
   getLatestSegmentStates(): Promise<Map<string, { segmentId: string; nextSeq: number }>>
 }

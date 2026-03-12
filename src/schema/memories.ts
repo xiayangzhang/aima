@@ -54,6 +54,9 @@ export const memories = pgTable(
     segmentIdIdx: index('idx_memories_segment_id').on(table.segmentId),
     tInvalidIdx: index('idx_memories_t_invalid').on(table.tInvalid).where(sql`t_invalid IS NULL`),
     threadIdIdx: index('idx_memories_thread_id').on(table.threadId),
+    sessionIdIdx: index('idx_memories_session_id')
+      .on(table.sessionId)
+      .where(sql`session_id IS NOT NULL`),
   }),
 )
 

@@ -686,6 +686,29 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
 
   // ── DMN Segment Tracking ─────────────────────────────────────────────────────
 
+  async getSessionContext(sessionId: string): Promise<{
+    anchor: MemoryEntry | null
+    events: MemoryEntry[]
+  }> {
+    const rows = await this.db
+      .select()
+      .from(memories)
+      .where(
+        and(
+          eq(memories.type, 'episodic'),
+          eq(memories.sessionId, sessionId),
+          isNull(memories.tInvalid),
+          eq(memories.forgotten, false),
+        ),
+      )
+      .orderBy(asc(memories.createdAt))
+
+    if (rows.length === 0) return { anchor: null, events: [] }
+
+    const events = rows.map(mapMemoryRow)
+    return { anchor: events[0], events }
+  }
+
   /**
    * Returns the most recent active segment state (segmentId + nextSeq) for every
    * thread that has at least one valid episodic memory with a segmentId.
