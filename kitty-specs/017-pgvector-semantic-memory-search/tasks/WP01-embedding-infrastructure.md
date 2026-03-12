@@ -8,12 +8,13 @@ subtasks:
   - "T005"
 title: "Embedding Infrastructure"
 phase: "Phase 1 - Infrastructure"
-lane: "doing"
+lane: "done"
 assignee: ""
 agent: "claude"
 shell_pid: "36432"
-review_status: ""
+review_status: "approved"
 dependencies: []
+reviewed_by: "XIAYANG ZHANG"
 history:
   - timestamp: "2026-03-12T12:00:00Z"
     lane: "planned"
@@ -291,3 +292,4 @@ export interface CognitiveWorkspaceConfig {
 - 2026-03-12T13:07:08Z – claude – shell_pid=85631 – lane=planned – Released — accidentally claimed during 016 review; no review performed
 - 2026-03-12T13:45:09Z – claude – shell_pid=85631 – lane=for_review – Moved to for_review
 - 2026-03-12T13:45:24Z – claude – shell_pid=36432 – lane=doing – Started review via workflow command
+- 2026-03-12T13:45:42Z – claude – shell_pid=36432 – lane=done – Review passed: embedding.ts exports EmbeddingConfig+generateEmbedding, memories schema has nullable vector(1536)+HNSW index, migration 0004 uses IF NOT EXISTS, CognitiveWorkspaceOptions.embedding added, bun test 382 pass 0 fail
