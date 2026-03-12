@@ -1,0 +1,8 @@
+{
+  "feature_number": "014",
+  "slug": "014-session-context-retrieval",
+  "friendly_name": "Session Context Retrieval",
+  "mission": "software-dev",
+  "source_description": "Feature 016 — Session Anchor 实现：当前 `getSessionContext()` 在 `CognitiveWorkspace` 接口中声明但实现为空（返回 `{ anchor: null, events: [] }`），导致 DMN Reactive 的 `getSessionContext` 调用无法获取任何会话上下文。需要实现：(1) Session Anchor——每个 Thread 的第一条 episodic 记忆作为锚点（anchor），代表该 Thread 的"起点"；(2) Session Events——该 Thread 内所有 episodic 记忆按时间排序作为事件列表。DMN 用这个上下文判断当前 Thread 的历史脉络，决定是否需要段分配或干预。",
+  "created_at": "2026-03-12T10:30:00.000Z"
+}
