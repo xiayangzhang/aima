@@ -21,7 +21,7 @@ description: "Work package task list for Feature 013 — Brain Output Model Migr
 ### Included Subtasks
 - [x] T001 Add `BrainOutput` interface + remove `Intent`/`ComplexityHint` types in `src/types/index.ts`
 - [x] T002 Remove `intent`/`complexityHint` columns from `src/schema/slots.ts`
-- [ ] T003 Create Drizzle migration `drizzle/migrations/0002_remove_slot_intent_columns.sql`
+- [x] T003 Create Drizzle migration `drizzle/migrations/0002_remove_slot_intent_columns.sql`
 - [ ] T004 Sync `src/workspace/index.ts` — remove `intent`/`complexityHint` from `WriteSlotParams` reads/writes
 - [ ] T005 Update `tests/unit/workspace/thread-slot.test.ts` — remove `intent`/`complexityHint` assertions
 
