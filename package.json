@@ -31,6 +31,7 @@
     "@mariozechner/pi-coding-agent": "/tmp/mariozechner-pi-coding-agent-0.57.1.tgz",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "drizzle-orm": "^0.38.0",
+    "openai": "^6.27.0",
     "postgres": "^3.4.0"
   },
   "devDependencies": {

@@ -29,6 +29,13 @@
       "when": 1773318337656,
       "tag": "0003_free_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1741824000000,
+      "tag": "0004_vector_embedding",
+      "breakpoints": true
     }
   ]
 }
