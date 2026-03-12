@@ -2,7 +2,7 @@ import type { BrainAdapter, BrainRunParams } from '../adapters/index'
 import { assembleBlock12, assembleContext } from '../context/index'
 import type { AssembleBlock4Opts, ContextAssemblerConfig } from '../context/index'
 import type { BrainEventBus } from '../eventbus/index'
-import type { CognitiveBrainType, Slot, Thread } from '../types/index'
+import type { BrainOutput, CognitiveBrainType, Slot, Thread } from '../types/index'
 import type { CognitiveWorkspace } from '../workspace/index'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -12,6 +12,22 @@ export interface ThreadRunnerConfig {
   eventBus: BrainEventBus
   adapters: Map<CognitiveBrainType, BrainAdapter>
   assemblerConfig: ContextAssemblerConfig
+}
+
+// ─── Legal Transition Table ───────────────────────────────────────────────────
+
+const LEGAL_TRANSITIONS: Record<CognitiveBrainType, Set<CognitiveBrainType | 'self' | null>> = {
+  limbic: new Set<CognitiveBrainType | 'self' | null>(['cortex', 'brainstem', 'self', null]),
+  cortex: new Set<CognitiveBrainType | 'self' | null>(['limbic', 'brainstem', null]),
+  brainstem: new Set<CognitiveBrainType | 'self' | null>(['limbic', 'cortex', null]),
+}
+
+function isLegalTransition(
+  from: CognitiveBrainType,
+  to: CognitiveBrainType | 'self' | null | undefined,
+): boolean {
+  if (to === undefined) return true // undefined = null = thread ends (legal)
+  return LEGAL_TRANSITIONS[from]?.has(to) ?? false
 }
 
 // ─── ThreadRunner ─────────────────────────────────────────────────────────────
@@ -112,59 +128,57 @@ export class ThreadRunner {
         const slots = await this.workspace.getSlotsByThread(threadId)
         const slotMap = Object.fromEntries(slots.map((s) => [s.brain, s]))
 
-        let nextBrain: CognitiveBrainType | null = null
+        const output = (slotMap[currentBrain]?.output ?? null) as BrainOutput | null
 
-        if (currentBrain === 'limbic') {
-          const output = slotMap.limbic?.output as Record<string, unknown> | null
-          const mode = output?.mode as string | undefined
-
-          if (mode === 'RESPOND' || mode === 'NO_REPLY') {
-            await this.workspace.updateThreadState(threadId, 'complete')
-            this.workspace.notifyThreadComplete(threadId)
-            return
-          }
-          if (mode === 'ROUTE') {
-            nextBrain = 'cortex'
-          } else if (mode === 'EXECUTE') {
-            nextBrain = 'brainstem'
-          } else if (mode === 'DEFER') {
-            const timeoutMs = (output?.timeout_ms as number | undefined) ?? 60_000
-            const triggerAt = new Date(Date.now() + timeoutMs)
-            await this.workspace.updateThreadState(threadId, 'waiting')
-            await this.workspace.writePending({
-              targetBrain: 'limbic',
-              threadId,
-              note: 'DEFER timeout — re-activate Limbic with channel downgrade',
-              triggerAt,
-              expiresAt: new Date(triggerAt.getTime() + 7 * 24 * 60 * 60 * 1000),
-            })
-            return
-          }
-        } else if (currentBrain === 'cortex') {
-          const output = slotMap.cortex?.output as Record<string, unknown> | null
-          const intent = output?.intent as string | undefined
-
-          if (intent === 'communicate') {
-            nextBrain = 'limbic'
-          } else if (intent === 'execute') {
-            nextBrain = 'brainstem'
-          } else if (intent === 'both') {
-            // First activate Limbic (tentative reply); Brainstem follows when Limbic done
-            nextBrain = 'limbic'
-          }
-        } else if (currentBrain === 'brainstem') {
-          const cortexOutput = slotMap.cortex?.output as Record<string, unknown> | null
-          if (cortexOutput?.intent === 'both') {
-            // intent=both path: Brainstem done → final Limbic confirmation
-            nextBrain = 'limbic'
-          } else {
-            await this.workspace.updateThreadState(threadId, 'complete')
-            this.workspace.notifyThreadComplete(threadId)
-            return
-          }
+        // Emit reply event before routing (brain can reply and end thread in same turn)
+        if (output?.reply) {
+          this.eventBus.emit({
+            event_type: 'thread.reply',
+            level: 'INFO',
+            brain: currentBrain,
+            thread_id: threadId,
+            session_id: null,
+            payload: { reply: output.reply, threadId },
+          })
         }
 
-        if (!nextBrain) return
+        const next = output?.next ?? null
+
+        // No next → thread ends
+        if (next === null || next === undefined) {
+          await this.workspace.updateThreadState(threadId, 'complete')
+          this.workspace.notifyThreadComplete(threadId)
+          return
+        }
+
+        // Validate legal transition (includes 'self' — only limbic can defer)
+        if (!isLegalTransition(currentBrain, next)) {
+          await this.workspace.updateThreadState(threadId, 'interrupted')
+          this.eventBus.emit({
+            event_type: 'thread.interrupted',
+            level: 'ALERT',
+            brain: currentBrain,
+            thread_id: threadId,
+            session_id: null,
+            payload: { reason: 'illegal_transition', from: currentBrain, to: next },
+          })
+          return
+        }
+
+        // DEFER (self-routing — only valid for limbic per legal transition table)
+        if (next === 'self') {
+          await this.handleDefer(output, threadId)
+          return
+        }
+
+        // Pass handoff to next brain's input slot before activation
+        if (output?.handoff) {
+          await this.workspace.writeSlot(threadId, next as CognitiveBrainType, {
+            input: { handoff: output.handoff },
+          })
+        }
+
+        const nextBrain = next as CognitiveBrainType
         const opts = this.buildBlock4Opts(nextBrain, thread, slotMap)
         await this.activateBrain(nextBrain, threadId, opts)
         currentBrain = nextBrain
@@ -172,6 +186,22 @@ export class ThreadRunner {
     } finally {
       this.processingThreads.delete(threadId)
     }
+  }
+
+  // ── DEFER handling ────────────────────────────────────────────────────────────
+
+  private async handleDefer(output: BrainOutput | null, threadId: string): Promise<void> {
+    const timeoutMs =
+      (output as Record<string, unknown> | null)?.timeout_ms as number | undefined ?? 60_000
+    const triggerAt = new Date(Date.now() + timeoutMs)
+    await this.workspace.updateThreadState(threadId, 'waiting')
+    await this.workspace.writePending({
+      targetBrain: 'limbic',
+      threadId,
+      note: 'DEFER timeout — re-activate Limbic with channel downgrade',
+      triggerAt,
+      expiresAt: new Date(triggerAt.getTime() + 7 * 24 * 60 * 60 * 1000),
+    })
   }
 
   // ── Brain Activation ─────────────────────────────────────────────────────────
