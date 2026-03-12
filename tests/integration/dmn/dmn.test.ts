@@ -287,34 +287,20 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
     expect(content.handoff).toBeNull()
   })
 
-  test('healthy brain.complete → no dmn.correction_issued event emitted', async () => {
-    const { workspace, eventBus, waitForHandlers } = ctx
-
-    const thread = await workspace.createThread({ initiatedBy: 'integration-test-T036c' })
-
-    const emitted: string[] = []
-    const unsub = eventBus.subscribe((e) => {
-      emitted.push(e.event_type)
-    })
-
-    eventBus.emit({
-      event_type: 'brain.complete',
-      level: 'INFO',
-      brain: 'cortex',
-      thread_id: thread.id,
-      payload: {
-        injectedMemoryIds: [],
-        outputSlot: { status: 'done', output: { reply: 'All good', next: null } },
-        stopReason: 'done',
-      },
-    })
-
-    await waitForHandlers()
-    unsub()
-
-    // Pre-check skips correction path for healthy events
-    expect(emitted).not.toContain('dmn.correction_issued')
-  })
+  // NOTE: T036c (correction pre-check integration test) is intentionally omitted.
+  //
+  // The pre-check behavior (skipping LLM on healthy events) cannot be reliably
+  // verified in a real-DB + real-API integration test because:
+  //   1. A fresh thread always has < 2 episodic entries → retroactiveCorrection
+  //      returns early at the existing `recentEvents.length < 2` guard regardless
+  //      of the pre-check.
+  //   2. If we pre-populate ≥ 2 entries, the real LLM may still return
+  //      `needs_correction: false`, making dmn.correction_issued absent either way.
+  //   3. Distinguishing "pre-check skipped LLM" vs "LLM ran but found no error"
+  //      requires callLlm call-count instrumentation — which belongs in unit tests.
+  //
+  // The pre-check is fully covered by unit tests T033 V1–V4 (spyOn callLlm).
+  // TODO: revisit if LLM call metrics / query counters become available.
 })
 
 // ─── T035: Consolidation smoke test (requires ANTHROPIC_API_KEY) ──────────────
