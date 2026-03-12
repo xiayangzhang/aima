@@ -105,7 +105,7 @@ describeWithDb('DMN integration — DEFER scheduling (T033)', () => {
       thread_id: thread.id,
       payload: {
         output: {
-          mode: 'DEFER',
+          next: 'self',
           timeout_ms: timeoutMs,
           defer_reason: uniqueReason,
         },
@@ -151,7 +151,7 @@ describeWithDb('DMN integration — brain.complete four responsibilities (T034)'
       thread_id: thread.id,
       payload: {
         injectedMemoryIds: [],
-        outputSlot: { status: 'done', output: { mode: 'RESPOND', content: 'Hello' } },
+        outputSlot: { status: 'done', output: { reply: 'Hello' } },
         stopReason: 'done',
       },
     })
@@ -189,7 +189,7 @@ describeWithDb('DMN integration — brain.complete four responsibilities (T034)'
       thread_id: thread.id,
       payload: {
         injectedMemoryIds: [memory.id],
-        outputSlot: { status: 'done', output: { mode: 'RESPOND', content: 'Answer' } },
+        outputSlot: { status: 'done', output: { reply: 'Answer' } },
         stopReason: 'done',
       },
     })

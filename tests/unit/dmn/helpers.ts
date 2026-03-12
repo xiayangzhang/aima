@@ -319,7 +319,7 @@ export function makeBrainCompleteEvent(
     causation_id: null,
     schema_version: '1.0',
     payload: {
-      outputSlot: { status: 'done', output: { mode: 'RESPOND' } },
+      outputSlot: { status: 'done', output: { reply: 'mock response' } },
       stopReason: 'done',
       injectedMemoryIds: [],
       ...payload,

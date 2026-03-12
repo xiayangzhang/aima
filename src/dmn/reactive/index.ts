@@ -102,11 +102,11 @@ export class DmnReactive {
       await this.handleErrorRecovery(event)
     }
 
-    // Responsibility 6: DEFER scheduling (limbic slot.done with output.mode=DEFER)
+    // Responsibility 6: DEFER scheduling (limbic slot.done with output.next=self)
     if (
       event_type === 'slot.done' &&
       brain === 'limbic' &&
-      (payload.output as Record<string, unknown> | undefined)?.mode === 'DEFER'
+      (payload.output as Record<string, unknown> | undefined)?.next === 'self'
     ) {
       await this.handleDefer(event)
     }
@@ -192,11 +192,12 @@ export class DmnReactive {
     if (outputSlot?.status === 'error') return true
 
     const output = outputSlot?.output as Record<string, unknown> | undefined
-    if (output?.mode === 'ROUTE' && output.needs_analysis) return true
+    if (output?.next === 'cortex' && output.needs_analysis) return true
 
     // Topic switch check: only on RESPOND output with enough context
+    // Respond = has reply and no further routing (thread ends)
     const segState = this.threadSegments.get(thread_id)
-    if (output?.mode === 'RESPOND' && segState && segState.nextSeq > 5) {
+    if (output?.reply != null && !output?.next && segState && segState.nextSeq > 5) {
       return await this.isTopicSwitch(event)
     }
 
@@ -235,8 +236,8 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
       brain,
       threadId: thread_id,
       status: outputSlot?.status,
-      mode: output?.mode,
-      intent: output?.intent,
+      next: (output as Record<string, unknown> | undefined)?.next,
+      hasReply: (output as Record<string, unknown> | undefined)?.reply != null,
       stopReason: payload.stopReason,
       timestamp: new Date().toISOString(),
     })
@@ -258,8 +259,9 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
 
     if (outputSlot?.status === 'error') return 'negative'
     if (event.payload.stopReason === 'error') return 'negative'
-    if (output?.mode === 'RESPOND') return 'positive'
-    if (output?.mode === 'EXECUTE') return 'positive'
+    // Positive: brain produced a user-visible reply OR triggered execution
+    if (output?.reply != null) return 'positive'
+    if (output?.next === 'brainstem') return 'positive'
 
     return 'neutral'
   }
