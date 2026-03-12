@@ -25,7 +25,7 @@
 **Goal**: 替换 Stage 3 存根，实现 LLM 评估 + 记忆写入。
 
 **Subtasks**:
-- [ ] T001 — Config + args 参数更新
+- [x] T001 — Config + args 参数更新
 - [ ] T002 — `evaluateWithLlm()` 实现
 - [ ] T003 — `writeEvalMemory()` 实现
 - [ ] T004 — Stage 3 存根替换
