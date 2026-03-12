@@ -2,7 +2,8 @@
 work_package_id: WP02
 title: Workspace Vector Integration
 lane: planned
-dependencies: []
+dependencies:
+- WP01
 subtasks:
 - T006
 - T007
