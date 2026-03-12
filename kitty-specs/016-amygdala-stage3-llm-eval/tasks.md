@@ -27,7 +27,7 @@
 **Subtasks**:
 - [x] T001 — Config + args 参数更新
 - [x] T002 — `evaluateWithLlm()` 实现
-- [ ] T003 — `writeEvalMemory()` 实现
+- [x] T003 — `writeEvalMemory()` 实现
 - [ ] T004 — Stage 3 存根替换
 - [ ] T005 — 单元测试 V1-V7
 
