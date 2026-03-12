@@ -10,7 +10,7 @@ subtasks:
   - "T012"
 title: "Thread Runner Core Rewrite"
 phase: "Phase 2 - Core Logic"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: "claude-wp02"
 shell_pid: "42470"
@@ -395,3 +395,4 @@ Note: `timeout_ms` is not part of the `BrainOutput` interface (it's an extra fie
 
 - 2026-03-12T10:23:39Z – system – lane=planned – Prompt created.
 - 2026-03-12T11:14:25Z – claude-wp02 – shell_pid=42470 – lane=doing – Started implementation via workflow command
+- 2026-03-12T11:20:28Z – claude-wp02 – shell_pid=42470 – lane=for_review – All T006-T012 done. 494/496 tests pass (2 pre-existing failures). No mode/intent comparisons remain in runner. isLegalTransition implemented. thread.reply events emitted. handoff passing. intent=both hardcode removed. T013-T017 belong to WP03.
