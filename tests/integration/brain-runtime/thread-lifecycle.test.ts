@@ -19,7 +19,7 @@ const assemblerConfig: ContextAssemblerConfig = {
   },
 }
 
-// ─── T053: Limbic RESPOND path ────────────────────────────────────────────────
+// ─── T053: Limbic reply path ──────────────────────────────────────────────────
 
 skipIfNoDb('Thread lifecycle (integration)', () => {
   let workspace: CognitiveWorkspace
@@ -38,13 +38,13 @@ skipIfNoDb('Thread lifecycle (integration)', () => {
     await pgClient.end()
   })
 
-  // T053: Limbic RESPOND → Thread complete
-  test('Limbic RESPOND path completes thread', async () => {
+  // T053: Limbic reply → Thread complete
+  test('Limbic reply path completes thread', async () => {
     const eventBus = new BrainEventBus()
 
     const limbicAdapter = new MockBrainAdapter(workspace, (_params, _count) => ({
       status: 'done',
-      output: { mode: 'RESPOND', content: 'Hello from mock Limbic' },
+      output: { reply: 'Hello from mock Limbic' },
     }))
 
     const adapters = new Map<CognitiveBrainType, BrainAdapter>([['limbic', limbicAdapter]])
@@ -62,25 +62,25 @@ skipIfNoDb('Thread lifecycle (integration)', () => {
 
     const slot = await workspace.readSlot(thread.id, 'limbic')
     expect(slot?.status).toBe('done')
-    expect((slot?.output as Record<string, unknown>)?.mode).toBe('RESPOND')
+    expect((slot?.output as Record<string, unknown>)?.reply).toBe('Hello from mock Limbic')
   })
 
-  // T054: Limbic ROUTE → Cortex communicate → Limbic RESPOND
-  test('Limbic ROUTE → Cortex → Limbic path completes thread', async () => {
+  // T054: Limbic next: cortex → Cortex next: limbic → Limbic reply
+  test('Limbic next: cortex → Cortex → Limbic path completes thread', async () => {
     const eventBus = new BrainEventBus()
     let limbicCallCount = 0
 
     const limbicAdapter = new MockBrainAdapter(workspace, (_params, count) => {
       limbicCallCount = count
       if (count === 1) {
-        return { status: 'done', output: { mode: 'ROUTE' } }
+        return { status: 'done', output: { next: 'cortex' } }
       }
-      return { status: 'done', output: { mode: 'RESPOND', content: 'Final answer' } }
+      return { status: 'done', output: { reply: 'Final answer' } }
     })
 
     const cortexAdapter = new MockBrainAdapter(workspace, () => ({
       status: 'done',
-      output: { intent: 'communicate' },
+      output: { next: 'limbic' },
     }))
 
     const adapters = new Map<CognitiveBrainType, BrainAdapter>([
@@ -105,18 +105,18 @@ skipIfNoDb('Thread lifecycle (integration)', () => {
   })
 
   // T055: Crash recovery — ThreadRunner.start() re-activates in-flight Thread
-  test('Crash recovery: start() re-activates thread with done limbic ROUTE slot', async () => {
+  test('Crash recovery: start() re-activates thread with done limbic next:cortex slot', async () => {
     const eventBus = new BrainEventBus()
     let cortexCalled = false
 
     const cortexAdapter = new MockBrainAdapter(workspace, () => {
       cortexCalled = true
-      return { status: 'done', output: { intent: 'communicate' } }
+      return { status: 'done', output: { next: 'limbic' } }
     })
 
     const limbicAdapter = new MockBrainAdapter(workspace, () => ({
       status: 'done',
-      output: { mode: 'RESPOND', content: 'Recovery complete' },
+      output: { reply: 'Recovery complete' },
     }))
 
     const adapters = new Map<CognitiveBrainType, BrainAdapter>([
@@ -124,11 +124,11 @@ skipIfNoDb('Thread lifecycle (integration)', () => {
       ['cortex', cortexAdapter],
     ])
 
-    // Simulate crash: create thread + write limbic ROUTE slot directly
+    // Simulate crash: create thread + write limbic next:cortex slot directly
     const thread = await workspace.createThread({ initiatedBy: 'crash-test' })
     await workspace.writeSlot(thread.id, 'limbic', {
       status: 'done',
-      output: { mode: 'ROUTE' },
+      output: { next: 'cortex' },
     })
 
     // Start runner — crash recovery should pick up the thread
