@@ -25,7 +25,7 @@
 
 **Subtasks**:
 - [x] T001 — `ICognitiveWorkspace` 接口新增 `getSessionContext` 签名
-- [ ] T002 — `src/schema/memories.ts` 新增 `sessionId` 索引 + migration SQL
+- [x] T002 — `src/schema/memories.ts` 新增 `sessionId` 索引 + migration SQL
 - [ ] T003 — `src/workspace/index.ts` 实现 `getSessionContext`
 - [ ] T004 — `tests/unit/workspace/workspace-session-context.test.ts` 单元测试
 
