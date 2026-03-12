@@ -54,7 +54,7 @@ bun test  # 零回归
 **Goal**: 将 embedding 基础设施集成到 CognitiveWorkspace——writeMemory fire-and-forget embedding 生成，findSimilarSituations 和 getProcedure 向量优先检索，单元测试。
 
 **Subtasks**:
-- [ ] T006 — `generateAndStoreEmbedding()` + `writeMemory()` 集成
+- [x] T006 — `generateAndStoreEmbedding()` + `writeMemory()` 集成
 - [ ] T007 — `findSimilarSituations()` 向量升级
 - [ ] T008 — `getProcedure()` 向量升级
 - [ ] T009 — 单元测试 V1-V7
