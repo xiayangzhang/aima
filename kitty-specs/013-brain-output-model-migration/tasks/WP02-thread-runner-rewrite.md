@@ -10,10 +10,10 @@ subtasks:
   - "T012"
 title: "Thread Runner Core Rewrite"
 phase: "Phase 2 - Core Logic"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude-wp02"
+shell_pid: "42470"
 review_status: ""
 reviewed_by: ""
 dependencies: ["WP01"]
@@ -394,3 +394,4 @@ Note: `timeout_ms` is not part of the `BrainOutput` interface (it's an extra fie
 ## Activity Log
 
 - 2026-03-12T10:23:39Z – system – lane=planned – Prompt created.
+- 2026-03-12T11:14:25Z – claude-wp02 – shell_pid=42470 – lane=doing – Started implementation via workflow command
