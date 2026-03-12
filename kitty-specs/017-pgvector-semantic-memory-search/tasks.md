@@ -31,7 +31,7 @@
 **Subtasks**:
 - [x] T001 — `bun add openai`
 - [x] T002 — `src/embedding.ts` 实现
-- [ ] T003 — schema 变更（vector 列 + HNSW 索引）
+- [x] T003 — schema 变更（vector 列 + HNSW 索引）
 - [ ] T004 — 迁移文件创建
 - [ ] T005 — `CognitiveWorkspaceConfig.embedding` 字段
 
