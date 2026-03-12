@@ -100,7 +100,7 @@ description: "Work package task list for Feature 013 — Brain Output Model Migr
 **Prompt**: `tasks/WP03-dmn-reactive-updates.md`
 
 ### Included Subtasks
-- [ ] T013 `handleEvent` DEFER detection: `output?.mode === 'DEFER'` → `output?.next === 'self'`
+- [x] T013 `handleEvent` DEFER detection: `output?.mode === 'DEFER'` → `output?.next === 'self'`
 - [ ] T014 `shouldStartNewSegment`: `output?.mode === 'ROUTE'` → `output?.next === 'cortex'`; `output?.mode === 'RESPOND'` → `output?.reply != null && !output?.next`
 - [ ] T015 `evaluateOutcome`: `output?.mode === 'RESPOND'` → `output?.reply != null`; `output?.mode === 'EXECUTE'` → `output?.next === 'brainstem'`
 - [ ] T016 `buildEpisodicContent`: replace `mode`/`intent` fields with `next`/`hasReply` in serialized content
