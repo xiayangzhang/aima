@@ -1,7 +1,7 @@
 # AIMA 架构设计
 
 > **AIMA** = Artificial Intelligence: A Minded Architecture — 认知个体的核心框架
-> **版本**: 3.4
+> **版本**: 3.5
 > **记忆架构详见**: `02-memory-architecture.md`
 > **实现细节详见**: `03-implementation-guide.md`
 > **公共 API 详见**: `04-sdk-api.md`
@@ -81,6 +81,21 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 五脑分工带来的互相使能是真实的，但代价也是真实的：一条消息从输入到最终动作，经过 Thread Runner 路由、Context Assembly 重组、Amygdala 拦截、DMN 异步观察、Hippocampus 读写——每一步的 LLM 偏差都可能被下游放大。Event Bus 的 `causation_id` 提供单步因果链，全链追溯需要应用层自行重建。**这个架构适合"需要深度推理且对可观测性有要求"的场景，不适合"需要极低延迟的简单操作"**——后者应该用 Limbic EXECUTE 直通或 Brainstem 规则路由绕过 Cortex。分工的目的是让复杂情况不退化，不是让所有情况都复杂。
 
 **不确定时走保守路径**：各决策点的 LLM 偏差若在不确定情况下选择激进路径，下游放大效应最严重。因此每个脑区在不确定时应默认走保守路径：Limbic 不确定意图时 `ROUTE` 给 Cortex 而非直接 `EXECUTE` 或 `RESPOND`；Amygdala 无法判断风险时 `ESCALATE` 而非放行。DMN 通过 `usage_outcomes` 追踪各脑区决策反馈，持续低于阈值时写 `pending_observations`（ALERT）给上层应用，由上层决定是否介入。
+
+### AIMA 是物理基础，不是认知判断者
+
+AIMA 是认知个体的物理基础，不是认知判断者。
+
+AIMA 负责：生命周期机制（Thread、Slot、crash recovery）、记忆基底（写入/检索/巩固基础设施）、通信基础设施（Event Bus、工具注册、跨通道路由）、安全层（Amygdala 工具拦截、审计链）——这是"肉体"。
+
+**什么值得记忆、应该学习什么、"正确"意味着什么**，由外部注入的身份（`soul.md`）、角色（role 文件）和技能（Skill 文件）定义——这是"心智"。AIMA 不对心智的内容做判断，只保证心智的生长有土壤。
+
+推论：
+
+- **Hippocampus 不判断对错**——它巩固的是被观察到的模式，不是客观真理。什么是"好的"决策，由 soul.md 和角色文件的价值观定义，Hippocampus 按此学习，而不是按 AIMA 内置的评判标准。
+- **"正确"是上下文定义的**——一个历史遗留的错误工作流，AIMA 的任务是顺应它（因为这是 soul.md 要求的），而不是"纠正"它。AIMA 不预设认知目标。
+- **预纠正 + 事后反思共同构成闭环**——Amygdala 做事前拦截（不可能 100% 覆盖），DMN 做事后反思调整（兜底）。这两个机制互补，共同收敛行为质量，都是物理层的机制，不是认知判断。
+- **Thread 内顺序，Thread 间并行**——认知流在单一 Thread 内是顺序的（脑区按轨迹激活），这符合人类专注处理单任务的直觉。但 AIMA 可同时维护多个活跃 Thread，在一个实例内并行处理多条思维链——这是物理能力，不是认知设计选择。
 
 ---
 
