@@ -21,8 +21,6 @@ type SlotRow = {
   status: string
   input: unknown
   output: unknown
-  intent: string | null
-  complexityHint: string | null
   executionSessionId: string | null
   createdAt: Date
   updatedAt: Date
@@ -100,8 +98,6 @@ function makeSlotRow(overrides?: Partial<SlotRow>): SlotRow {
     status: 'pending',
     input: null,
     output: null,
-    intent: null,
-    complexityHint: null,
     executionSessionId: null,
     createdAt: T0,
     updatedAt: T0,
@@ -259,23 +255,7 @@ describe('Slot operations', () => {
     const slot = await ws.writeSlot('thread-1', 'cortex', {})
     expect(slot.input).toBeNull()
     expect(slot.output).toBeNull()
-    expect(slot.intent).toBeNull()
-    expect(slot.complexityHint).toBeNull()
     expect(slot.executionSessionId).toBeNull()
-  })
-
-  test('writeSlot maps intent and complexityHint fields', async () => {
-    const row = makeSlotRow({ intent: 'execute', complexityHint: 'complex' })
-    const db = makeMockDb({ insertResult: row })
-    const ws = new CognitiveWorkspace(db)
-
-    const slot = await ws.writeSlot('thread-1', 'cortex', {
-      intent: 'execute',
-      complexityHint: 'complex',
-    })
-
-    expect(slot.intent).toBe('execute')
-    expect(slot.complexityHint).toBe('complex')
   })
 
   test('readSlot returns Slot for existing threadId+brain', async () => {

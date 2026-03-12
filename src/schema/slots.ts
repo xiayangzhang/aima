@@ -22,8 +22,6 @@ export const slots = pgTable(
     status: slotStatusEnum('status').notNull().default('pending'),
     input: jsonb('input'),
     output: jsonb('output'),
-    intent: text('intent'), // 'communicate' | 'execute' | 'both', Cortex only
-    complexityHint: text('complexity_hint'), // 'simple' | 'complex', Cortex only
     executionSessionId: text('execution_session_id'), // Brainstem only
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

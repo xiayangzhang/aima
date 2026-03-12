@@ -11,11 +11,17 @@ export type ThreadState = 'active' | 'waiting' | 'complete' | 'interrupted'
 
 export type SlotStatus = 'pending' | 'running' | 'done' | 'error'
 
-// Cortex 专用：此次 Thread 的处理意图
-export type Intent = 'communicate' | 'execute' | 'both'
-
-// Cortex 专用（可选注解）：供 Brainstem 判断是否启动子执行 session
-export type ComplexityHint = 'simple' | 'complex'
+/**
+ * Unified brain output structure. Three independent optional fields:
+ * - next:    routing target; null/undefined = thread ends
+ * - reply:   outbound message to human; undefined = no reply this turn
+ * - handoff: inter-brain context passed to the next brain's input; undefined = none
+ */
+export interface BrainOutput {
+  next?: CognitiveBrainType | 'self' | null
+  reply?: string
+  handoff?: string
+}
 
 // ─── Memory ───────────────────────────────────────────────────────────────────
 
@@ -43,8 +49,6 @@ export interface Slot {
   status: SlotStatus
   input: unknown | null
   output: unknown | null
-  intent: Intent | null // Cortex only
-  complexityHint: ComplexityHint | null // Cortex only, optional annotation
   executionSessionId: string | null // Brainstem only
   createdAt: Date
   updatedAt: Date
@@ -102,8 +106,6 @@ export interface WriteSlotParams {
   status?: SlotStatus
   input?: unknown
   output?: unknown
-  intent?: Intent | null
-  complexityHint?: ComplexityHint | null
   executionSessionId?: string | null
 }
 
