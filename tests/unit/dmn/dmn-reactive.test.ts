@@ -166,7 +166,7 @@ describe('DmnReactive', () => {
   })
 
   describe('Responsibility 6: DEFER scheduling', () => {
-    it('slot.done limbic with mode=DEFER → writes pending with correct triggerAt', async () => {
+    it('slot.done limbic with next=self → writes pending with correct triggerAt', async () => {
       const config = makeConfig()
       const reactive = new DmnReactive(config)
       await reactive.start()
@@ -178,7 +178,7 @@ describe('DmnReactive', () => {
           event_type: 'slot.done',
           brain: 'limbic',
           thread_id: 'thread-3',
-          payload: { output: { mode: 'DEFER', timeout_ms: 5000, defer_reason: 'waiting for user' } },
+          payload: { output: { next: 'self', timeout_ms: 5000, defer_reason: 'waiting for user' } },
         }),
       )
       await new Promise((r) => setTimeout(r, 10))

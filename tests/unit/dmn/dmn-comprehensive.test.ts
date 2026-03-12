@@ -178,7 +178,7 @@ describe('T026 — DmnReactive error recovery', () => {
 // ─── T027: DmnReactive DEFER scheduling ──────────────────────────────────────
 
 describe('T027 — DmnReactive DEFER scheduling', () => {
-  it('slot.done with mode=DEFER writes pending observation', async () => {
+  it('slot.done with next=self writes pending observation', async () => {
     const { config, ws, bus } = makeDmnConfig()
     const reactive = new DmnReactive(config)
     await reactive.start()
@@ -190,7 +190,7 @@ describe('T027 — DmnReactive DEFER scheduling', () => {
       thread_id: 'thread-d1',
       payload: {
         output: {
-          mode: 'DEFER',
+          next: 'self',
           defer_reason: 'waiting for external event',
           timeout_ms: 60_000,
         },
@@ -216,7 +216,7 @@ describe('T027 — DmnReactive DEFER scheduling', () => {
       level: 'INFO',
       brain: 'limbic',
       thread_id: 'thread-d2',
-      payload: { output: { mode: 'DEFER', defer_reason: 'test' } },
+      payload: { output: { next: 'self', defer_reason: 'test' } },
     })
 
     const [params] = ws.writePending.mock.calls[0] as [{ triggerAt: Date }]
@@ -236,7 +236,7 @@ describe('T027 — DmnReactive DEFER scheduling', () => {
       level: 'INFO',
       brain: 'cortex', // not limbic
       thread_id: 'thread-d3',
-      payload: { output: { mode: 'DEFER', defer_reason: 'test' } },
+      payload: { output: { next: 'self', defer_reason: 'test' } },
     })
 
     expect(ws.writePending.mock.calls.length).toBe(0)
@@ -254,7 +254,7 @@ describe('T027 — DmnReactive DEFER scheduling', () => {
       level: 'INFO',
       brain: 'limbic',
       thread_id: 'thread-d4',
-      payload: { output: { mode: 'DEFER', defer_reason: 'pausing' } },
+      payload: { output: { next: 'self', defer_reason: 'pausing' } },
     })
 
     const deferEmit = bus._emitted.find((e) => e.event_type === 'dmn.defer_scheduled')

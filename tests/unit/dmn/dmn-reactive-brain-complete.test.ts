@@ -18,7 +18,7 @@ function makeBrainCompleteEvent(overrides: Partial<BrainEvent> = {}): BrainEvent
     schema_version: '1.0',
     payload: {
       injectedMemoryIds: [],
-      outputSlot: { status: 'done', output: { mode: 'RESPOND' } },
+      outputSlot: { status: 'done', output: { reply: 'text' } },
       stopReason: 'end_turn',
     },
     ...overrides,
@@ -125,7 +125,7 @@ describe('DmnReactive — brain.complete handler', () => {
         makeBrainCompleteEvent({
           payload: {
             injectedMemoryIds: [],
-            outputSlot: { status: 'done', output: { mode: 'RESPOND' } },
+            outputSlot: { status: 'done', output: { reply: 'text' } },
             significance_boost: 0.3,
           },
         }),
@@ -174,7 +174,7 @@ describe('DmnReactive — brain.complete handler', () => {
         makeBrainCompleteEvent({
           payload: {
             injectedMemoryIds: ['mem-1', 'mem-2'],
-            outputSlot: { status: 'done', output: { mode: 'RESPOND' } },
+            outputSlot: { status: 'done', output: { reply: 'text' } },
           },
         }),
       )
