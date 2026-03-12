@@ -116,6 +116,7 @@ export function makeMockWorkspace() {
         id: randomUUID(),
         targetBrain: params.targetBrain,
         note: params.note,
+        threadId: params.threadId ?? null,
         triggerAt: params.triggerAt ?? null,
         expiresAt: params.expiresAt,
         baseImportance: params.baseImportance ?? 0.5,
@@ -168,7 +169,11 @@ export function makeMockWorkspace() {
     }),
 
     getActiveThreads: mock(async (): Promise<Thread[]> => {
-      return _threads.filter((t) => t.state !== 'complete')
+      return _threads.filter((t) => t.state === 'active')
+    }),
+
+    getLatestSegmentStates: mock(async (): Promise<Map<string, { segmentId: string; nextSeq: number }>> => {
+      return new Map()
     }),
 
     writeSlot: mock(

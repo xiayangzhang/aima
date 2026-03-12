@@ -130,7 +130,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
       state.systemPromptRef.value = systemPrompt
 
       // Deliver any queued Amygdala interrupt from previous activation
-      const interruptSignal = this.config.workspace.popSignal('amygdala_interrupt')
+      const interruptSignal = this.config.workspace.popSignal('amygdala_interrupt', threadId)
       if (interruptSignal !== undefined) {
         await state.session.steer(`[AMYGDALA INTERRUPT] ${interruptSignal.message}`)
       }
@@ -151,15 +151,19 @@ export class PiCodingAgentAdapter implements BrainAdapter {
   // ── BrainAdapter.inject() ────────────────────────────────────────────────────
 
   async inject(signal: BrainSignal): Promise<void> {
-    for (const [_key, { session }] of this.sessions) {
+    // Only inject into sessions belonging to the signal's thread
+    const threadSessions = [...this.sessions.entries()].filter(([key]) =>
+      key.endsWith(`:${signal.threadId}`),
+    )
+    for (const [_key, { session }] of threadSessions) {
       if (signal.type === 'amygdala_interrupt') {
         await session.steer(`[AMYGDALA INTERRUPT] ${signal.message}`)
       } else if (signal.type === 'dmn_correction') {
         await session.followUp(`[DMN CORRECTION] ${signal.message}`)
       }
     }
-    // If no active sessions, persist signal for delivery on next activation
-    if (this.sessions.size === 0) {
+    // If no active session for this thread, persist signal for delivery on next activation
+    if (threadSessions.length === 0) {
       this.config.workspace.pushSignal(signal)
     }
   }

@@ -239,9 +239,11 @@ describe('ThreadRunner routing — extended', () => {
         id: 'obs-1',
         targetBrain: 'brainstem',
         note: 'test pending',
+        threadId: null,
         triggerAt: new Date(Date.now() - 1000), // already due
         expiresAt: new Date(Date.now() + 60_000),
-        createdAt: new Date(),
+        addedAt: new Date(),
+        baseImportance: 0.5,
       },
     ]
     workspace.createThread = async () => {
@@ -274,6 +276,126 @@ describe('ThreadRunner routing — extended', () => {
 
     expect(createdThreads).toHaveLength(1)
     expect(brainstemCalled).toBe(true)
+    runner.stop()
+  })
+
+  // Fix 1: limbic DEFER → sets thread state to 'waiting' + stores threadId in pending
+  test('limbic DEFER sets thread state to waiting and writes pending with threadId', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    let writtenState: string | null = null
+    let writtenPending: { threadId?: string } | null = null
+
+    patchWorkspace(workspace, thread, () => [makeSlot('limbic', { mode: 'DEFER', timeout_ms: 5000 })])
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+      writtenState = state
+    }
+    workspace.writePending = async (params) => {
+      writtenPending = params
+      return { id: 'p1', targetBrain: 'limbic', note: '', threadId: params.threadId ?? null, triggerAt: new Date(), expiresAt: new Date(), baseImportance: 0.5, addedAt: new Date() }
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'limbic', 'done')
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(writtenState).toBe('waiting')
+    expect(writtenPending?.threadId).toBe('thread-1')
+    runner.stop()
+  })
+
+  // Fix 1: crash recovery skips 'waiting' threads
+  test('crash recovery does not re-activate waiting threads', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const waitingThread = makeThread({ state: 'waiting' })
+    let limbicActivated = false
+
+    // getActiveThreads returns only 'active' threads — waiting thread excluded
+    workspace.getActiveThreads = async () => []
+    workspace.getThread = async () => waitingThread
+    workspace.getSlotsByThread = async () => []
+    workspace.searchMemory = async () => []
+
+    const limbicAdapter: BrainAdapter = {
+      run: async () => {
+        limbicActivated = true
+        return { sessionId: 'sess', output: { mode: 'RESPOND' }, stopReason: 'done', injectedMemoryIds: [] }
+      },
+      inject: async () => {},
+      abort: () => {},
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>([['limbic', limbicAdapter]])
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    // Give recovery time to run
+    await new Promise((r) => setTimeout(r, 30))
+    expect(limbicActivated).toBe(false)
+    runner.stop()
+  })
+
+  // Fix 1: routePending with threadId resumes original thread instead of creating new one
+  test('routePending() resumes original thread when pending has threadId', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const originalThread = makeThread({ id: 'original-thread', state: 'waiting' })
+    const newThreads: string[] = []
+    let activatedOnThread: string | null = null
+
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => [
+      {
+        id: 'obs-defer',
+        targetBrain: 'limbic',
+        note: 'DEFER timeout',
+        threadId: 'original-thread',
+        triggerAt: new Date(Date.now() - 1000), // already due
+        expiresAt: new Date(Date.now() + 60_000),
+        addedAt: new Date(),
+        baseImportance: 0.5,
+      },
+    ]
+    workspace.createThread = async () => {
+      newThreads.push('created')
+      return makeThread({ id: 'new-thread' })
+    }
+    workspace.removePending = async () => {}
+    workspace.getThread = async (id) => (id === 'original-thread' ? originalThread : null)
+    workspace.getSlotsByThread = async () => []
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+    workspace.updateThreadState = async (id, state) => {
+      if (id === 'original-thread') originalThread.state = state
+    }
+
+    const limbicAdapter: BrainAdapter = {
+      run: async (params) => {
+        activatedOnThread = params.threadId
+        originalThread.state = 'complete'
+        return { sessionId: 'sess', output: { mode: 'RESPOND' }, stopReason: 'done', injectedMemoryIds: [] }
+      },
+      inject: async () => {},
+      abort: () => {},
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>([['limbic', limbicAdapter]])
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    await runner.routePending()
+
+    // No new thread created; activated on original thread
+    expect(newThreads).toHaveLength(0)
+    expect(activatedOnThread).toBe('original-thread')
+    // Original thread state was set back to active before activation
+    expect(originalThread.state).toBe('complete') // adapter completed it
     runner.stop()
   })
 })

@@ -83,6 +83,7 @@ export interface PendingObservation {
   id: string
   targetBrain: BrainType
   note: string
+  threadId: string | null // non-null = resume this thread (DEFER recovery)
   triggerAt: Date | null // null = route immediately
   expiresAt: Date // required TTL
   baseImportance: number
@@ -135,6 +136,7 @@ export interface MemorySearchFilters {
 export interface CreatePendingParams {
   targetBrain: BrainType
   note: string
+  threadId?: string // non-null = resume this thread when pending fires (DEFER recovery)
   triggerAt?: Date | null
   expiresAt: Date
   baseImportance?: number
@@ -148,7 +150,7 @@ export interface ICognitiveWorkspace {
   getThread(id: string): Promise<Thread | null>
   updateThreadState(id: string, state: ThreadState): Promise<void>
   reopenThread(id: string, trigger: string): Promise<void>
-  getActiveThreads(): Promise<Thread[]> // state NOT IN ('complete')
+  getActiveThreads(): Promise<Thread[]> // state = 'active' only (excludes waiting/complete/interrupted)
 
   // ── Slot ────────────────────────────────────────────────────────────────
   writeSlot(threadId: string, brain: BrainType, data: WriteSlotParams): Promise<Slot>
@@ -176,4 +178,6 @@ export interface ICognitiveWorkspace {
     opts?: { limit?: number },
   ): Promise<{ episodes: MemoryEntry[]; procedures: MemoryEntry[]; facts: MemoryEntry[] }>
   getProcedure(taskType: string, opts?: { limit?: number }): Promise<MemoryEntry[]>
+  // ── DMN Segment Tracking ─────────────────────────────────────────────────
+  getLatestSegmentStates(): Promise<Map<string, { segmentId: string; nextSeq: number }>>
 }

@@ -45,10 +45,10 @@ describe('ClaudeAgentSDKAdapter', () => {
       amygdala,
     })
 
-    await adapter.inject({ type: 'amygdala_interrupt', message: 'stop now' })
+    await adapter.inject({ type: 'amygdala_interrupt', threadId: 'thread-test', message: 'stop now' })
 
-    expect(workspace.hasSignal('amygdala_interrupt')).toBe(true)
-    const sig = workspace.popSignal('amygdala_interrupt')
+    expect(workspace.hasSignal('amygdala_interrupt', 'thread-test')).toBe(true)
+    const sig = workspace.popSignal('amygdala_interrupt', 'thread-test')
     expect(sig?.message).toBe('stop now')
   })
 })

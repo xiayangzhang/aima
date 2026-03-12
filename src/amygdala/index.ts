@@ -144,6 +144,7 @@ export class Amygdala {
       if (decision === 'block' || decision === 'escalate') {
         this.workspace.pushSignal({
           type: 'amygdala_interrupt',
+          threadId: event.thread_id ?? '',
           message: `Amygdala ${decision}: ${reason}`,
           causationId: event.event_id,
         })

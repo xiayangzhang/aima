@@ -56,6 +56,7 @@ export class DmnReactive {
 
   async start(): Promise<void> {
     if (this.unsubscribe) return
+    await this.restoreSegmentTracking()
     const { eventBus } = this.config
 
     this.unsubscribe = eventBus.subscribe((event) => {
@@ -72,6 +73,13 @@ export class DmnReactive {
       this.inFlightHandlers.add(p)
       p.finally(() => this.inFlightHandlers.delete(p))
     })
+  }
+
+  private async restoreSegmentTracking(): Promise<void> {
+    const states = await this.config.workspace.getLatestSegmentStates()
+    for (const [threadId, state] of states) {
+      this.threadSegments.set(threadId, state)
+    }
   }
 
   async stop(): Promise<void> {
@@ -305,6 +313,7 @@ Only set needs_correction=true if there is a clear, significant error. Be conser
     if (result.needs_correction && result.correction_message) {
       this.config.workspace.pushSignal({
         type: 'dmn_correction',
+        threadId: thread_id,
         message: result.correction_message,
       })
 

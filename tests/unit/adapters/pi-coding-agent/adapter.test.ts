@@ -266,7 +266,7 @@ describe('PiCodingAgentAdapter — inject()', () => {
       _createSession: async () => makeMockSession(),
     })
 
-    const signal: BrainSignal = { type: 'amygdala_interrupt', message: 'halt' }
+    const signal: BrainSignal = { type: 'amygdala_interrupt', threadId: 'no-session-thread', message: 'halt' }
     await adapter.inject(signal)
     expect(workspace.pushSignal).toHaveBeenCalledWith(signal)
   })
@@ -281,7 +281,7 @@ describe('PiCodingAgentAdapter — inject()', () => {
       initialPrompt: undefined,
     })
 
-    await adapter.inject({ type: 'amygdala_interrupt', message: 'urgent' })
+    await adapter.inject({ type: 'amygdala_interrupt', threadId: 't1', message: 'urgent' })
     expect(session.steer).toHaveBeenCalledWith('[AMYGDALA INTERRUPT] urgent')
   })
 
@@ -294,7 +294,7 @@ describe('PiCodingAgentAdapter — inject()', () => {
       initialPrompt: undefined,
     })
 
-    await adapter.inject({ type: 'dmn_correction', message: 'reconsider' })
+    await adapter.inject({ type: 'dmn_correction', threadId: 't1', message: 'reconsider' })
     expect(session.followUp).toHaveBeenCalledWith('[DMN CORRECTION] reconsider')
   })
 
@@ -307,7 +307,7 @@ describe('PiCodingAgentAdapter — inject()', () => {
       initialPrompt: undefined,
     })
 
-    await adapter.inject({ type: 'amygdala_interrupt', message: 'msg' })
+    await adapter.inject({ type: 'amygdala_interrupt', threadId: 't1', message: 'msg' })
     expect(workspace.pushSignal).not.toHaveBeenCalled()
   })
 
@@ -320,7 +320,7 @@ describe('PiCodingAgentAdapter — inject()', () => {
       initialPrompt: undefined,
     })
 
-    await adapter.inject({ type: 'amygdala_interrupt', message: '' })
+    await adapter.inject({ type: 'amygdala_interrupt', threadId: 't1', message: '' })
     expect(session.steer).toHaveBeenCalledWith('[AMYGDALA INTERRUPT] ')
   })
 })
@@ -343,7 +343,7 @@ describe('PiCodingAgentAdapter — abort/abortSession', () => {
     })
     adapter.abort()
     // After abort, inject with no sessions should call pushSignal
-    await adapter.inject({ type: 'amygdala_interrupt', message: 'test' })
+    await adapter.inject({ type: 'amygdala_interrupt', threadId: 't1', message: 'test' })
     // session.abort should have been called
     expect(session.abort).toHaveBeenCalled()
   })

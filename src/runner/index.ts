@@ -130,8 +130,10 @@ export class ThreadRunner {
           } else if (mode === 'DEFER') {
             const timeoutMs = (output?.timeout_ms as number | undefined) ?? 60_000
             const triggerAt = new Date(Date.now() + timeoutMs)
+            await this.workspace.updateThreadState(threadId, 'waiting')
             await this.workspace.writePending({
               targetBrain: 'limbic',
+              threadId,
               note: 'DEFER timeout — re-activate Limbic with channel downgrade',
               triggerAt,
               expiresAt: new Date(triggerAt.getTime() + 7 * 24 * 60 * 60 * 1000),
@@ -273,13 +275,21 @@ export class ThreadRunner {
     for (const item of pending) {
       if (item.triggerAt !== null && item.triggerAt > now) continue
 
-      const thread = await this.workspace.createThread({
-        initiatedBy: 'dmn',
-        trigger: item.note,
-        sourceChannel: null,
-      })
+      let targetThreadId: string
+      if (item.threadId) {
+        // DEFER recovery: resume the original thread
+        await this.workspace.updateThreadState(item.threadId, 'active')
+        targetThreadId = item.threadId
+      } else {
+        const thread = await this.workspace.createThread({
+          initiatedBy: 'dmn',
+          trigger: item.note,
+          sourceChannel: null,
+        })
+        targetThreadId = thread.id
+      }
 
-      await this.activateBrain(item.targetBrain as CognitiveBrainType, thread.id)
+      await this.activateBrain(item.targetBrain as CognitiveBrainType, targetThreadId)
       await this.workspace.removePending(item.id)
     }
   }
