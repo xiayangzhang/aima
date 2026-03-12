@@ -72,9 +72,25 @@ export class Amygdala {
     const risk = this.riskLevels[toolName] ?? 'medium'
 
     // Stage 2: Implicit memory match (medium/high tools)
-    // Stub for Feature 002 transition period — full implementation in DMN Reactive feature
-    const memoryResult: { decision: AmygdalaDecision; reason: string } | null = null
-    if (memoryResult) return memoryResult
+    try {
+      const history = await this.workspace.getByTags(['amygdala_eval', toolName], undefined, 5)
+      if (history.length > 0) {
+        const sorted = history.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        )
+        const recent = sorted[0]!
+        const parsed = JSON.parse(recent.content) as { tool: string; decision: string; reason: string }
+        const validDecisions: AmygdalaDecision[] = ['allow', 'block', 'escalate']
+        if (validDecisions.includes(parsed.decision as AmygdalaDecision)) {
+          return {
+            decision: parsed.decision as AmygdalaDecision,
+            reason: `[memory] ${parsed.reason}`,
+          }
+        }
+      }
+    } catch {
+      // getByTags failed — fall through to Stage 3
+    }
 
     // Stage 3: Haiku LLM evaluation (high-risk only, when haiku_enabled=true)
     if (risk === 'high' && this.config.haiku_enabled) {

@@ -180,6 +180,11 @@ export interface ICognitiveWorkspace {
     opts?: { limit?: number },
   ): Promise<{ episodes: MemoryEntry[]; procedures: MemoryEntry[]; facts: MemoryEntry[] }>
   getProcedure(taskType: string, opts?: { limit?: number }): Promise<MemoryEntry[]>
+  getByTags(
+    tags: string[],
+    timeRange?: { after?: Date; before?: Date },
+    limit?: number,
+  ): Promise<MemoryEntry[]>
   // ── DMN Segment Tracking ─────────────────────────────────────────────────
   getSessionContext(sessionId: string): Promise<{
     anchor: MemoryEntry | null

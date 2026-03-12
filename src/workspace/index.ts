@@ -779,6 +779,25 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     return rows.map(mapMemoryRow)
   }
 
+  async getByTags(
+    tags: string[],
+    timeRange?: { after?: Date; before?: Date },
+    limit?: number,
+  ): Promise<MemoryEntry[]> {
+    const conditions = [arrayContains(memories.tags, tags), isNull(memories.tInvalid)]
+    if (timeRange?.after) conditions.push(gt(memories.createdAt, timeRange.after))
+    if (timeRange?.before) conditions.push(lt(memories.createdAt, timeRange.before))
+
+    const rows = await this.db
+      .select()
+      .from(memories)
+      .where(and(...conditions))
+      .orderBy(desc(memories.createdAt))
+      .limit(limit ?? 20)
+
+    return rows.map(mapMemoryRow)
+  }
+
   // ── DMN Segment Tracking ─────────────────────────────────────────────────────
 
   async getSessionContext(sessionId: string): Promise<{

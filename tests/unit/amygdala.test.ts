@@ -3,7 +3,46 @@ import { Amygdala } from '../../src/amygdala/index'
 import type { AmygdalaConfig } from '../../src/amygdala/index'
 import { BrainEventBus } from '../../src/eventbus/index'
 import { CognitiveWorkspace } from '../../src/workspace/index'
+import type { MemoryEntry } from '../../src/types/index'
 import * as llmModule from '../../src/llm'
+
+function makeMemoryEntry(opts: {
+  decision?: string
+  reason?: string
+  toolName?: string
+  rawContent?: string
+  createdAt?: Date
+}): MemoryEntry {
+  const content =
+    opts.rawContent ??
+    JSON.stringify({
+      tool: opts.toolName ?? 'test_tool',
+      decision: opts.decision ?? 'allow',
+      reason: opts.reason ?? 'test reason',
+    })
+  return {
+    id: `test-id-${Math.random()}`,
+    type: 'implicit',
+    content,
+    entityId: null,
+    segmentId: null,
+    segmentSeq: null,
+    tags: ['amygdala_eval', opts.toolName ?? 'test_tool', opts.decision ?? 'allow'],
+    baseImportance: 0.4,
+    usageOutcomes: { positive: 0, negative: 0, neutral: 0 },
+    sourceBrain: 'amygdala',
+    threadId: null,
+    sessionId: null,
+    supersedesId: null,
+    tInvalid: null,
+    lastAccessedAt: null,
+    pinned: false,
+    forgotten: false,
+    expiresAt: null,
+    createdAt: opts.createdAt ?? new Date(),
+    updatedAt: new Date(),
+  }
+}
 
 const mockDb = {} as Parameters<typeof CognitiveWorkspace>[0]
 
@@ -103,6 +142,7 @@ describe('Amygdala Stage 3 — LLM evaluation', () => {
     const writeMemory = mock(() => Promise.resolve({} as never))
     const workspace = {
       writeMemory,
+      getByTags: mock(() => Promise.resolve([])),
       // minimal stubs for other workspace methods Amygdala may access
       pushSignal: mock(() => {}),
       hasSignal: mock(() => false),
@@ -203,6 +243,117 @@ describe('Amygdala Stage 3 — LLM evaluation', () => {
         tags: expect.arrayContaining(['amygdala_eval', 'escalate']),
       }),
     )
+  })
+})
+
+describe('Amygdala Stage 2 — Implicit memory match', () => {
+  let callLlmSpy: ReturnType<typeof spyOn>
+
+  function makeStage2Setup(config: AmygdalaConfig = {}) {
+    const getByTags = mock(() => Promise.resolve([] as MemoryEntry[]))
+    const writeMemory = mock(() => Promise.resolve({} as never))
+    const workspace = {
+      writeMemory,
+      getByTags,
+      pushSignal: mock(() => {}),
+      hasSignal: mock(() => false),
+      popSignal: mock(() => null),
+    } as unknown as CognitiveWorkspace
+    const eventBus = new BrainEventBus()
+    const amygdala = new Amygdala(
+      { riskLevels: { spawn_execution_session: 'medium' }, ...config },
+      workspace,
+      eventBus,
+    )
+    return { workspace, getByTags, writeMemory, eventBus, amygdala }
+  }
+
+  beforeEach(() => {
+    callLlmSpy = spyOn(llmModule, 'callLlm')
+  })
+
+  afterEach(() => {
+    callLlmSpy.mockRestore()
+  })
+
+  // V1: memory hit block → returns block, no LLM call
+  test('V1 — returns block from memory when recent history shows block', async () => {
+    const { getByTags, amygdala } = makeStage2Setup({ haiku_enabled: true })
+    getByTags.mockResolvedValue([
+      makeMemoryEntry({ decision: 'block', reason: 'dangerous spawn', toolName: 'spawn_execution_session' }),
+    ])
+    const result = await amygdala.check('spawn_execution_session', {})
+    expect(result.decision).toBe('block')
+    expect(result.reason).toBe('[memory] dangerous spawn')
+    expect(callLlmSpy).not.toHaveBeenCalled()
+  })
+
+  // V2: memory hit allow → returns allow, no LLM call
+  test('V2 — returns allow from memory when recent history shows allow', async () => {
+    const { getByTags, amygdala } = makeStage2Setup({ haiku_enabled: true })
+    getByTags.mockResolvedValue([
+      makeMemoryEntry({ decision: 'allow', reason: 'safe context', toolName: 'spawn_execution_session' }),
+    ])
+    const result = await amygdala.check('spawn_execution_session', {})
+    expect(result.decision).toBe('allow')
+    expect(result.reason.startsWith('[memory]')).toBe(true)
+    expect(callLlmSpy).not.toHaveBeenCalled()
+  })
+
+  // V3: multiple records → uses most recent
+  test('V3 — uses most recent record when multiple history entries exist', async () => {
+    const { getByTags, amygdala } = makeStage2Setup({ haiku_enabled: true })
+    const older = makeMemoryEntry({
+      decision: 'allow',
+      reason: 'old',
+      toolName: 'spawn_execution_session',
+      createdAt: new Date(Date.now() - 10000),
+    })
+    const newer = makeMemoryEntry({
+      decision: 'block',
+      reason: 'new',
+      toolName: 'spawn_execution_session',
+      createdAt: new Date(),
+    })
+    getByTags.mockResolvedValue([older, newer])
+    const result = await amygdala.check('spawn_execution_session', {})
+    expect(result.decision).toBe('block')
+    expect(result.reason).toBe('[memory] new')
+  })
+
+  // V4: no history → falls through to Stage 3
+  test('V4 — falls through to Stage 3 when no memory history exists', async () => {
+    const { getByTags, amygdala } = makeStage2Setup({
+      haiku_enabled: true,
+      riskLevels: { custom_tool: 'high' },
+    })
+    getByTags.mockResolvedValue([])
+    callLlmSpy.mockResolvedValue('{"decision":"allow","reason":"llm ok"}')
+    await amygdala.check('custom_tool', {})
+    expect(callLlmSpy).toHaveBeenCalledTimes(1)
+  })
+
+  // V5: getByTags throws → silently falls through, no exception propagated
+  test('V5 — silently falls through when getByTags throws', async () => {
+    const { getByTags, amygdala } = makeStage2Setup({
+      haiku_enabled: true,
+      riskLevels: { custom_tool: 'high' },
+    })
+    getByTags.mockRejectedValue(new Error('db error'))
+    callLlmSpy.mockResolvedValue('{"decision":"escalate","reason":"fallback"}')
+    const result = await amygdala.check('custom_tool', {})
+    expect(result.decision).toBeDefined()
+    expect(callLlmSpy).toHaveBeenCalledTimes(1)
+  })
+
+  // V6: invalid JSON in content → falls through (no [memory] prefix)
+  test('V6 — falls through when memory content is invalid JSON', async () => {
+    const { getByTags, amygdala } = makeStage2Setup({ haiku_enabled: true })
+    getByTags.mockResolvedValue([
+      makeMemoryEntry({ rawContent: 'not valid json', toolName: 'spawn_execution_session' }),
+    ])
+    const result = await amygdala.check('spawn_execution_session', {})
+    expect(result.reason.startsWith('[memory]')).toBe(false)
   })
 })
 

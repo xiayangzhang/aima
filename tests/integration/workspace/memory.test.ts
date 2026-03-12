@@ -150,4 +150,56 @@ describeWithDb('Memory operations (integration)', () => {
       expect(semanticForThread).toHaveLength(1)
     })
   })
+
+  test('getByTags returns memories matching all specified tags (AND semantics)', async () => {
+    await withTransaction(testDb.db, async (ws) => {
+      await ws.writeMemory({
+        type: 'implicit',
+        content: JSON.stringify({ tool: 'spawn_execution_session', decision: 'block', reason: 'dangerous' }),
+        tags: ['amygdala_eval', 'spawn_execution_session', 'block'],
+        sourceBrain: 'amygdala',
+      })
+      await ws.writeMemory({
+        type: 'implicit',
+        content: JSON.stringify({ tool: 'other_tool', decision: 'allow', reason: 'safe' }),
+        tags: ['amygdala_eval', 'other_tool', 'allow'],
+        sourceBrain: 'amygdala',
+      })
+
+      const results = await ws.getByTags(['amygdala_eval', 'spawn_execution_session'])
+      expect(results.length).toBeGreaterThanOrEqual(1)
+      expect(results.every((m) => m.tags.includes('spawn_execution_session'))).toBe(true)
+      expect(results.some((m) => m.tags.includes('other_tool'))).toBe(false)
+    })
+  })
+
+  test('getByTags respects limit parameter', async () => {
+    await withTransaction(testDb.db, async (ws) => {
+      for (let i = 0; i < 5; i++) {
+        await ws.writeMemory({
+          type: 'implicit',
+          content: JSON.stringify({ tool: 'limit_test_tool', decision: 'allow', reason: `entry ${i}` }),
+          tags: ['amygdala_eval', 'limit_test_tool', 'allow'],
+          sourceBrain: 'amygdala',
+        })
+      }
+      const results = await ws.getByTags(['amygdala_eval', 'limit_test_tool'], undefined, 3)
+      expect(results.length).toBeLessThanOrEqual(3)
+    })
+  })
+
+  test('getByTags excludes soft-deleted records (tInvalid is set)', async () => {
+    await withTransaction(testDb.db, async (ws) => {
+      const mem = await ws.writeMemory({
+        type: 'implicit',
+        content: JSON.stringify({ tool: 'soft_deleted_tool', decision: 'block', reason: 'old' }),
+        tags: ['amygdala_eval', 'soft_deleted_tool', 'block'],
+        sourceBrain: 'amygdala',
+      })
+      await ws.invalidateMemory(mem.id)
+
+      const results = await ws.getByTags(['amygdala_eval', 'soft_deleted_tool'])
+      expect(results.every((m) => m.id !== mem.id)).toBe(true)
+    })
+  })
 })
