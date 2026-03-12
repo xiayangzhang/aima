@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: Final Cleanup + Validation
-lane: "for_review"
+lane: "doing"
 dependencies:
 - WP02
 subtasks:
@@ -10,8 +10,8 @@ subtasks:
 - T020
 phase: Phase 3 - Polish
 assignee: ''
-agent: "claude-wp04"
-shell_pid: "57449"
+agent: "claude-wp04-review"
+shell_pid: "60731"
 review_status: ''
 reviewed_by: ''
 history:
@@ -197,3 +197,4 @@ spec-kitty implement WP04 --base WP02
 - 2026-03-12T10:23:39Z – system – lane=planned – Prompt created.
 - 2026-03-12T11:29:34Z – claude-wp04 – shell_pid=57449 – lane=doing – Started implementation via workflow command
 - 2026-03-12T11:33:46Z – claude-wp04 – shell_pid=57449 – lane=for_review – Ready for review: zero mode/intent residuals in src/, 494/2 pass/fail (2 pre-existing known failures), BrainOutput exported from index.ts, migration 0002 present, docs P1-C resolved. Cherry-picked WP02 ThreadRunner migration which was missing from WP03 rebase chain.
+- 2026-03-12T11:33:49Z – claude-wp04-review – shell_pid=60731 – lane=doing – Started review via workflow command
