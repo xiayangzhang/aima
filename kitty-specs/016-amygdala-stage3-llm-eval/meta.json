@@ -1,0 +1,8 @@
+{
+  "feature_number": "016",
+  "slug": "016-amygdala-stage3-llm-eval",
+  "friendly_name": "Amygdala Stage 3 LLM Eval",
+  "mission": "software-dev",
+  "source_description": "P2-E Stage 3：实现 Amygdala 的 Haiku LLM 评估。当前 Stage 3 存根在 haiku_enabled=true 且 risk=high 时直接返回 escalate（'not yet implemented'）。需要实现：调用轻量 LLM（Haiku）评估工具调用的安全性，返回 allow/block/escalate 决策，并将评估结果写入 implicit 记忆（为未来 Stage 2 提供历史学习数据）。",
+  "created_at": "2026-03-12T11:30:00.000Z"
+}
