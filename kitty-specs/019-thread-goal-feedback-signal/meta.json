@@ -1,0 +1,8 @@
+{
+  "feature_number": "019",
+  "slug": "019-thread-goal-feedback-signal",
+  "friendly_name": "Thread Goal Feedback Signal",
+  "mission": "software-dev",
+  "source_description": "Add optional `goal` field to threads table. When a thread with a goal completes, DMN Reactive evaluates whether the final reply achieved the goal using a Haiku LLM call, then marks injected memory IDs as positive or negative based on the result. Threads without a goal fall back to the existing mode-based heuristic.",
+  "created_at": "2026-03-13T00:00:00.000Z"
+}
