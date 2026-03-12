@@ -29,7 +29,7 @@
 - [x] T002 — `evaluateWithLlm()` 实现
 - [x] T003 — `writeEvalMemory()` 实现
 - [x] T004 — Stage 3 存根替换
-- [ ] T005 — 单元测试 V1-V7
+- [x] T005 — 单元测试 V1-V7
 
 **Independent test**:
 ```bash
