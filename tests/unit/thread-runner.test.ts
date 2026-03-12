@@ -3,7 +3,7 @@ import type { BrainAdapter } from '../../src/adapters/index'
 import type { ContextAssemblerConfig } from '../../src/context/index'
 import { BrainEventBus } from '../../src/eventbus/index'
 import { ThreadRunner } from '../../src/runner/index'
-import type { CognitiveBrainType, Slot, Thread } from '../../src/types/index'
+import type { BrainOutput, CognitiveBrainType, Slot, Thread } from '../../src/types/index'
 import { CognitiveWorkspace } from '../../src/workspace/index'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
   }
 }
 
-function makeSlot(brain: CognitiveBrainType, output: Record<string, unknown>): Slot {
+function makeSlot(brain: CognitiveBrainType, output: BrainOutput | Record<string, unknown>): Slot {
   return {
     id: `slot-${brain}`,
     threadId: 'thread-1',
@@ -39,8 +39,6 @@ function makeSlot(brain: CognitiveBrainType, output: Record<string, unknown>): S
     status: 'done',
     input: null,
     output,
-    intent: null,
-    complexityHint: null,
     executionSessionId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -68,11 +66,17 @@ describe('ThreadRunner routing', () => {
     workspace.searchMemory = async () => [] // prevent DB calls from assembleBlock4
   }
 
-  test('limbic RESPOND → complete', async () => {
+  test('limbic reply + null next → complete + thread.reply event emitted', async () => {
     const workspace = new CognitiveWorkspace(mockDb)
     const eventBus = new BrainEventBus()
     const thread = makeThread()
-    patchWorkspace(workspace, thread, [makeSlot('limbic', { mode: 'RESPOND' })])
+    const emitted: string[] = []
+
+    eventBus.subscribe((evt) => {
+      emitted.push(evt.event_type)
+    })
+
+    patchWorkspace(workspace, thread, [makeSlot('limbic', { reply: 'Hello' })])
 
     const adapters = new Map<CognitiveBrainType, BrainAdapter>()
     const runner = makeRunner(adapters, workspace, eventBus)
@@ -82,19 +86,44 @@ describe('ThreadRunner routing', () => {
     await new Promise((r) => setTimeout(r, 20))
 
     expect(thread.state).toBe('complete')
+    expect(emitted).toContain('thread.reply')
     runner.stop()
   })
 
-  test('limbic ROUTE → cortex adapter called', async () => {
+  test('limbic no next → complete (no reply event)', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    const emitted: string[] = []
+
+    eventBus.subscribe((evt) => {
+      emitted.push(evt.event_type)
+    })
+
+    patchWorkspace(workspace, thread, [makeSlot('limbic', {})])
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'limbic', 'done')
+    await new Promise((r) => setTimeout(r, 20))
+
+    expect(thread.state).toBe('complete')
+    expect(emitted).not.toContain('thread.reply')
+    runner.stop()
+  })
+
+  test('limbic next: cortex → cortex adapter called', async () => {
     const workspace = new CognitiveWorkspace(mockDb)
     const eventBus = new BrainEventBus()
     const thread = makeThread()
     let cortexCalled = false
 
-    patchWorkspace(workspace, thread, [makeSlot('limbic', { mode: 'ROUTE' })])
+    patchWorkspace(workspace, thread, [makeSlot('limbic', { next: 'cortex' })])
     workspace.getSlotsByThread = async () => {
       if (cortexCalled) return []
-      return [makeSlot('limbic', { mode: 'ROUTE' })]
+      return [makeSlot('limbic', { next: 'cortex' })]
     }
 
     const cortexAdapter: BrainAdapter = {
@@ -103,7 +132,7 @@ describe('ThreadRunner routing', () => {
         thread.state = 'complete'
         return {
           sessionId: 'sess-c',
-          output: { intent: 'communicate' },
+          output: { next: 'limbic' },
           stopReason: 'done',
           injectedMemoryIds: [],
         }
@@ -123,13 +152,13 @@ describe('ThreadRunner routing', () => {
     runner.stop()
   })
 
-  test('cortex execute → brainstem adapter called', async () => {
+  test('cortex next: brainstem → brainstem adapter called', async () => {
     const workspace = new CognitiveWorkspace(mockDb)
     const eventBus = new BrainEventBus()
     const thread = makeThread()
     let brainstemCalled = false
 
-    patchWorkspace(workspace, thread, [makeSlot('cortex', { intent: 'execute' })])
+    patchWorkspace(workspace, thread, [makeSlot('cortex', { next: 'brainstem' })])
 
     const brainstemAdapter: BrainAdapter = {
       run: async () => {
@@ -164,14 +193,14 @@ describe('ThreadRunner routing — extended', () => {
     workspace.searchMemory = async () => []
   }
 
-  // T049: cortex communicate → limbic activated
-  test('cortex communicate → limbic adapter called', async () => {
+  // T049: cortex next: limbic → limbic activated
+  test('cortex next: limbic → limbic adapter called', async () => {
     const workspace = new CognitiveWorkspace(mockDb)
     const eventBus = new BrainEventBus()
     const thread = makeThread()
     let limbicCalled = false
 
-    patchWorkspace(workspace, thread, () => [makeSlot('cortex', { intent: 'communicate' })])
+    patchWorkspace(workspace, thread, () => [makeSlot('cortex', { next: 'limbic' })])
 
     const limbicAdapter: BrainAdapter = {
       run: async () => {
@@ -194,14 +223,34 @@ describe('ThreadRunner routing — extended', () => {
     runner.stop()
   })
 
-  // T050: Cortex intent=both → Limbic activated first
-  test('cortex intent=both → limbic adapter called', async () => {
+  // T050: Cortex next: brainstem → Brainstem activated; Brainstem next: limbic → Limbic activated
+  test('cortex next: brainstem → brainstem called; brainstem next: limbic → limbic called', async () => {
     const workspace = new CognitiveWorkspace(mockDb)
     const eventBus = new BrainEventBus()
     const thread = makeThread()
+    let brainstemCalled = false
     let limbicCalled = false
 
-    patchWorkspace(workspace, thread, () => [makeSlot('cortex', { intent: 'both' })])
+    // Initial state: cortex done with next=brainstem
+    const slots: Slot[] = [makeSlot('cortex', { next: 'brainstem' })]
+
+    patchWorkspace(workspace, thread, () => [...slots])
+
+    const brainstemAdapter: BrainAdapter = {
+      run: async () => {
+        brainstemCalled = true
+        // After brainstem runs, add its slot
+        slots.push(makeSlot('brainstem', { next: 'limbic', handoff: 'task done' }))
+        return {
+          sessionId: 'sess-b',
+          output: { next: 'limbic', handoff: 'task done' },
+          stopReason: 'done',
+          injectedMemoryIds: [],
+        }
+      },
+      inject: async () => {},
+      abort: () => {},
+    }
 
     const limbicAdapter: BrainAdapter = {
       run: async () => {
@@ -213,13 +262,19 @@ describe('ThreadRunner routing — extended', () => {
       abort: () => {},
     }
 
-    const adapters = new Map<CognitiveBrainType, BrainAdapter>([['limbic', limbicAdapter]])
+    workspace.writeSlot = async (_tid, _brain, _data) => makeSlot('brainstem', {})
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>([
+      ['brainstem', brainstemAdapter],
+      ['limbic', limbicAdapter],
+    ])
     const runner = makeRunner(adapters, workspace, eventBus)
     await runner.start()
 
     workspace.notifySlotDone('thread-1', 'cortex', 'done')
-    await new Promise((r) => setTimeout(r, 50))
+    await new Promise((r) => setTimeout(r, 100))
 
+    expect(brainstemCalled).toBe(true)
     expect(limbicCalled).toBe(true)
     runner.stop()
   })
@@ -280,14 +335,14 @@ describe('ThreadRunner routing — extended', () => {
   })
 
   // Fix 1: limbic DEFER → sets thread state to 'waiting' + stores threadId in pending
-  test('limbic DEFER sets thread state to waiting and writes pending with threadId', async () => {
+  test('limbic next: self → sets thread state to waiting and writes pending with threadId', async () => {
     const workspace = new CognitiveWorkspace(mockDb)
     const eventBus = new BrainEventBus()
     const thread = makeThread()
     let writtenState: string | null = null
     let writtenPending: { threadId?: string } | null = null
 
-    patchWorkspace(workspace, thread, () => [makeSlot('limbic', { mode: 'DEFER', timeout_ms: 5000 })])
+    patchWorkspace(workspace, thread, () => [makeSlot('limbic', { next: 'self', timeout_ms: 5000 })])
     workspace.updateThreadState = async (_id, state) => {
       thread.state = state
       writtenState = state
@@ -325,7 +380,7 @@ describe('ThreadRunner routing — extended', () => {
     const limbicAdapter: BrainAdapter = {
       run: async () => {
         limbicActivated = true
-        return { sessionId: 'sess', output: { mode: 'RESPOND' }, stopReason: 'done', injectedMemoryIds: [] }
+        return { sessionId: 'sess', output: {}, stopReason: 'done', injectedMemoryIds: [] }
       },
       inject: async () => {},
       abort: () => {},
@@ -379,7 +434,7 @@ describe('ThreadRunner routing — extended', () => {
       run: async (params) => {
         activatedOnThread = params.threadId
         originalThread.state = 'complete'
-        return { sessionId: 'sess', output: { mode: 'RESPOND' }, stopReason: 'done', injectedMemoryIds: [] }
+        return { sessionId: 'sess', output: {}, stopReason: 'done', injectedMemoryIds: [] }
       },
       inject: async () => {},
       abort: () => {},
@@ -396,6 +451,137 @@ describe('ThreadRunner routing — extended', () => {
     expect(activatedOnThread).toBe('original-thread')
     // Original thread state was set back to active before activation
     expect(originalThread.state).toBe('complete') // adapter completed it
+    runner.stop()
+  })
+
+  // T011: isLegalTransition — cortex next: self → interrupted
+  test('cortex next: self → thread enters interrupted state', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    const emitted: string[] = []
+
+    eventBus.subscribe((evt) => {
+      emitted.push(evt.event_type)
+    })
+
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => [makeSlot('cortex', { next: 'self' })]
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'cortex', 'done')
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(thread.state).toBe('interrupted')
+    expect(emitted).toContain('thread.interrupted')
+    runner.stop()
+  })
+
+  // T011: isLegalTransition — cortex next: cortex → interrupted (self-loop illegal)
+  test('cortex next: cortex → thread enters interrupted state', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => [makeSlot('cortex', { next: 'cortex' })]
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'cortex', 'done')
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(thread.state).toBe('interrupted')
+    runner.stop()
+  })
+
+  // T010: handoff passing — brainstem next: limbic + handoff → writeSlot called for limbic
+  test('handoff: brainstem next: limbic with handoff → writeSlot called for limbic input', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    let writtenSlotBrain: string | null = null
+    let writtenSlotData: unknown = null
+
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => [makeSlot('brainstem', { next: 'limbic', handoff: 'task done' })]
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+    workspace.writeSlot = async (_tid, brain, data) => {
+      writtenSlotBrain = brain
+      writtenSlotData = data
+      return makeSlot('limbic', {})
+    }
+
+    const limbicAdapter: BrainAdapter = {
+      run: async () => {
+        thread.state = 'complete'
+        return { sessionId: 'sess-l', output: {}, stopReason: 'done', injectedMemoryIds: [] }
+      },
+      inject: async () => {},
+      abort: () => {},
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>([['limbic', limbicAdapter]])
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'brainstem', 'done')
+    await new Promise((r) => setTimeout(r, 50))
+
+    expect(writtenSlotBrain).toBe('limbic')
+    expect(writtenSlotData).toEqual({ input: { handoff: 'task done' } })
+    runner.stop()
+  })
+
+  // T009: thread.reply event payload
+  test('thread.reply event has correct payload', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    const replyEvents: Array<{ event_type: string; payload: unknown }> = []
+
+    eventBus.subscribe((evt) => {
+      if (evt.event_type === 'thread.reply') {
+        replyEvents.push({ event_type: evt.event_type, payload: evt.payload })
+      }
+    })
+
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => [makeSlot('limbic', { reply: 'Hello, World!' })]
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'limbic', 'done')
+    await new Promise((r) => setTimeout(r, 20))
+
+    expect(replyEvents).toHaveLength(1)
+    expect(replyEvents[0]?.payload).toMatchObject({ reply: 'Hello, World!', threadId: 'thread-1' })
     runner.stop()
   })
 })
@@ -458,7 +644,7 @@ describe('ThreadRunner.buildBlock4Opts', () => {
 
   test('brainstem + cortex slot has no task_type → fallback to trigger', () => {
     const runner = makeTestRunner()
-    const result = callBuildBlock4Opts(runner, 'brainstem', 'user trigger', { intent: 'execute' })
+    const result = callBuildBlock4Opts(runner, 'brainstem', 'user trigger', { next: 'brainstem' })
     expect(result).toEqual({ taskType: 'user trigger' })
   })
 
