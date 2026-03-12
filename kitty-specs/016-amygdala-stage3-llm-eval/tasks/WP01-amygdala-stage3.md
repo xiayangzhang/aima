@@ -8,19 +8,24 @@ subtasks:
   - "T005"
 title: "Amygdala Stage 3"
 phase: "Phase 1 - Implementation"
-lane: "done"
+lane: "planned"
 assignee: ""
-agent: "claude"
-shell_pid: "54209"
-review_status: "approved"
+agent: ""
+shell_pid: ""
+review_status: "has_feedback"
 dependencies: []
-reviewed_by: "XIAYANG ZHANG"
+reviewed_by: ""
 history:
   - timestamp: "2026-03-12T11:40:00Z"
     lane: "planned"
     agent: "system"
     shell_pid: ""
     action: "Prompt generated via /spec-kitty.tasks"
+  - timestamp: "2026-03-12T23:45:00Z"
+    lane: "planned"
+    agent: "claude"
+    shell_pid: ""
+    action: "Reset from done — prior session falsely marked done; no Amygdala Stage 3 code was written. Prior session implemented Feature 015 (DMN retroactiveCorrection pre-check + handoff field) and committed it to main as feat(015), but then incorrectly marked Feature 016 WP01 as done. amygdala/index.ts still has the Stage 3 stub."
 ---
 
 # Work Package Prompt: WP01 — Amygdala Stage 3
