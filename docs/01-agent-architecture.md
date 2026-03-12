@@ -102,27 +102,52 @@ AIMA 框架层（Thread Runner / Cognitive Workspace / MemoryService / Brain Eve
 - 维护关系上下文、语气调节、沟通节奏
 - 用 LLM 判断复杂输入是否需要 Cortex 参与，或是否需要 Brainstem 执行操作
 
-**Limbic 输出模式**（每次激活只产生一种输出）：
+**Limbic Slot output 结构**（解耦路由与内容）：
 
-| 输出 | 含义 |
-|---|---|
-| `RESPOND(content)` | 直接回复，简单对话不经过 Cortex |
-| `ROUTE(needs_analysis)` | 写入工作空间，等待 Cortex 处理后再响应 |
-| `EXECUTE(intent)` | 操作意图明确且无需规划，Limbic 写入工作空间 Slot（EXECUTE 模式），Thread Runner 检测到后路由至 Brainstem。仅用于 Limbic 有足够信息编码操作意图的简单情况（如"发送你刚刚起草的邮件"）；有歧义或需要多步规划时应使用 `ROUTE` |
-| `NO_REPLY` | 接收但不响应——群聊场景、信息积累中、不需要当轮回复时 |
-| `DEFER` | 确认收到，等待更多输入再决策（必须携带超时时长，由 Thread Runner 计时） |
+```typescript
+{
+  next:             'cortex' | 'brainstem' | 'self' | null
+  reply?:           string        // 对外输出：发给用户/外部系统，可与 next 同时存在
+  handoff?:         string        // 内部交接：给下一个脑区的上下文，AI 自由表达
+  defer_timeout_ms?: number       // 仅 next='self' 时有效
+}
+```
 
-`DEFER` 超时降级行为按渠道配置：群聊 → `NO_REPLY`（上下文已过去）；DM → `RESPOND`（说明需要更多信息）；异步频道 → `RESPOND`（书面确认）。不允许无限等待。
+`next` 是路由指令，`reply` 是对外通道，`handoff` 是脑路通道——三者独立，互不耦合：
+
+| next | reply | 含义 |
+|---|---|---|
+| `null` | 有 | 直接回复，流程结束 |
+| `null` | 无 | 接收但不响应（群聊积累上下文等场景） |
+| `'cortex'` | 无 | 路由给 Cortex 内部分析，用户不感知 |
+| `'brainstem'` | 有 | 立即回复用户 **同时** 触发执行，不需要特殊 `both` 逻辑 |
+| `'brainstem'` | 无 | 静默执行，无需告知用户 |
+| `'self'` | 有/无 | DEFER：确认收到并等待，`defer_timeout_ms` 由 Thread Runner 计时后降级 |
+
+`DEFER` 超时降级行为按渠道配置：群聊 → next=null reply=null（上下文已过去）；DM → next=null reply=说明需要更多信息；异步频道 → next=null reply=书面确认。不允许无限等待。
 
 **群聊场景**：Limbic 不需要对每条提到自己的消息都响应。Limbic 积累同一对话线程的上下文，综合判断后决定是否介入，以及以何种方式介入。频繁的 `NO_REPLY` 比低质量的即时回复更像真实的人类协作者行为。
 
 ### Cortex — Planner + Reasoner
 - 纯内部推理引擎，不直接与人类或系统交互
 - 负责复杂任务的分解、规划、判断和研究
-- 推理完成后，在 Cortex Slot 的 `intent` 字段标记结果归属：
-  - `"communicate"` → Limbic 激活，组织对外表达
-  - `"execute"` → Brainstem 激活，执行具体操作
-  - `"both"` → Limbic **先行**（试探性措辞，不说"已完成"），Brainstem 随后执行，DMN Reactive 检测执行结果后触发 Limbic 发出最终通知（成功确认或失败补偿）。**Limbic 阶段区分机制**：Context Assembly Block 3 包含完整 Slot 状态——Limbic 第一次被激活时 Brainstem Slot 不存在（或 `status ≠ done`），应给试探性回复；第二次被激活时 Brainstem Slot `status = done`（含执行结果），应给最终确认。Limbic 读 Slot 状态即可区分，无需额外字段。**执行失败补偿**：Brainstem 失败时发射 `ALERT`，DMN 错误恢复路径（职责1）立即介入，写 Slot 标记失败 + 写 pending 触发 Limbic 发出失败通知——补偿路径与正常结束路径对称，语义统一在 DMN 事件响应中。
+- 推理完成后，在 Cortex Slot output 的 `next` 字段声明结果归属：
+
+```typescript
+{
+  next:              'limbic' | 'brainstem' | null
+  handoff:           string        // 给下一个脑区的规划摘要或任务描述
+  complexity_hint?:  'simple' | 'complex'   // 给 Brainstem 的执行复杂度提示（可选）
+}
+```
+
+`next = 'limbic'` → 结果需要对外表达，Limbic 组织回复。
+`next = 'brainstem'` → 有待执行的操作，Brainstem 执行。
+`next = null` → 分析完成，无需进一步行动（罕见，一般由 Cortex 判断不需要其他脑区介入）。
+
+**"先告知再执行"的场景**（原 `intent=both`）：Cortex 输出 `next: 'limbic'`，在 `handoff` 中注明"Limbic 告知用户后需要 Brainstem 执行 X"。Limbic 读到此指示，给用户试探性回复，再输出 `next: 'brainstem'`。Brainstem 完成后输出 `next: 'limbic'` 触发最终确认。全程通过 `next` 链条串联，无需特殊 `both` 逻辑。Limbic 每次激活时读 Block 3 的 Slot 状态即可判断自己处于哪个阶段。
+
+**执行失败补偿**：Brainstem 失败时发射 `ALERT`，DMN 错误恢复路径立即介入，写 Slot 标记失败 + 写 pending 触发 Limbic 发出失败通知——补偿路径与正常结束路径对称，语义统一在 DMN 事件响应中。
 
 ### Brainstem — Executor + System Interface
 - **系统输入**：监听系统事件（Webhook、Dataverse 变更、定时触发）
@@ -254,12 +279,11 @@ Workspace
 │   ├── priority
 │   ├── state              // active | waiting | complete | interrupted
 │   └── slots
-│       ├── limbic:    { input, output, status }
-│       ├── cortex:    { input, output, status, intent, complexity_hint? }
-│       │              // intent: communicate|execute|both
+│       ├── limbic:    { input, output: { next, reply?, handoff?, defer_timeout_ms? }, status }
+│       ├── cortex:    { input, output: { next, handoff, complexity_hint? }, status }
 │       │              // complexity_hint (optional): 'simple'|'complex' — Cortex 可选注解执行复杂度
 │       │              // Brainstem 优先使用；无则 Haiku 自行判断是否 spawn 子执行 session
-│       ├── brainstem: { input, output, status, execution_session_id }  // 子执行 session ID 四态：
+│       ├── brainstem: { input, output: { next, result? }, status, execution_session_id }  // 子执行 session ID 四态：
 │       │              // null   + status≠done → 未开始
 │       │              // non-null + status≠done → 执行中（或崩溃中断，见下方崩溃恢复）
 │       │              // null   + status=done  → 已完成（完成后清除 ID，正常路径）
@@ -289,25 +313,36 @@ Workspace
 // 实际冲突频率极低（单实例 DMN 写频率有限），加锁开销可接受。
 ```
 
-### 脑区间通信：Thread Runner 路由
+### 脑区间通信：Thread Runner 作为轨道语法校验器
 
-脑区之间**不直接互相调用**。通信通过工作空间 Slot + Thread Runner 完成：
+脑区之间**不直接互相调用**。通信通过 Slot output 的 `next` 字段 + Thread Runner 完成：
 
-1. 当前脑区完成处理，将结构化结果写入自己的 Slot，Loop 终止并返回
-2. **Thread Runner**（AIMA 框架层组件，与底层适配器无关）读取 Slot 的状态字段（`intent`、`needs_analysis` 等）
-3. Thread Runner 决定下一步激活哪个脑区，启动其 Loop
+1. 当前脑区完成处理，在 Slot output 中写入 `next: BrainType | null`，Loop 终止
+2. **Thread Runner** 读取 `next`，校验该转换是否合法，合法则激活目标脑区
 
-各脑区对彼此的存在保持不知情——Cortex 不知道 Limbic，它只写 Slot。路由逻辑全部在 Thread Runner，与业务无关，不需要修改脑区代码。
+Thread Runner 是**轨道语法校验器**，不是决策者。它只验证"这个转换合不合法"，不理解转换的原因。路由决策在脑区的认知输出里，不在 Thread Runner 的代码里。
 
-Thread Runner 自身需要处理若干边界情况：`intent=both` 时两个脑区的协调顺序、Brainstem 执行失败后 Limbic 已发消息的补偿、Thread 被中断时正在运行的 Loop 的 cooperative cancellation。这些属于实现层细节，实现阶段应为 Thread Runner 单独编写规范文档。
+**合法转换表**（所有未列出的转换均非法）：
 
-**激活触发条件**（由 Thread Runner 检测）：
+| 来源 | 合法 next 值 | 说明 |
+|---|---|---|
+| 外部输入 / DMN pending | `limbic` \| `brainstem` | 触发点 |
+| `limbic` | `cortex` \| `brainstem` \| `self` \| `null` | self=DEFER，null=流程结束 |
+| `cortex` | `limbic` \| `brainstem` \| `null` | |
+| `brainstem` | `limbic` \| `cortex` \| `null` | null=执行完成无需通知 |
+| `dmn` | `limbic` \| `cortex` \| `brainstem` | 内部驱动 |
 
-| 脑区 | 激活条件 |
-|---|---|
-| **Limbic** | 有新的人类输入；或 Cortex Slot 的 `intent` 包含 `"communicate"`；或 `intent=both` 且 Brainstem Slot `status=done`（触发最终通知） |
-| **Cortex** | 任意 Slot 写入了 `"needs_analysis"` 标记，且当前 Thread 的 Cortex Slot 为空 |
-| **Brainstem** | Cortex Slot 的 `intent` 包含 `"execute"`；或 Limbic 输出 `EXECUTE(intent)`；或新系统事件到达 |
+**典型激活轨迹**（由 AI 的 `next` 选择自然形成，非 hardcode）：
+
+```
+外部输入 → 执行：   limbic → cortex → brainstem → [limbic] → null
+感知 → 输出：       brainstem → cortex → limbic → null
+肌肉记忆：          limbic → brainstem → limbic → null   （绕过 Cortex，常规任务）
+DMN 内部驱动：      dmn → cortex → brainstem → null
+简单对话：          limbic → null   （直接回复，不路由任何脑区）
+```
+
+轨迹是动态的，由每个脑区的 `next` 选择决定；轨迹语法是静态的，由合法转换表约束。AI 在语法范围内自由选择走哪条轨迹，Thread Runner 只做合法性验证。
 
 ### 并发模型：Thread 间并行，Thread 内顺序
 
@@ -573,24 +608,29 @@ Hippocampus 是 AIMA 的**完整记忆实体**，不是"记忆数据库旁边的
 
 底层存储永远保持扁平完整——审计系统直接读扁平表，不需要理解认知层抽象。
 
-### 脑区专属检索（Context Assembly Block 4）
+### 记忆的两种访问模式
 
-各脑区使用专属检索方法，通用 `search()` 保留为兜底：
+记忆系统对脑区提供两种互补的访问模式，分别服务于不同的认知需求：
 
-| 脑区 | 主检索方法 |
-|---|---|
-| **Limbic** | `getEntityContext(entityId)` |
-| **Cortex** | `findSimilarSituations(situation)` |
-| **Brainstem** | `getProcedure(taskType)` |
-| **Amygdala** | `getByTags(tags, timeRange)` |
-| **DMN** | `getSessionContext(sessionId)` |
-| **所有脑区（兜底）** | `search(query)` |
+**模式一：激活前注入（Block 4，被动推送）**
 
-### 检索
+Thread Runner 在激活脑区前，根据 Thread 触发内容组装冷启动上下文，注入 Block 4。这是一个轻量的起点，给脑区"进屋前自然想起的背景知识"——不追求完整，只做引导。Block 4 无结果时直接省略，脑区基于 Block 1/2/3 运行。
 
-场景 A（通用兜底）：全文搜索（ILIKE），按 `base_importance DESC, last_accessed_at DESC` 排序。
-场景 D-G：脑区专属方法，见 `02-memory-architecture.md` 第四节。
-演进方向：向量嵌入 + 语义相似度，两者并存后 RRF 融合重排。
+**模式二：推理中主动拉取（Hippocampus 工具，主动查询）**
+
+脑区在推理过程中，可通过 MCP 工具主动向 Hippocampus 查询。脑区推理到一半才知道需要什么——这个时机和查询内容，Block 4 预测不了。各脑区的标准工具集中包含：
+
+| 脑区 | Hippocampus 工具 | 典型使用场景 |
+|---|---|---|
+| **Limbic** | `memory_get_entity(entityId)` | 推理中发现实体名，立即展开关系网络 |
+| **Cortex** | `memory_find_similar(situation)` | 分析到一半，主动查"上次类似情况怎么处理的" |
+| **Brainstem** | `memory_get_procedure(taskType)` | 执行前确认操作步骤 |
+| **Amygdala** | `memory_get_by_tags(tags)` | 工具调用前查询历史风险模式 |
+| **所有脑区** | `memory_search(query)` | 通用兜底 |
+
+两种模式的职责边界：Block 4 是框架的预判，工具调用是脑区自己的认知决策。不需要 hint 机制——脑区知道自己需要什么时，直接调工具。
+
+检索底层实现：当前为 ILIKE 全文搜索，演进方向为向量嵌入 + 语义相似度，两者并存后 RRF 融合重排（接口不变）。
 
 ### Episodic 与审计的分离
 
@@ -672,11 +712,11 @@ Skill Review 由 **Cortex** 执行——评估 Skill 质量是认知判断，不
 | **身份** | 人格 + 人际关系 + 沟通风格 | 推理角色 + 当前任务 | 系统权限 + API 清单 |
 | **Skill** | Skill Index + 固化/适配 Skill | 分析方法论 | 操作 Skill + 执行参数模板 |
 | **状态** | 工作空间状态 + 待处理 Thread | 当前分析任务 + 中间结论 | 待执行队列 + 系统状态 |
-| **记忆** | `semantic` + `episodic` + `procedural` | `semantic` + `episodic` + `procedural` | `procedural` |
+| **记忆** | `semantic` + `episodic`（冷启动引导） | `semantic` + `episodic`（冷启动引导） | `procedural`（冷启动引导） |
 
-Block 4 使用原始消息/任务描述作为检索 query，无结果时省略。
+**Block 4 是冷启动引导，不是完整记忆注入**。使用 Thread trigger 作为检索 query，给脑区一个起点；无结果时省略，脑区基于 Block 1/2/3 运行。
 
-**实体检索的两步模式**：`getEntityContext(entityId)` 要求已知 `entity_id`，但 Block 4 执行时可能只有实体名称（如"客户 A"）。标准解法：先用 `search("客户 A")` 找到包含该实体的记忆记录，从结果中读取 `entity_id`，再调用 `getEntityContext()` 展开完整上下文。对 Limbic 而言，这是两次 Hippocampus.Recall 调用——先发现实体，再展开实体。current ILIKE 实现对姓名文字匹配已足够；向量检索上线后语义发现能力进一步增强。
+脑区在推理过程中若需要更多上下文，通过 Hippocampus 工具主动查询——这是记忆访问的主要路径，详见§九"记忆的两种访问模式"。
 
 ### 时间感知
 
