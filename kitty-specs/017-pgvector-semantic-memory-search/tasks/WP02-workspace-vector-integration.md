@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: Workspace Vector Integration
-lane: "for_review"
+lane: "doing"
 dependencies:
 - WP01
 subtasks:
@@ -11,8 +11,8 @@ subtasks:
 - T009
 phase: Phase 2 - Integration
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude"
+shell_pid: "36935"
 review_status: ''
 history:
 - timestamp: '2026-03-12T12:00:00Z'
@@ -403,3 +403,4 @@ bun test tests/unit/workspace/
 ## Activity Log
 
 - 2026-03-12T13:45:15Z – unknown – lane=for_review – Moved to for_review
+- 2026-03-12T13:45:48Z – claude – shell_pid=36935 – lane=doing – Started review via workflow command
