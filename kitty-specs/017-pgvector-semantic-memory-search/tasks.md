@@ -29,7 +29,7 @@
 **Goal**: 建立 pgvector 嵌入基础设施——新增 openai 依赖、embedding 服务模块、DB schema 变更、迁移文件、config 类型扩展。
 
 **Subtasks**:
-- [ ] T001 — `bun add openai`
+- [x] T001 — `bun add openai`
 - [ ] T002 — `src/embedding.ts` 实现
 - [ ] T003 — schema 变更（vector 列 + HNSW 索引）
 - [ ] T004 — 迁移文件创建
