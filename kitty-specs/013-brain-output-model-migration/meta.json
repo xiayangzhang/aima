@@ -3,6 +3,6 @@
   "slug": "013-brain-output-model-migration",
   "friendly_name": "Brain Output Model Migration",
   "mission": "software-dev",
-  "source_description": "Feature 013 — Output Model Migration：将所有脑区的输出模型从 mode/intent 枚举迁移到 {next?, reply?, handoff?} 三字段解耦结构。当前 Limbic 用 mode 枚举（RESPOND/NO_REPLY/ROUTE/EXECUTE/DEFER），Cortex 用 intent 枚举（communicate/execute/both），导致无法同时表达"回复用户 + 路由给下一脑区"，且 Brainstem 完成后无法自主路由回 Limbic。迁移后三字段完全独立：next 是路由指令，reply 是对外输出，handoff 是脑间上下文，解除所有耦合。同时修复 routePending 对 Cortex/Brainstem 发起的 pending 创建新 Thread 而非路由到目标脑区的问题。",
+  "source_description": "Feature 013 — Output Model Migration：将所有脑区的输出模型从 mode/intent 枚举迁移到 {next?, reply?, handoff?} 三字段解耦结构。当前 Limbic 用 mode 枚举（RESPOND/NO_REPLY/ROUTE/EXECUTE/DEFER），Cortex 用 intent 枚举（communicate/execute/both），导致无法同时表达「回复用户 + 路由给下一脑区」，且 Brainstem 完成后无法自主路由回 Limbic。迁移后三字段完全独立：next 是路由指令，reply 是对外输出，handoff 是脑间上下文，解除所有耦合。同时修复 routePending 对 Cortex/Brainstem 发起的 pending 创建新 Thread 而非路由到目标脑区的问题。",
   "created_at": "2026-03-12T00:00:00.000Z"
 }
