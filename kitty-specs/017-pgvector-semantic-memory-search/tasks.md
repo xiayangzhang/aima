@@ -55,7 +55,7 @@ bun test  # 零回归
 
 **Subtasks**:
 - [x] T006 — `generateAndStoreEmbedding()` + `writeMemory()` 集成
-- [ ] T007 — `findSimilarSituations()` 向量升级
+- [x] T007 — `findSimilarSituations()` 向量升级
 - [ ] T008 — `getProcedure()` 向量升级
 - [ ] T009 — 单元测试 V1-V7
 
