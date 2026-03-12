@@ -8,7 +8,7 @@ subtasks:
   - "T005"
 title: "Types + DB Schema Foundation"
 phase: "Phase 1 - Foundation"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: "claude"
 shell_pid: "22367"
@@ -257,3 +257,4 @@ spec-kitty implement WP01
 
 - 2026-03-12T10:23:39Z – system – lane=planned – Prompt created.
 - 2026-03-12T10:57:38Z – claude – shell_pid=22367 – lane=doing – Started implementation via workflow command
+- 2026-03-12T11:00:11Z – claude – shell_pid=22367 – lane=for_review – Ready for review: BrainOutput interface added, Intent/ComplexityHint removed from types+schema+workspace+tests. 403 unit tests pass, 0 fail. Migration 0002 generated via drizzle-kit.
