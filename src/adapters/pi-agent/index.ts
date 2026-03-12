@@ -59,7 +59,7 @@ export class PiAgentAdapter implements BrainAdapter {
     agent.setSystemPrompt(systemPrompt)
 
     // Check for pending Amygdala interrupt from previous activation
-    const interruptSignal = this.config.workspace.popSignal('amygdala_interrupt')
+    const interruptSignal = this.config.workspace.popSignal('amygdala_interrupt', threadId)
     if (interruptSignal) {
       agent.steer({
         role: 'user',
@@ -89,8 +89,11 @@ export class PiAgentAdapter implements BrainAdapter {
   // ── BrainAdapter.inject() ────────────────────────────────────────────────────
 
   async inject(signal: BrainSignal): Promise<void> {
-    // Find any running Agent for this signal type and inject via steer/followUp
-    for (const [_key, agent] of this.agentInstances) {
+    // Only inject into sessions belonging to the signal's thread
+    const threadSessions = [...this.agentInstances.entries()].filter(([key]) =>
+      key.endsWith(`:${signal.threadId}`),
+    )
+    for (const [_key, agent] of threadSessions) {
       if (signal.type === 'amygdala_interrupt') {
         agent.steer({
           role: 'user',

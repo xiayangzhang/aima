@@ -15,7 +15,6 @@ import {
   isNull,
   lt,
   max,
-  not,
   sql,
 } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -83,6 +82,7 @@ function mapPendingRow(row: typeof pendingObservations.$inferSelect): PendingObs
     id: row.id,
     targetBrain: row.targetBrain as BrainType,
     note: row.note,
+    threadId: row.threadId ?? null,
     triggerAt: row.triggerAt,
     expiresAt: row.expiresAt,
     baseImportance: row.baseImportance,
@@ -139,24 +139,27 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     this.pendingCapacity = options.pendingCapacity ?? 100
   }
 
-  // ── Brain Signals (in-memory) ────────────────────────────────────────────────
+  // ── Brain Signals (in-memory, thread-scoped) ────────────────────────────────
 
   pushSignal(signal: BrainSignal): void {
-    const existing = this.signals.get(signal.type) ?? []
+    const key = `${signal.type}:${signal.threadId}`
+    const existing = this.signals.get(key) ?? []
     existing.push(signal)
-    this.signals.set(signal.type, existing)
+    this.signals.set(key, existing)
   }
 
-  popSignal(type: BrainSignalType): BrainSignal | undefined {
-    const list = this.signals.get(type) ?? []
+  popSignal(type: BrainSignalType, threadId: string): BrainSignal | undefined {
+    const key = `${type}:${threadId}`
+    const list = this.signals.get(key) ?? []
     const item = list.shift()
-    if (list.length === 0) this.signals.delete(type)
-    else this.signals.set(type, list)
+    if (list.length === 0) this.signals.delete(key)
+    else this.signals.set(key, list)
     return item
   }
 
-  hasSignal(type: BrainSignalType): boolean {
-    return (this.signals.get(type)?.length ?? 0) > 0
+  hasSignal(type: BrainSignalType, threadId: string): boolean {
+    const key = `${type}:${threadId}`
+    return (this.signals.get(key)?.length ?? 0) > 0
   }
 
   // ── Workspace Notifications (for ThreadRunner) ───────────────────────────────
@@ -255,7 +258,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     const rows = await this.db
       .select()
       .from(threads)
-      .where(not(inArray(threads.state, ['complete'])))
+      .where(eq(threads.state, 'active'))
     return rows.map(mapThreadRow)
   }
 
@@ -342,6 +345,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
         .values({
           targetBrain: params.targetBrain,
           note: params.note,
+          threadId: params.threadId ?? null,
           triggerAt: params.triggerAt ?? null,
           expiresAt: params.expiresAt,
           baseImportance: params.baseImportance ?? 0.5,
@@ -689,5 +693,54 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
       .limit(opts?.limit ?? 3)
 
     return rows.map(mapMemoryRow)
+  }
+
+  // ── DMN Segment Tracking ─────────────────────────────────────────────────────
+
+  /**
+   * Returns the most recent active segment state (segmentId + nextSeq) for every
+   * thread that has at least one valid episodic memory with a segmentId.
+   * Used by DmnReactive.start() to restore in-memory tracking after process restart.
+   */
+  async getLatestSegmentStates(): Promise<Map<string, { segmentId: string; nextSeq: number }>> {
+    const rows = await this.db
+      .select({
+        threadId: memories.threadId,
+        segmentId: memories.segmentId,
+        maxSeq: sql<number>`max(${memories.segmentSeq})::int`,
+        maxCreatedAt: max(memories.createdAt),
+      })
+      .from(memories)
+      .where(
+        and(
+          eq(memories.type, 'episodic'),
+          isNotNull(memories.threadId),
+          isNotNull(memories.segmentId),
+          activeMemory(),
+        ),
+      )
+      .groupBy(memories.threadId, memories.segmentId)
+
+    // For each thread, pick the segment with the most recent creation time
+    const result = new Map<string, { segmentId: string; nextSeq: number; maxCreatedAt: Date }>()
+    for (const row of rows) {
+      if (!row.threadId || !row.segmentId) continue
+      const existing = result.get(row.threadId)
+      const rowDate = row.maxCreatedAt ?? new Date(0)
+      if (!existing || rowDate > existing.maxCreatedAt) {
+        result.set(row.threadId, {
+          segmentId: row.segmentId,
+          nextSeq: (row.maxSeq ?? 0) + 1,
+          maxCreatedAt: rowDate,
+        })
+      }
+    }
+
+    return new Map(
+      [...result.entries()].map(([threadId, { segmentId, nextSeq }]) => [
+        threadId,
+        { segmentId, nextSeq },
+      ]),
+    )
   }
 }

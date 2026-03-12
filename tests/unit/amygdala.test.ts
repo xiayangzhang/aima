@@ -101,8 +101,8 @@ describe('Amygdala.startListening', () => {
     // Give async listener a tick to process
     await new Promise((r) => setTimeout(r, 10))
 
-    expect(workspace.hasSignal('amygdala_interrupt')).toBe(true)
-    const sig = workspace.popSignal('amygdala_interrupt')
+    expect(workspace.hasSignal('amygdala_interrupt', 'thread-1')).toBe(true)
+    const sig = workspace.popSignal('amygdala_interrupt', 'thread-1')
     expect(sig?.message).toContain('block')
     expect(sig?.message).toContain('bash')
 
@@ -122,7 +122,7 @@ describe('Amygdala.startListening', () => {
     })
 
     await new Promise((r) => setTimeout(r, 10))
-    expect(workspace.hasSignal('amygdala_interrupt')).toBe(false)
+    expect(workspace.hasSignal('amygdala_interrupt', 'thread-1')).toBe(false)
 
     unsub()
   })
@@ -152,6 +152,6 @@ describe('Amygdala.startListening', () => {
 
     eventBus.emit({ event_type: 'brain.complete', level: 'INFO', brain: 'cortex', payload: {} })
     await new Promise((r) => setTimeout(r, 10))
-    expect(workspace.hasSignal('amygdala_interrupt')).toBe(false)
+    expect(workspace.hasSignal('amygdala_interrupt', '')).toBe(false)
   })
 })

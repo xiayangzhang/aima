@@ -6,6 +6,7 @@ export type BrainSignalType = 'amygdala_interrupt' | 'dmn_correction'
 
 export interface BrainSignal {
   type: BrainSignalType
+  threadId: string // thread-scoped: signal is only consumable by this thread
   message: string
   causationId?: string
 }

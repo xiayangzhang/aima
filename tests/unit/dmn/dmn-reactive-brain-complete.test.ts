@@ -44,6 +44,7 @@ function makeConfig(overrides: Partial<DmnConfig> = {}) {
     writePending: mock(async () => ({} as never)),
     updateThreadState: mock(async () => {}),
     writeSlot: mock(async () => ({} as never)),
+    getLatestSegmentStates: mock(async () => new Map()),
   }
 
   return {

@@ -9,6 +9,7 @@ const mockWorkspace = {
   getPendingObservations: async () => [],
   removePending: async () => {},
   invalidateMemory: async () => {},
+  getLatestSegmentStates: async () => new Map(),
 } as unknown as Parameters<typeof createDmnService>[0]['workspace']
 
 const mockEventBus = {

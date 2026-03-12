@@ -6,6 +6,7 @@ export const pendingObservations = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     targetBrain: text('target_brain').notNull(), // BrainType value
     note: text('note').notNull(),
+    threadId: uuid('thread_id'), // optional: thread to resume (DEFER recovery)
     triggerAt: timestamp('trigger_at', { withTimezone: true }),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     baseImportance: doublePrecision('base_importance').notNull().default(0.5),

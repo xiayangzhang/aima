@@ -54,6 +54,7 @@ function makeConfig(overrides: Partial<DmnConfig> = {}): DmnConfig & {
       writeSlot: mock(async () => ({} as never)),
       writePending: mock(async () => ({} as never)),
       updateThreadState: mock(async () => {}),
+      getLatestSegmentStates: mock(async () => new Map()),
     } as unknown as DmnConfig['workspace'],
     eventBus: mockEventBus,
     llm: { apiKey: 'test-key' },
@@ -86,6 +87,32 @@ describe('DmnReactive', () => {
       await reactive.start()
       await reactive.stop()
       expect((config.eventBus as unknown as { _subscribers: unknown[] })._subscribers).toHaveLength(0)
+    })
+
+    // Fix 3: restore segment tracking on start()
+    it('start() restores segment tracking from workspace', async () => {
+      const restoredState = new Map([
+        ['thread-abc', { segmentId: 'seg-123', nextSeq: 5 }],
+        ['thread-xyz', { segmentId: 'seg-456', nextSeq: 2 }],
+      ])
+      const config = makeConfig({
+        workspace: {
+          searchMemory: mock(async () => []),
+          writeMemory: mock(async () => ({} as never)),
+          writeSlot: mock(async () => ({} as never)),
+          writePending: mock(async () => ({} as never)),
+          updateThreadState: mock(async () => {}),
+          getLatestSegmentStates: mock(async () => restoredState),
+        } as unknown as typeof config.workspace,
+      })
+      const reactive = new DmnReactive(config)
+      await reactive.start()
+      // getLatestSegmentStates was called once on start
+      // biome-ignore lint/suspicious/noExplicitAny: accessing private for test verification
+      const segments = (reactive as unknown as Record<string, any>).threadSegments as Map<string, { segmentId: string; nextSeq: number }>
+      expect(segments.get('thread-abc')).toEqual({ segmentId: 'seg-123', nextSeq: 5 })
+      expect(segments.get('thread-xyz')).toEqual({ segmentId: 'seg-456', nextSeq: 2 })
+      await reactive.stop()
     })
   })
 
