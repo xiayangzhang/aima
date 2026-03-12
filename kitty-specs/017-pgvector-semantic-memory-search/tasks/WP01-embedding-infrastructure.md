@@ -8,10 +8,10 @@ subtasks:
   - "T005"
 title: "Embedding Infrastructure"
 phase: "Phase 1 - Infrastructure"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude"
+shell_pid: "85631"
 review_status: ""
 dependencies: []
 history:
@@ -284,3 +284,7 @@ export interface CognitiveWorkspaceConfig {
 - 确认迁移文件使用 `IF NOT EXISTS` 以实现幂等性
 - 确认 `EmbeddingConfig` 与 `LlmConfig` 风格一致（apiKey/model 模式，env fallback）
 - T005 的 import 不能产生循环依赖——`types/index.ts` 导入 `embedding.ts` 应该没有循环风险
+
+## Activity Log
+
+- 2026-03-12T13:06:30Z – claude – shell_pid=85631 – lane=doing – Started review via workflow command
