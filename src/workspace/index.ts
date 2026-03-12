@@ -17,8 +17,11 @@ import {
   max,
   sql,
 } from 'drizzle-orm'
+import { cosineDistance } from 'drizzle-orm/sql/functions'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import type { BrainSignal, BrainSignalType } from '../adapters/index'
+import type { EmbeddingConfig } from '../embedding'
+import { generateEmbedding } from '../embedding'
 import { memories, pendingObservations, slots, threads } from '../schema/index'
 import type * as schema from '../schema/index'
 import type {
@@ -43,6 +46,8 @@ export type DrizzleDB = PostgresJsDatabase<typeof schema>
 
 export interface CognitiveWorkspaceOptions {
   pendingCapacity?: number // default: 100
+  /** Embedding config for semantic memory search. If not set, all searches fall back to ILIKE. */
+  embedding?: EmbeddingConfig
 }
 
 // ─── Row Mappers ───────────────────────────────────────────────────────────────
@@ -127,11 +132,13 @@ function mapMemoryRow(row: typeof memories.$inferSelect): MemoryEntry {
 export class CognitiveWorkspace implements ICognitiveWorkspace {
   private readonly db: DrizzleDB
   private readonly pendingCapacity: number
+  private readonly options: CognitiveWorkspaceOptions
   private signals: Map<string, BrainSignal[]> = new Map()
   private wsEmitter = new EventEmitter()
 
   constructor(db: DrizzleDB, options: CognitiveWorkspaceOptions = {}) {
     this.db = db
+    this.options = options
     this.pendingCapacity = options.pendingCapacity ?? 100
   }
 
@@ -400,11 +407,27 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
           .where(eq(memories.id, params.supersedesId as string))
         return newRow
       })
-      return mapMemoryRow(row)
+      const entry = mapMemoryRow(row)
+      if (this.options.embedding != null) {
+        this.generateAndStoreEmbedding(entry.id, entry.content).catch(() => {})
+      }
+      return entry
     }
 
     const row = await performInsert(this.db)
-    return mapMemoryRow(row)
+    const entry = mapMemoryRow(row)
+    if (this.options.embedding != null) {
+      this.generateAndStoreEmbedding(entry.id, entry.content).catch(() => {})
+    }
+    return entry
+  }
+
+  private async generateAndStoreEmbedding(id: string, content: string): Promise<void> {
+    const embedding = await generateEmbedding(content, this.options.embedding!)
+    await this.db
+      .update(memories)
+      .set({ embedding })
+      .where(eq(memories.id, id))
   }
 
   async searchMemory(filters: MemorySearchFilters): Promise<MemoryEntry[]> {
@@ -629,6 +652,48 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     opts?: { limit?: number },
   ): Promise<{ episodes: MemoryEntry[]; procedures: MemoryEntry[]; facts: MemoryEntry[] }> {
     const lim = opts?.limit ?? 5
+
+    // Vector path: only when embedding config is set and situation is non-empty
+    if (this.options.embedding != null && situation.trim() !== '') {
+      try {
+        const queryEmbedding = await generateEmbedding(situation, this.options.embedding)
+
+        const vectorQuery = (type: MemoryType) =>
+          this.db
+            .select()
+            .from(memories)
+            .where(
+              and(
+                eq(memories.type, type),
+                eq(memories.forgotten, false),
+                isNull(memories.tInvalid),
+                isNotNull(memories.embedding),
+              ),
+            )
+            .orderBy(asc(cosineDistance(memories.embedding, queryEmbedding)))
+            .limit(lim)
+
+        const [episodeRows, procedureRows, factRows] = await Promise.all([
+          vectorQuery('episodic'),
+          vectorQuery('procedural'),
+          vectorQuery('semantic'),
+        ])
+
+        // Return vector results if any type has results
+        if (episodeRows.length > 0 || procedureRows.length > 0 || factRows.length > 0) {
+          return {
+            episodes: episodeRows.map(mapMemoryRow),
+            procedures: procedureRows.map(mapMemoryRow),
+            facts: factRows.map(mapMemoryRow),
+          }
+        }
+        // else: no embeddings exist yet, fall through to ILIKE
+      } catch {
+        // generateEmbedding failed (API error, timeout, etc.) → fall through to ILIKE
+      }
+    }
+
+    // ILIKE fallback (original logic — preserved exactly)
     const pattern = `%${situation}%`
 
     const baseConditions = (type: MemoryType) => [
@@ -667,6 +732,36 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
   }
 
   async getProcedure(taskType: string, opts?: { limit?: number }): Promise<MemoryEntry[]> {
+    const lim = opts?.limit ?? 3
+
+    // Vector path
+    if (this.options.embedding != null && taskType.trim() !== '') {
+      try {
+        const queryEmbedding = await generateEmbedding(taskType, this.options.embedding)
+        const rows = await this.db
+          .select()
+          .from(memories)
+          .where(
+            and(
+              eq(memories.type, 'procedural'),
+              eq(memories.forgotten, false),
+              isNull(memories.tInvalid),
+              isNotNull(memories.embedding),
+            ),
+          )
+          .orderBy(asc(cosineDistance(memories.embedding, queryEmbedding)))
+          .limit(lim)
+
+        if (rows.length > 0) {
+          return rows.map(mapMemoryRow)
+        }
+        // else: fall through to ILIKE
+      } catch {
+        // fall through to ILIKE
+      }
+    }
+
+    // ILIKE fallback (original logic)
     const rows = await this.db
       .select()
       .from(memories)
@@ -679,7 +774,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
         ),
       )
       .orderBy(desc(memories.baseImportance), desc(memories.lastAccessedAt))
-      .limit(opts?.limit ?? 3)
+      .limit(lim)
 
     return rows.map(mapMemoryRow)
   }

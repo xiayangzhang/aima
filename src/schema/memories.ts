@@ -11,6 +11,7 @@ import {
   text,
   timestamp,
   uuid,
+  vector,
 } from 'drizzle-orm/pg-core'
 
 export const memoryTypeEnum = pgEnum('memory_type', [
@@ -44,6 +45,7 @@ export const memories = pgTable(
     pinned: boolean('pinned').notNull().default(false),
     forgotten: boolean('forgotten').notNull().default(false),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
+    embedding: vector('embedding', { dimensions: 1536 }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -57,6 +59,10 @@ export const memories = pgTable(
     sessionIdIdx: index('idx_memories_session_id')
       .on(table.sessionId)
       .where(sql`session_id IS NOT NULL`),
+    embeddingHnswIdx: index('idx_memories_embedding_hnsw')
+      // biome-ignore lint/suspicious/noExplicitAny: Drizzle HNSW index type inference requires any
+      .using('hnsw', table.embedding as any)
+      .with({ m: 16, ef_construction: 64 }),
   }),
 )
 
