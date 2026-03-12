@@ -1,8 +1,9 @@
-import { describe, expect, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test'
 import { Amygdala } from '../../src/amygdala/index'
 import type { AmygdalaConfig } from '../../src/amygdala/index'
 import { BrainEventBus } from '../../src/eventbus/index'
 import { CognitiveWorkspace } from '../../src/workspace/index'
+import * as llmModule from '../../src/llm'
 
 const mockDb = {} as Parameters<typeof CognitiveWorkspace>[0]
 
@@ -62,9 +63,19 @@ describe('Amygdala.check — static rules', () => {
 })
 
 describe('Amygdala.check — escalation', () => {
-  test('escalates high-risk tool when haiku_enabled=true', async () => {
+  let callLlmSpy: ReturnType<typeof spyOn>
+
+  beforeEach(() => {
+    callLlmSpy = spyOn(llmModule, 'callLlm')
+    callLlmSpy.mockResolvedValue('{"decision":"escalate","reason":"mocked"}')
+  })
+
+  afterEach(() => {
+    callLlmSpy.mockRestore()
+  })
+
+  test('escalates high-risk tool when haiku_enabled=true (LLM returns escalate)', async () => {
     const { amygdala } = makeSetup({
-      rules: [], // no custom rules — let default BLOCK fire first
       haiku_enabled: true,
       riskLevels: { unknown_high: 'high' },
     })
@@ -80,6 +91,118 @@ describe('Amygdala.check — escalation', () => {
     const result = await amygdala.check('custom_high', {})
     // No static block rule matches, haiku disabled → falls through to allow
     expect(result.decision).toBe('allow')
+    expect(callLlmSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('Amygdala Stage 3 — LLM evaluation', () => {
+  let callLlmSpy: ReturnType<typeof spyOn>
+
+  // Use a mock workspace so writeMemory calls don't hit a real DB
+  function makeStage3Setup(config: AmygdalaConfig = {}) {
+    const writeMemory = mock(() => Promise.resolve({} as never))
+    const workspace = {
+      writeMemory,
+      // minimal stubs for other workspace methods Amygdala may access
+      pushSignal: mock(() => {}),
+      hasSignal: mock(() => false),
+      popSignal: mock(() => null),
+    } as unknown as CognitiveWorkspace
+    const eventBus = new BrainEventBus()
+    const amygdala = new Amygdala(
+      { riskLevels: { custom_tool: 'high' }, ...config },
+      workspace,
+      eventBus,
+    )
+    return { workspace, writeMemory, eventBus, amygdala }
+  }
+
+  beforeEach(() => {
+    callLlmSpy = spyOn(llmModule, 'callLlm')
+  })
+
+  afterEach(() => {
+    callLlmSpy.mockRestore()
+  })
+
+  // V1: LLM returns allow
+  test('V1 — returns allow when LLM responds allow', async () => {
+    callLlmSpy.mockResolvedValue('{"decision":"allow","reason":"safe context"}')
+    const { amygdala } = makeStage3Setup({ haiku_enabled: true })
+    const result = await amygdala.check('custom_tool', { cmd: 'ls /tmp' })
+    expect(result.decision).toBe('allow')
+    expect(result.reason).toBe('safe context')
+  })
+
+  // V2: LLM returns block
+  test('V2 — returns block when LLM responds block', async () => {
+    callLlmSpy.mockResolvedValue('{"decision":"block","reason":"dangerous command"}')
+    const { amygdala } = makeStage3Setup({ haiku_enabled: true })
+    const result = await amygdala.check('custom_tool', { cmd: 'rm -rf /' })
+    expect(result.decision).toBe('block')
+    expect(result.reason).toBe('dangerous command')
+  })
+
+  // V3: LLM throws → escalate, no exception propagated
+  test('V3 — falls back to escalate when LLM call throws', async () => {
+    callLlmSpy.mockRejectedValue(new Error('network timeout'))
+    const { amygdala } = makeStage3Setup({ haiku_enabled: true })
+    const result = await amygdala.check('custom_tool', {})
+    expect(result.decision).toBe('escalate')
+    expect(result.reason).toContain('failed')
+  })
+
+  // V4: LLM returns invalid decision → escalate
+  test('V4 — falls back to escalate when LLM returns invalid decision', async () => {
+    callLlmSpy.mockResolvedValue('{"decision":"unknown_value","reason":"..."}')
+    const { amygdala } = makeStage3Setup({ haiku_enabled: true })
+    const result = await amygdala.check('custom_tool', {})
+    expect(result.decision).toBe('escalate')
+  })
+
+  // V5: haiku_enabled=false → Stage 3 not triggered
+  test('V5 — does not call LLM when haiku_enabled is false', async () => {
+    const { amygdala } = makeStage3Setup({ haiku_enabled: false })
+    const result = await amygdala.check('custom_tool', {})
+    expect(callLlmSpy).not.toHaveBeenCalled()
+    expect(result.decision).toBe('allow')
+  })
+
+  // V6: medium risk → Stage 3 not triggered
+  test('V6 — does not call LLM for medium-risk tools', async () => {
+    // spawn_execution_session is medium risk in DEFAULT_RISK_LEVELS
+    const { amygdala } = makeStage3Setup({ haiku_enabled: true })
+    await amygdala.check('spawn_execution_session', {})
+    expect(callLlmSpy).not.toHaveBeenCalled()
+  })
+
+  // V7: writeMemory called after evaluation (fire-and-forget)
+  test('V7 — writes implicit memory after Stage 3 evaluation', async () => {
+    callLlmSpy.mockResolvedValue('{"decision":"allow","reason":"safe"}')
+    const { amygdala, writeMemory } = makeStage3Setup({ haiku_enabled: true })
+    await amygdala.check('custom_tool', {})
+    // Give the fire-and-forget writeMemory promise a tick to settle
+    await new Promise((r) => setTimeout(r, 10))
+    expect(writeMemory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'implicit',
+        tags: expect.arrayContaining(['amygdala_eval', 'allow']),
+      }),
+    )
+  })
+
+  // V7b: writeMemory also called on LLM failure (escalate fallback)
+  test('V7b — writes implicit memory even when LLM fails', async () => {
+    callLlmSpy.mockRejectedValue(new Error('timeout'))
+    const { amygdala, writeMemory } = makeStage3Setup({ haiku_enabled: true })
+    await amygdala.check('custom_tool', {})
+    await new Promise((r) => setTimeout(r, 10))
+    expect(writeMemory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'implicit',
+        tags: expect.arrayContaining(['amygdala_eval', 'escalate']),
+      }),
+    )
   })
 })
 

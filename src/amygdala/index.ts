@@ -1,3 +1,4 @@
+import { callLlm, parseLlmJson, type LlmConfig } from '../llm'
 import type { BrainEventBus } from '../eventbus/index'
 import type { CognitiveWorkspace } from '../workspace/index'
 
@@ -39,7 +40,8 @@ export interface AmygdalaRule {
 export interface AmygdalaConfig {
   rules?: AmygdalaRule[] // app-level custom rules (layered on top of defaults)
   riskLevels?: Record<string, ToolRiskLevel> // overrides for tool risk levels
-  haiku_enabled?: boolean // enable Haiku fallback (default false, WIP)
+  haiku_enabled?: boolean // enable Haiku LLM evaluation (default false)
+  llm?: LlmConfig // LLM config for Stage 3 Haiku evaluation
 }
 
 // ─── Amygdala Class ───────────────────────────────────────────────────────────
@@ -61,7 +63,7 @@ export class Amygdala {
 
   async check(
     toolName: string,
-    _args: Record<string, unknown>,
+    args: Record<string, unknown>,
   ): Promise<{ decision: AmygdalaDecision; reason: string }> {
     // Stage 1: Static rules (custom rules + default BLOCK/ALLOW table)
     const staticResult = this.checkStaticRules(toolName)
@@ -74,12 +76,9 @@ export class Amygdala {
     const memoryResult: { decision: AmygdalaDecision; reason: string } | null = null
     if (memoryResult) return memoryResult
 
-    // Stage 3: Haiku fallback (high-risk only, when haiku_enabled=true)
+    // Stage 3: Haiku LLM evaluation (high-risk only, when haiku_enabled=true)
     if (risk === 'high' && this.config.haiku_enabled) {
-      return {
-        decision: 'escalate',
-        reason: `High-risk tool ${toolName} requires human review (Haiku eval not yet implemented)`,
-      }
+      return await this.evaluateWithLlm(toolName, args, risk)
     }
 
     // Default: allow when no rule matched
@@ -87,6 +86,63 @@ export class Amygdala {
       decision: 'allow',
       reason: `No rule matched for ${toolName} (risk: ${risk})`,
     }
+  }
+
+  private async evaluateWithLlm(
+    toolName: string,
+    args: Record<string, unknown>,
+    risk: ToolRiskLevel,
+  ): Promise<{ decision: AmygdalaDecision; reason: string }> {
+    const argsSummary = JSON.stringify(args).slice(0, 300)
+    const prompt = `You are a security gate evaluating a tool call in an AI agent system.
+Tool: ${toolName}
+Risk level: ${risk}
+Arguments: ${argsSummary}
+
+Decide if this tool call should be allowed, blocked, or escalated for human review.
+- allow: the tool call is safe in this context
+- block: the tool call is clearly dangerous and should be prevented
+- escalate: uncertain or sensitive — requires human review
+
+Respond with JSON only: {"decision": "allow" | "block" | "escalate", "reason": string}
+When in doubt, escalate.`
+
+    let decision: AmygdalaDecision = 'escalate'
+    let reason = 'LLM evaluation failed — defaulting to escalate'
+
+    try {
+      const response = await callLlm(prompt, this.config.llm ?? {})
+      const result = parseLlmJson<{ decision: string; reason: string }>(response, {
+        decision: 'escalate',
+        reason: 'parse failed',
+      })
+      const validDecisions: AmygdalaDecision[] = ['allow', 'block', 'escalate']
+      if (validDecisions.includes(result.decision as AmygdalaDecision)) {
+        decision = result.decision as AmygdalaDecision
+      }
+      if (result.reason) reason = result.reason
+    } catch {
+      // LLM call failed — keep escalate defaults
+    }
+
+    // Write to implicit memory (fire-and-forget)
+    this.writeEvalMemory(toolName, decision, reason).catch(() => {})
+
+    return { decision, reason }
+  }
+
+  private async writeEvalMemory(
+    toolName: string,
+    decision: AmygdalaDecision,
+    reason: string,
+  ): Promise<void> {
+    await this.workspace.writeMemory({
+      type: 'implicit',
+      content: JSON.stringify({ tool: toolName, decision, reason }),
+      tags: ['amygdala_eval', toolName, decision],
+      baseImportance: decision === 'allow' ? 0.4 : 0.8,
+      sourceBrain: 'amygdala',
+    })
   }
 
   private checkStaticRules(
