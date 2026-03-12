@@ -8,10 +8,10 @@ subtasks:
   - "T005"
 title: "Types + DB Schema Foundation"
 phase: "Phase 1 - Foundation"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude"
+shell_pid: "22367"
 review_status: ""
 reviewed_by: ""
 dependencies: []
@@ -256,3 +256,4 @@ spec-kitty implement WP01
 ## Activity Log
 
 - 2026-03-12T10:23:39Z – system – lane=planned – Prompt created.
+- 2026-03-12T10:57:38Z – claude – shell_pid=22367 – lane=doing – Started implementation via workflow command
