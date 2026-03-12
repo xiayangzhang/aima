@@ -8,12 +8,12 @@ subtasks:
   - "T005"
 title: "Types + DB Schema Foundation"
 phase: "Phase 1 - Foundation"
-lane: "doing"
+lane: "done"
 assignee: ""
 agent: "claude"
 shell_pid: "36896"
-review_status: ""
-reviewed_by: ""
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 dependencies: []
 history:
   - timestamp: "2026-03-12T10:23:39Z"
@@ -259,3 +259,4 @@ spec-kitty implement WP01
 - 2026-03-12T10:57:38Z – claude – shell_pid=22367 – lane=doing – Started implementation via workflow command
 - 2026-03-12T11:00:11Z – claude – shell_pid=22367 – lane=for_review – Ready for review: BrainOutput interface added, Intent/ComplexityHint removed from types+schema+workspace+tests. 403 unit tests pass, 0 fail. Migration 0002 generated via drizzle-kit.
 - 2026-03-12T11:09:54Z – claude – shell_pid=36896 – lane=doing – Started review via workflow command
+- 2026-03-12T11:13:50Z – claude – shell_pid=36896 – lane=done – Review passed: BrainOutput matches data-model.md exactly. Intent/ComplexityHint removed from types+schema+workspace+index.ts (found+fixed missing src/index.ts cleanup during review). Migration 0002 generated via drizzle-kit. 489/491 pass with real DB; 2 failures are pre-existing on main (getActiveThreads integration + Feature007 ScenarioC), unrelated to WP01.
