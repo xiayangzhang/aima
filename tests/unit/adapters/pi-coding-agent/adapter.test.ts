@@ -343,7 +343,7 @@ describe('PiCodingAgentAdapter — abort/abortSession', () => {
     })
     adapter.abort()
     // After abort, inject with no sessions should call pushSignal
-    await adapter.inject({ type: 'amygdala_interrupt', message: 'test' })
+    await adapter.inject({ type: 'amygdala_interrupt', threadId: 't1', message: 'test' })
     // session.abort should have been called
     expect(session.abort).toHaveBeenCalled()
   })
