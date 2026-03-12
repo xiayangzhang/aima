@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Replace spawnSubExecution with pi-coding-agent session
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks:
 - T001
@@ -9,8 +9,8 @@ subtasks:
 - T003
 phase: Phase 1 - Implementation
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-sonnet-4-6"
+shell_pid: "42204"
 review_status: ''
 reviewed_by: ''
 history:
@@ -318,3 +318,7 @@ expect(queryFn).toHaveBeenCalledWith('task', 'claude-opus-4-6')
 3. `session.messages` 遍历是否正确处理 `AgentMessage` 联合类型（`'role' in msg` 守卫）
 4. 测试是否覆盖 EventBus 事件（brain.activate + brain.complete）
 5. 现有 spawn-related 集成测试是否仍通过
+
+## Activity Log
+
+- 2026-03-12T00:05:23Z – claude-sonnet-4-6 – shell_pid=42204 – lane=doing – Started implementation via workflow command
