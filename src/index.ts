@@ -11,10 +11,10 @@ export type {
   CognitiveBrainType,
   ThreadState,
   SlotStatus,
-  Intent,
-  ComplexityHint,
   MemoryType,
   UsageOutcome,
+  // Brain output
+  BrainOutput,
   // Entity types
   Thread,
   Slot,
