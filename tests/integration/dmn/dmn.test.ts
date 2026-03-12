@@ -207,6 +207,116 @@ describeWithDb('DMN integration — brain.complete four responsibilities (T034)'
   })
 })
 
+// ─── T036: Feature 015 — handoff field + correction pre-check (real DB) ────────
+
+describeWithDb('DMN integration — feature 015 quality improvements (T036)', () => {
+  let ctx: IntegrationDmnContext
+
+  beforeAll(async () => {
+    ctx = await createDmnContext()
+  })
+
+  afterAll(async () => {
+    await teardownDmnContext(ctx)
+  })
+
+  test('brain.complete with handoff → episodic content includes handoff field in DB', async () => {
+    const { workspace, eventBus, waitForHandlers } = ctx
+
+    const thread = await workspace.createThread({ initiatedBy: 'integration-test-T036a' })
+    const handoffText = 'User asked about billing; routing to execution layer'
+
+    eventBus.emit({
+      event_type: 'brain.complete',
+      level: 'INFO',
+      brain: 'cortex',
+      thread_id: thread.id,
+      payload: {
+        injectedMemoryIds: [],
+        outputSlot: { status: 'done', output: { next: 'brainstem', reply: null, handoff: handoffText } },
+        stopReason: 'done',
+      },
+    })
+
+    await waitForHandlers()
+
+    const episodic = await workspace.searchMemory({
+      type: 'episodic',
+      tags: [`thread:${thread.id}`, 'brain_complete'],
+      excludeInvalid: true,
+    })
+    expect(episodic.length).toBeGreaterThan(0)
+
+    const content = JSON.parse(episodic[0]?.content ?? '{}') as {
+      handoff: string | null
+      next: unknown
+      hasReply: boolean
+    }
+    expect(content.handoff).toBe(handoffText)
+    expect(content.next).toBe('brainstem')
+    expect(content.hasReply).toBe(false)
+  })
+
+  test('brain.complete without handoff → episodic content has handoff: null in DB', async () => {
+    const { workspace, eventBus, waitForHandlers } = ctx
+
+    const thread = await workspace.createThread({ initiatedBy: 'integration-test-T036b' })
+
+    eventBus.emit({
+      event_type: 'brain.complete',
+      level: 'INFO',
+      brain: 'limbic',
+      thread_id: thread.id,
+      payload: {
+        injectedMemoryIds: [],
+        outputSlot: { status: 'done', output: { reply: 'Hello there' } },
+        stopReason: 'done',
+      },
+    })
+
+    await waitForHandlers()
+
+    const episodic = await workspace.searchMemory({
+      type: 'episodic',
+      tags: [`thread:${thread.id}`, 'brain_complete'],
+      excludeInvalid: true,
+    })
+    expect(episodic.length).toBeGreaterThan(0)
+
+    const content = JSON.parse(episodic[0]?.content ?? '{}') as { handoff: unknown }
+    expect(content.handoff).toBeNull()
+  })
+
+  test('healthy brain.complete → no dmn.correction_issued event emitted', async () => {
+    const { workspace, eventBus, waitForHandlers } = ctx
+
+    const thread = await workspace.createThread({ initiatedBy: 'integration-test-T036c' })
+
+    const emitted: string[] = []
+    const unsub = eventBus.subscribe((e) => {
+      emitted.push(e.event_type)
+    })
+
+    eventBus.emit({
+      event_type: 'brain.complete',
+      level: 'INFO',
+      brain: 'cortex',
+      thread_id: thread.id,
+      payload: {
+        injectedMemoryIds: [],
+        outputSlot: { status: 'done', output: { reply: 'All good', next: null } },
+        stopReason: 'done',
+      },
+    })
+
+    await waitForHandlers()
+    unsub()
+
+    // Pre-check skips correction path for healthy events
+    expect(emitted).not.toContain('dmn.correction_issued')
+  })
+})
+
 // ─── T035: Consolidation smoke test (requires ANTHROPIC_API_KEY) ──────────────
 
 const describeWithApiKey = process.env.ANTHROPIC_API_KEY
