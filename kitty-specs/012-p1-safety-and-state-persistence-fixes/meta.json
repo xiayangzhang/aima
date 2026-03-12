@@ -1,0 +1,8 @@
+{
+  "feature_number": "012",
+  "slug": "012-p1-safety-and-state-persistence-fixes",
+  "friendly_name": "P1 Safety & State Persistence Fixes",
+  "mission": "software-dev",
+  "source_description": "Feature 012 — P1 Bug Trio：修复三个已知 P1 级 bug：(1) DEFER 状态转换缺失——Limbic 输出 DEFER 后 Thread 未切换到 waiting 状态；(2) BrainSignal 线程隔离缺失——Signal 按 type 全局存储导致并发 Thread 信号污染；(3) DMN Segment State 无持久化——进程重启后段链断裂导致 Hippocampus 段序列回放失效",
+  "created_at": "2026-03-12T00:00:00.000Z"
+}
