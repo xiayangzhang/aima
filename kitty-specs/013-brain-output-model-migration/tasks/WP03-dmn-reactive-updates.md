@@ -21,6 +21,16 @@ history:
     agent: "system"
     shell_pid: ""
     action: "Prompt generated via /spec-kitty.tasks"
+  - timestamp: "2026-03-12T11:35:00Z"
+    lane: "for_review"
+    agent: "claude-wp03"
+    shell_pid: "48454"
+    action: "T013-T017 done. 489 pass, 2 pre-existing failures. All mode/intent refs replaced with next/reply/hasReply."
+  - timestamp: "2026-03-12T11:40:00Z"
+    lane: "done"
+    agent: "review-wp03"
+    shell_pid: ""
+    action: "Review passed: all 5 checklist items confirmed, zero old mode/intent in source or test fixtures, 489 pass."
 ---
 
 # Work Package Prompt: WP03 — DMN Reactive Updates

@@ -23,6 +23,16 @@ history:
     agent: "system"
     shell_pid: ""
     action: "Prompt generated via /spec-kitty.tasks"
+  - timestamp: "2026-03-12T11:20:28Z"
+    lane: "for_review"
+    agent: "claude-wp02"
+    shell_pid: "42470"
+    action: "All T006-T012 done. 494/496 tests pass (2 pre-existing). isLegalTransition, thread.reply, handoff passing implemented."
+  - timestamp: "2026-03-12T11:26:27Z"
+    lane: "done"
+    agent: "review-wp02"
+    shell_pid: ""
+    action: "Review passed: transition table correct, reply before routing, handoff before activate, no mode/intent refs, 494 pass."
 ---
 
 # Work Package Prompt: WP02 — Thread Runner Core Rewrite

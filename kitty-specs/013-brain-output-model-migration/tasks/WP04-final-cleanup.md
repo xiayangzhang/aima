@@ -20,6 +20,16 @@ history:
   agent: system
   shell_pid: ''
   action: Prompt generated via /spec-kitty.tasks
+- timestamp: '2026-03-12T11:50:00Z'
+  lane: for_review
+  agent: claude-wp04
+  shell_pid: '60731'
+  action: "T018-T020 done. Zero mode/intent residuals. 494 pass, 2 pre-existing. Docs P1-C warning resolved."
+- timestamp: '2026-03-12T11:55:00Z'
+  lane: done
+  agent: claude-wp04-review
+  shell_pid: '60731'
+  action: "Review passed: zero residuals confirmed, all tests green, BrainOutput exported, migration 0002 present."
 ---
 
 # Work Package Prompt: WP04 — Final Cleanup + Validation
