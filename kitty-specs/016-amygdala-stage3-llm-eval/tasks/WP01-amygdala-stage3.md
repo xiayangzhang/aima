@@ -8,7 +8,7 @@ subtasks:
   - "T005"
 title: "Amygdala Stage 3"
 phase: "Phase 1 - Implementation"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: "claude"
 shell_pid: "54209"
@@ -381,3 +381,4 @@ await amygdala.check('custom_tool', {})  // 不被 Stage 1 block，进入 Stage 
 
 - 2026-03-12T11:40:00Z – system – lane=planned – Prompt created.
 - 2026-03-12T12:41:29Z – claude – shell_pid=54209 – lane=doing – Started implementation via workflow command
+- 2026-03-12T12:41:43Z – claude – shell_pid=54209 – lane=for_review – Ready for review: T001 added rule pre-check to retroactiveCorrection (skips LLM for healthy events, triggers on error/stopReason=error/output=null); T002 added handoff field to buildEpisodicContent; T003 V1-V4 tests in T033; T004 V5-V8 tests in T034. 78 unit tests pass, 6 integration tests pass, zero new failures.
