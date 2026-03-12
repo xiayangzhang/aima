@@ -117,6 +117,8 @@ getSegmentsByTimeRange(过去 N 天)
 
 回放写入的 semantic 通过 `entity_id` 关联已有实体，通过 `supersedes_ids` 替代旧版本。episodic 随时间自然衰减，知识内核通过回放提炼进 semantic/procedural，实现跨时间积累。
 
+> **演进注意（脑区实体自我强化偏差）**：当 DMN 将"某脑区在某类任务上可靠性低"写入 `implicit` 记忆时，可能形成自我强化回路——所有此类任务绕过该脑区 → 该脑区的 implicit 记录永远无法被挑战 → 偏差锁死。纠正机制（如：强制低概率随机路由、人工标注覆盖、定期 Cortex 评估 brain entity 记录）是未来 Consolidation 的演进方向，当前阶段 brain entity 的 `implicit` 写入需谨慎，避免过早锁定脑区能力边界。
+
 ### 步骤 3：使用反馈收敛
 
 批量读取 `usage_outcomes` 计数器，根据正负比例小幅调整 `base_importance`（具体阈值和步长为上层配置项，框架不锁定默认值）。

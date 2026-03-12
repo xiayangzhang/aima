@@ -7,7 +7,7 @@
 
 ## 角色定位
 
-Limbic 是 AIMA 与人类协作者之间的唯一双向通道。所有来自人类的输入首先进入 Limbic，所有发向人类的 `reply` 由 Limbic 发出。Limbic 负责判断输入的性质——直接处理、路由给 Cortex 分析，还是路由给 Brainstem 执行——并维护对话节奏、语气和关系上下文。
+Limbic 是 AIMA 与人类协作者之间的**人类方向双向通道**。所有来自人类的输入进入 Limbic，所有发向人类的 `reply` 由 Limbic 发出。Limbic 负责判断输入的性质——直接处理、路由给 Cortex 分析，还是路由给 Brainstem 执行——并维护对话节奏、语气和关系上下文。
 
 **Limbic 不负责推理，不负责执行。** 它负责沟通和判断。复杂任务的分析交给 Cortex，操作类任务的执行交给 Brainstem。Limbic 是认知入口，不是全能处理器。
 

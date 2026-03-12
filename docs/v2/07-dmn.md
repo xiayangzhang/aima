@@ -58,11 +58,13 @@ DMN 在概念上是一个脑区，**工程上由两种触发方式实现**：事
 
 **2. 回溯纠错**
 
-读取最新 Action Log，判断刚刚发生的行为是否有误；如需纠错，向工作空间写入中断 Signal。
+读取最新 Action Log，判断刚刚发生的行为是否违反行为规则或存在注入污染；如需纠错，向工作空间写入中断 Signal。
+
+**回溯纠错的关注范围**：行为合规性——规则违反（如：Brainstem 执行了明确禁止的操作）、注入污染（如：输出包含来自外部输入的执行指令）。**不关注决策质量**——"这个判断是否最优"是认知评估，由 Consolidation 段序列回放完成，不由 DMN Reactive 的实时纠错负责。
 
 > ⚠️ **P2-A 已知问题**：当前代码每次 `brain.complete` 无条件发起 LLM 调用检查是否需要纠错。一次 Limbic → Cortex → Brainstem = 3 次纠错 LLM call，大多数返回"不需要纠错"，是纯开销。
 >
-> **设计目标**：先做规则预检（`slot.status === 'error'`、停止原因异常、输出格式不符），只有规则触发时才调 LLM。
+> **设计目标**：先做规则预检（`slot.status === 'error'`、停止原因异常、输出格式不符、已知高风险工具触发），只有规则触发时才调 LLM。
 
 **3. 段分配**
 
@@ -74,7 +76,9 @@ DMN 在概念上是一个脑区，**工程上由两种触发方式实现**：事
 - 错误恢复（`ALERT` 事件后重新激活）
 - 话题切换（Limbic 判断输入显著偏离当前上下文）
 
-> ⚠️ **已知限制**：`DMN Reactive` 的 `threadSegments` Map 在进程重启后丢失，会导致同一 Thread 的段链断裂。需要在重要性超过可接受阈值前将 segment 状态持久化到 DB。
+> ⚠️ **P1 已知 Bug（段链持久化缺失）**：`DMN Reactive` 的 `threadSegments` Map 存在内存中，进程重启后丢失——同一 Thread 的历史段链断裂，后续写入的 episodic 记录无法正确归属到已有 Segment，导致 Consolidation 段序列回放失效。
+>
+> **修复方向**：segment 状态必须持久化到 PostgreSQL（独立表或 workspace JSONB 字段），DMN Reactive 启动时从 DB 恢复已有段链，不依赖内存状态。
 
 **4. 显著性处理**
 

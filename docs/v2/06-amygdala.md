@@ -19,6 +19,8 @@ Amygdala 是 AIMA 的**工具调用守卫**，唯一职责是在工具执行前�
 
 AIMA 是器官，不是灵魂。Amygdala 提供物理拦截机制，拦截的具体规则由 soul.md 和 role 文件注入——框架只提供三段式判断骨架，不预设"什么是危险的"。
 
+> **⚠️ 当前阶段实际行为（Stage 2/3 均为存根）**：Stage 2（implicit 记忆匹配）和 Stage 3（Haiku 评估）尚未实现。当前 Amygdala **实际等价于静态白名单/黑名单**——仅依赖 Stage 1 确定性规则，无动态学习能力，无 LLM 推理。高风险工具（`bash`、`file_write`、外部 API）在过渡期默认 BLOCK。上线后的真实拦截能力受限于此，接入方需知晓。
+
 ### 事件订阅
 
 Amygdala 订阅 Event Bus 上的 `tool.pre_use` 事件（`INFO` 级）。

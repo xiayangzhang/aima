@@ -110,6 +110,8 @@ active → interrupted         （崩溃或不可重试错误）
 
 **output 字段说明**：`next`、`reply`、`handoff` 三个字段相互独立，可同时存在。`next` 是路由指令，`reply` 是对外通道，`handoff` 是脑间通道——三者解耦，互不限制。
 
+> ⚠️ **P1-C 已知缺口（output model 迁移待完成）**：当前代码使用 `mode: 'RESPOND' | 'ROUTE' | 'EXECUTE' | 'DEFER'` 枚举作为输出模型，尚未迁移到三字段解耦结构。枚举模型的核心缺陷是无法同时表达"回复用户 + 路由给下一脑区"——`reply + next` 并发场景在当前实现中不可能。迁移需要同步修改所有脑区的 output schema、Thread Runner 的路由逻辑和 BrainAdapter 接口，是一次协调性变更。
+
 典型组合举例：
 
 | next | reply | 含义 |
