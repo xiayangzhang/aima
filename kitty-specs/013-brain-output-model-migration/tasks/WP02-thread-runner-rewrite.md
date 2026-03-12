@@ -10,12 +10,12 @@ subtasks:
   - "T012"
 title: "Thread Runner Core Rewrite"
 phase: "Phase 2 - Core Logic"
-lane: "for_review"
+lane: "done"
 assignee: ""
 agent: "claude-wp02"
 shell_pid: "42470"
-review_status: ""
-reviewed_by: ""
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 dependencies: ["WP01"]
 history:
   - timestamp: "2026-03-12T10:23:39Z"
@@ -396,3 +396,4 @@ Note: `timeout_ms` is not part of the `BrainOutput` interface (it's an extra fie
 - 2026-03-12T10:23:39Z – system – lane=planned – Prompt created.
 - 2026-03-12T11:14:25Z – claude-wp02 – shell_pid=42470 – lane=doing – Started implementation via workflow command
 - 2026-03-12T11:20:28Z – claude-wp02 – shell_pid=42470 – lane=for_review – All T006-T012 done. 494/496 tests pass (2 pre-existing failures). No mode/intent comparisons remain in runner. isLegalTransition implemented. thread.reply events emitted. handoff passing. intent=both hardcode removed. T013-T017 belong to WP03.
+- 2026-03-12T11:26:27Z – claude-wp02 – shell_pid=42470 – lane=done – Review passed: isLegalTransition is a pure standalone function; transition table matches spec exactly (limbic: cortex/brainstem/self/null, cortex: limbic/brainstem/null, brainstem: limbic/cortex/null); reply emitted before next routing; handoff written via writeSlot before activateBrain; no intent/mode references anywhere in runner; DEFER (next=self) preserved and only legal for limbic; runner test fixtures use BrainOutput model (next/reply/handoff) with zero old mode/intent patterns; no any types in runner; 494 pass, 2 pre-known failures only
