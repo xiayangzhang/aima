@@ -456,7 +456,10 @@ describe('T029 — DmnReactive retroactive correction', () => {
     )
 
     await reactive.start()
-    const event = makeBrainCompleteEvent('thread-rc2', 'cortex')
+    // Use error status so rule pre-check allows the LLM correction call
+    const event = makeBrainCompleteEvent('thread-rc2', 'cortex', {
+      outputSlot: { status: 'error', output: {} },
+    })
     await bus._trigger(event)
 
     expect(ws.pushSignal.mock.calls.length).toBeGreaterThan(0)
@@ -553,7 +556,10 @@ describe('T029 — DmnReactive retroactive correction', () => {
     )
 
     await reactive.start()
-    const event = makeBrainCompleteEvent('thread-rc4', 'cortex')
+    // Use error status so rule pre-check allows the LLM correction call
+    const event = makeBrainCompleteEvent('thread-rc4', 'cortex', {
+      outputSlot: { status: 'error', output: {} },
+    })
     await bus._trigger(event)
 
     const correctionEmit = bus._emitted.find((e) => e.event_type === 'dmn.correction_issued')
@@ -934,6 +940,263 @@ describe('T032 — Handler isolation', () => {
     })
 
     expect(secondCalled).toBe(true)
+
+    await reactive.stop()
+  })
+})
+
+// ─── T033: Retroactive correction pre-check ───────────────────────────────────
+
+describe('T033 — Retroactive correction pre-check', () => {
+  let callLlmSpy: ReturnType<typeof spyOn>
+
+  beforeEach(() => {
+    callLlmSpy = spyOn(llmModule, 'callLlm')
+  })
+
+  afterEach(() => {
+    callLlmSpy.mockRestore()
+  })
+
+  it('V1: skips correction LLM for healthy brain.complete (status=done, output present, no error stopReason)', async () => {
+    const { config, bus } = makeDmnConfig()
+    callLlmSpy.mockResolvedValue('{}')
+    const reactive = new DmnReactive(config)
+    await reactive.start()
+
+    // output.next is non-null → topic switch won't trigger either
+    const event = makeBrainCompleteEvent('thread-t033-v1', 'cortex', {
+      outputSlot: { status: 'done', output: { next: 'brainstem', reply: null } },
+      stopReason: 'done',
+    })
+    await bus._trigger(event)
+
+    expect(callLlmSpy).not.toHaveBeenCalled()
+
+    await reactive.stop()
+  })
+
+  it('V2: runs correction LLM when slot status is error', async () => {
+    const { config, ws, bus } = makeDmnConfig()
+    const reactive = new DmnReactive(config)
+
+    for (let i = 0; i < 3; i++) {
+      ws._memories.push({
+        id: `pre-v2-${i}`,
+        type: 'episodic',
+        content: `prior event ${i}`,
+        entityId: null,
+        segmentId: null,
+        segmentSeq: null,
+        tags: ['brain_complete', 'thread:thread-t033-v2'],
+        baseImportance: 0.5,
+        usageOutcomes: { positive: 0, negative: 0, neutral: 0 },
+        sourceBrain: 'cortex',
+        threadId: 'thread-t033-v2',
+        sessionId: null,
+        supersedesId: null,
+        tInvalid: null,
+        lastAccessedAt: null,
+        pinned: false,
+        forgotten: false,
+        expiresAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    }
+
+    callLlmSpy.mockResolvedValue(
+      JSON.stringify({ needs_correction: false, correction_type: null, correction_message: '' }),
+    )
+
+    await reactive.start()
+    const event = makeBrainCompleteEvent('thread-t033-v2', 'cortex', {
+      outputSlot: { status: 'error', output: { next: 'cortex' } },
+      stopReason: 'done',
+    })
+    await bus._trigger(event)
+
+    expect(callLlmSpy).toHaveBeenCalled()
+
+    await reactive.stop()
+  })
+
+  it('V3: runs correction LLM when stopReason is error', async () => {
+    const { config, ws, bus } = makeDmnConfig()
+    const reactive = new DmnReactive(config)
+
+    for (let i = 0; i < 3; i++) {
+      ws._memories.push({
+        id: `pre-v3-${i}`,
+        type: 'episodic',
+        content: `prior event ${i}`,
+        entityId: null,
+        segmentId: null,
+        segmentSeq: null,
+        tags: ['brain_complete', 'thread:thread-t033-v3'],
+        baseImportance: 0.5,
+        usageOutcomes: { positive: 0, negative: 0, neutral: 0 },
+        sourceBrain: 'cortex',
+        threadId: 'thread-t033-v3',
+        sessionId: null,
+        supersedesId: null,
+        tInvalid: null,
+        lastAccessedAt: null,
+        pinned: false,
+        forgotten: false,
+        expiresAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    }
+
+    callLlmSpy.mockResolvedValue(
+      JSON.stringify({ needs_correction: false, correction_type: null, correction_message: '' }),
+    )
+
+    await reactive.start()
+    const event = makeBrainCompleteEvent('thread-t033-v3', 'cortex', {
+      outputSlot: { status: 'done', output: { next: 'cortex' } },
+      stopReason: 'error',
+    })
+    await bus._trigger(event)
+
+    expect(callLlmSpy).toHaveBeenCalled()
+
+    await reactive.stop()
+  })
+
+  it('V4: runs correction LLM when output is null', async () => {
+    const { config, ws, bus } = makeDmnConfig()
+    const reactive = new DmnReactive(config)
+
+    for (let i = 0; i < 3; i++) {
+      ws._memories.push({
+        id: `pre-v4-${i}`,
+        type: 'episodic',
+        content: `prior event ${i}`,
+        entityId: null,
+        segmentId: null,
+        segmentSeq: null,
+        tags: ['brain_complete', 'thread:thread-t033-v4'],
+        baseImportance: 0.5,
+        usageOutcomes: { positive: 0, negative: 0, neutral: 0 },
+        sourceBrain: 'cortex',
+        threadId: 'thread-t033-v4',
+        sessionId: null,
+        supersedesId: null,
+        tInvalid: null,
+        lastAccessedAt: null,
+        pinned: false,
+        forgotten: false,
+        expiresAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    }
+
+    callLlmSpy.mockResolvedValue(
+      JSON.stringify({ needs_correction: false, correction_type: null, correction_message: '' }),
+    )
+
+    await reactive.start()
+    const event = makeBrainCompleteEvent('thread-t033-v4', 'cortex', {
+      outputSlot: { status: 'done', output: null },
+      stopReason: 'done',
+    })
+    await bus._trigger(event)
+
+    expect(callLlmSpy).toHaveBeenCalled()
+
+    await reactive.stop()
+  })
+})
+
+// ─── T034: Episodic handoff content ───────────────────────────────────────────
+
+describe('T034 — Episodic handoff content', () => {
+  it('V5: includes handoff content in episodic record', async () => {
+    const { config, ws, bus } = makeDmnConfig()
+    const reactive = new DmnReactive(config)
+    await reactive.start()
+
+    const handoffText = 'User asked about billing; routing to execution layer'
+    const event = makeBrainCompleteEvent('thread-t034-v5', 'cortex', {
+      outputSlot: { status: 'done', output: { next: 'brainstem', reply: null, handoff: handoffText } },
+      stopReason: 'done',
+    })
+    await bus._trigger(event)
+
+    const episodic = ws._memories.filter((m) => m.type === 'episodic')
+    expect(episodic.length).toBeGreaterThan(0)
+    const content = JSON.parse(episodic[0]?.content ?? '{}') as {
+      handoff: string | null
+      next: string | null
+      hasReply: boolean
+    }
+    expect(content.handoff).toBe(handoffText)
+    expect(content.next).toBe('brainstem')
+    expect(content.hasReply).toBe(false)
+
+    await reactive.stop()
+  })
+
+  it('V6: writes null for handoff when output has no handoff field', async () => {
+    const { config, ws, bus } = makeDmnConfig()
+    const reactive = new DmnReactive(config)
+    await reactive.start()
+
+    const event = makeBrainCompleteEvent('thread-t034-v6', 'cortex', {
+      outputSlot: { status: 'done', output: { next: null, reply: 'Done' } },
+      stopReason: 'done',
+    })
+    await bus._trigger(event)
+
+    const episodic = ws._memories.filter((m) => m.type === 'episodic')
+    const content = JSON.parse(episodic[0]?.content ?? '{}') as {
+      handoff: unknown
+      hasReply: boolean
+    }
+    expect(content.handoff).toBeNull()
+    expect(content.hasReply).toBe(true)
+
+    await reactive.stop()
+  })
+
+  it('V7: treats empty string handoff as null', async () => {
+    const { config, ws, bus } = makeDmnConfig()
+    const reactive = new DmnReactive(config)
+    await reactive.start()
+
+    const event = makeBrainCompleteEvent('thread-t034-v7', 'cortex', {
+      outputSlot: { status: 'done', output: { next: 'brainstem', handoff: '' } },
+      stopReason: 'done',
+    })
+    await bus._trigger(event)
+
+    const episodic = ws._memories.filter((m) => m.type === 'episodic')
+    const content = JSON.parse(episodic[0]?.content ?? '{}') as { handoff: unknown }
+    expect(content.handoff).toBeNull()
+
+    await reactive.stop()
+  })
+
+  it('V8: episodic write succeeds even when correction is skipped (parallel independence)', async () => {
+    const { config, ws, bus } = makeDmnConfig()
+    const reactive = new DmnReactive(config)
+    await reactive.start()
+
+    // Healthy event — correction will be skipped by pre-check
+    const event = makeBrainCompleteEvent('thread-t034-v8', 'cortex', {
+      outputSlot: { status: 'done', output: { next: 'brainstem', reply: null } },
+      stopReason: 'done',
+      injectedMemoryIds: [],
+    })
+    await bus._trigger(event)
+
+    // Episodic write happened despite correction being skipped
+    const episodic = ws._memories.filter((m) => m.type === 'episodic')
+    expect(episodic.length).toBeGreaterThan(0)
 
     await reactive.stop()
   })

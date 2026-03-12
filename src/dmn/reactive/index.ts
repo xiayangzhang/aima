@@ -238,6 +238,7 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
       status: outputSlot?.status,
       next: (output as Record<string, unknown> | undefined)?.next,
       hasReply: (output as Record<string, unknown> | undefined)?.reply != null,
+      handoff: (output as Record<string, unknown> | undefined)?.handoff || null,
       stopReason: payload.stopReason,
       timestamp: new Date().toISOString(),
     })
@@ -272,6 +273,16 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
     const { brain, thread_id, payload } = event
     if (!thread_id) return
 
+    // Rule pre-check: only run LLM correction if there's a clear anomaly signal
+    const outputSlot = payload.outputSlot as Record<string, unknown> | undefined
+    const output = outputSlot?.output as Record<string, unknown> | undefined
+
+    const hasError = outputSlot?.status === 'error'
+    const hasErrorStop = payload.stopReason === 'error'
+    const hasNoOutput = output == null
+
+    if (!hasError && !hasErrorStop && !hasNoOutput) return // healthy output — skip
+
     const windowSize = this.config.retroactionWindowSize ?? 20
 
     const recentEvents = await this.config.workspace.searchMemory({
@@ -283,7 +294,6 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
 
     if (recentEvents.length < 2) return
 
-    const outputSlot = payload.outputSlot as Record<string, unknown> | undefined
     const prompt = `You are reviewing recent brain activity for potential errors requiring correction.
 
 Brain: ${brain}
