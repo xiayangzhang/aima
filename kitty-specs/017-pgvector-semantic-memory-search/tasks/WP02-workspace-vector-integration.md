@@ -1,7 +1,7 @@
 ---
 work_package_id: WP02
 title: Workspace Vector Integration
-lane: planned
+lane: "for_review"
 dependencies:
 - WP01
 subtasks:
@@ -399,3 +399,7 @@ bun test tests/unit/workspace/
 - 验证 T007/T008 的 fallback 是真正的 fallback（向量无结果才 fallback，不是总是执行两次）
 - 验证 `MemoryEntry` 类型未新增 `embedding` 字段
 - 运行 `bun test` 确认零回归
+
+## Activity Log
+
+- 2026-03-12T13:45:15Z – unknown – lane=for_review – Moved to for_review
