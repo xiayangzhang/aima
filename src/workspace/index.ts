@@ -255,10 +255,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
   }
 
   async getActiveThreads(): Promise<Thread[]> {
-    const rows = await this.db
-      .select()
-      .from(threads)
-      .where(eq(threads.state, 'active'))
+    const rows = await this.db.select().from(threads).where(eq(threads.state, 'active'))
     return rows.map(mapThreadRow)
   }
 
