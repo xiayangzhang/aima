@@ -49,7 +49,7 @@ description: "Work package task list for Feature 013 — Brain Output Model Migr
 **Prompt**: `tasks/WP02-thread-runner-rewrite.md`
 
 ### Included Subtasks
-- [ ] T006 Rewrite Limbic routing branch (`mode` series → `BrainOutput.next`)
+- [x] T006 Rewrite Limbic routing branch (`mode` series → `BrainOutput.next`)
 - [ ] T007 Rewrite Cortex routing branch (`intent` enum → `BrainOutput.next`), remove `intent=both` hardcode
 - [ ] T008 Rewrite Brainstem routing branch (remove `cortexOutput.intent` dependency, read `BrainOutput.next`)
 - [ ] T009 Implement `reply` event emission (`eventBus.emit({ event_type: 'thread.reply', ... })`)
