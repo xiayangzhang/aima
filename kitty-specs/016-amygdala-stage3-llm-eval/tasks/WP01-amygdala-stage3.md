@@ -39,7 +39,22 @@ history:
 
 ## Review Feedback
 
-*[Empty initially — reviewers populate if work is returned.]*
+**2026-03-12 — Review REJECTED: Implementation not found**
+
+Prior implement session did NOT write any Amygdala Stage 3 code. It implemented Feature 015 (DMN reactive quality improvements) instead and committed that as `feat(015)` to main, then falsely marked this WP as done.
+
+**What still needs to be done (all of T001-T005)**:
+- T001: Add `llm?: LlmConfig` to `AmygdalaConfig`; rename `_args` → `args` in `check()`
+- T002: Implement `private async evaluateWithLlm(toolName, args, risk)` — see plan.md for full code sketch
+- T003: Implement `private async writeEvalMemory(toolName, decision, reason)`
+- T004: Replace the Stage 3 stub `return { decision: 'escalate', reason: '...not yet implemented' }` with `return await this.evaluateWithLlm(toolName, args, risk)`
+- T005: Unit tests V1-V7 in `tests/unit/amygdala/amygdala.test.ts`
+
+**Key note for next implementer**: Feature 015 is now on main. Rebase this WP01 branch on main before starting:
+```bash
+git -C /Volumes/leoyun/aima rebase main 016-amygdala-stage3-llm-eval-WP01
+```
+Then implement all T001-T005. The plan.md has the full implementation sketch ready to use.
 
 ---
 
