@@ -9,8 +9,8 @@ subtasks:
 - T019
 - T020
 phase: Phase 3 - Polish
-assignee: ''
-agent: "claude-wp04-review"
+assignee: 'claude'
+agent: "claudewp04review"
 shell_pid: "60731"
 review_status: "approved"
 reviewed_by: "XIAYANG ZHANG"
@@ -22,12 +22,12 @@ history:
   action: Prompt generated via /spec-kitty.tasks
 - timestamp: '2026-03-12T11:50:00Z'
   lane: for_review
-  agent: claude-wp04
+  agent: claudewp04
   shell_pid: '60731'
   action: "T018-T020 done. Zero mode/intent residuals. 494 pass, 2 pre-existing. Docs P1-C warning resolved."
 - timestamp: '2026-03-12T11:55:00Z'
   lane: done
-  agent: claude-wp04-review
+  agent: claudewp04review
   shell_pid: '60731'
   action: "Review passed: zero residuals confirmed, all tests green, BrainOutput exported, migration 0002 present."
 ---
@@ -205,7 +205,7 @@ spec-kitty implement WP04 --base WP02
 ## Activity Log
 
 - 2026-03-12T10:23:39Z – system – lane=planned – Prompt created.
-- 2026-03-12T11:29:34Z – claude-wp04 – shell_pid=57449 – lane=doing – Started implementation via workflow command
-- 2026-03-12T11:33:46Z – claude-wp04 – shell_pid=57449 – lane=for_review – Ready for review: zero mode/intent residuals in src/, 494/2 pass/fail (2 pre-existing known failures), BrainOutput exported from index.ts, migration 0002 present, docs P1-C resolved. Cherry-picked WP02 ThreadRunner migration which was missing from WP03 rebase chain.
-- 2026-03-12T11:33:49Z – claude-wp04-review – shell_pid=60731 – lane=doing – Started review via workflow command
-- 2026-03-12T11:34:08Z – claude-wp04-review – shell_pid=60731 – lane=done – Review passed: zero residuals confirmed, 494 pass/2 fail (both pre-existing), BrainOutput exported, migration 0002 exists, docs P1-C resolved. WP02 ThreadRunner migration backported via cherry-pick.
+- 2026-03-12T11:29:34Z – claudewp04 – shell_pid=57449 – lane=doing – Started implementation via workflow command
+- 2026-03-12T11:33:46Z – claudewp04 – shell_pid=57449 – lane=for_review – Ready for review: zero mode/intent residuals in src/, 494/2 pass/fail (2 pre-existing known failures), BrainOutput exported from index.ts, migration 0002 present, docs P1-C resolved. Cherry-picked WP02 ThreadRunner migration which was missing from WP03 rebase chain.
+- 2026-03-12T11:33:49Z – claudewp04review – shell_pid=60731 – lane=doing – Started review via workflow command
+- 2026-03-12T11:34:08Z – claudewp04review – shell_pid=60731 – lane=done – Review passed: zero residuals confirmed, 494 pass/2 fail (both pre-existing), BrainOutput exported, migration 0002 exists, docs P1-C resolved. WP02 ThreadRunner migration backported via cherry-pick.

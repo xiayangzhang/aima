@@ -283,7 +283,7 @@ nextBrain = next
 
 ## Gates
 
-- ✅ 无 `[NEEDS CLARIFICATION]` 标记
+- ✅ 无未解决的澄清标记
 - ✅ 无新外部依赖
 - ✅ 变更范围清晰（5 个源文件 + 1 个 schema 文件 + 1 个 migration）
 - ✅ 现有 407 项测试是定量验证基准

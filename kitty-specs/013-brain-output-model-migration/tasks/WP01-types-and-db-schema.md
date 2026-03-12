@@ -9,7 +9,7 @@ subtasks:
 title: "Types + DB Schema Foundation"
 phase: "Phase 1 - Foundation"
 lane: "done"
-assignee: ""
+assignee: "claude"
 agent: "claude"
 shell_pid: "36896"
 review_status: "approved"
