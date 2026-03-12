@@ -25,10 +25,10 @@
 **Goal**: 两处私有方法改动 + 测试更新，完成 P2-A 和 P2-B。
 
 **Subtasks**:
-- [ ] T001 — `retroactiveCorrection()` 规则预检
-- [ ] T002 — `buildEpisodicContent()` handoff 字段
-- [ ] T003 — 测试：纠错预过滤行为（V1-V4 场景）
-- [ ] T004 — 测试：episodic handoff 内容（V5-V8 场景）
+- [x] T001 — `retroactiveCorrection()` 规则预检
+- [x] T002 — `buildEpisodicContent()` handoff 字段
+- [x] T003 — 测试：纠错预过滤行为（V1-V4 场景）
+- [x] T004 — 测试：episodic handoff 内容（V5-V8 场景）
 
 **Independent test**:
 ```bash
@@ -39,5 +39,5 @@ cd /Volumes/leoyun/aima && bun test tests/unit/dmn/
 
 ## Definition of Done
 
-- [ ] WP01 lane = done (reviewed and approved)
-- [ ] `bun test` 全量零回归
+- [x] WP01 lane = done (reviewed and approved)
+- [x] `bun test` 全量零回归
