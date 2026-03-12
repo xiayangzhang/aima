@@ -1,7 +1,7 @@
 ---
 work_package_id: WP04
 title: Final Cleanup + Validation
-lane: planned
+lane: "doing"
 dependencies:
 - WP02
 subtasks:
@@ -10,8 +10,8 @@ subtasks:
 - T020
 phase: Phase 3 - Polish
 assignee: ''
-agent: ''
-shell_pid: ''
+agent: "claude-wp04"
+shell_pid: "57449"
 review_status: ''
 reviewed_by: ''
 history:
@@ -195,3 +195,4 @@ spec-kitty implement WP04 --base WP02
 ## Activity Log
 
 - 2026-03-12T10:23:39Z – system – lane=planned – Prompt created.
+- 2026-03-12T11:29:34Z – claude-wp04 – shell_pid=57449 – lane=doing – Started implementation via workflow command
