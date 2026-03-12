@@ -1,11 +1,20 @@
 import { randomUUID } from 'node:crypto'
-import Anthropic from '@anthropic-ai/sdk'
+import { getModel } from '@mariozechner/pi-ai'
+import {
+  AuthStorage,
+  DefaultResourceLoader,
+  ModelRegistry,
+  SessionManager,
+  createAgentSession,
+} from '@mariozechner/pi-coding-agent'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
 import type { BrainAdapter } from './adapters/index'
 import { PiAgentAdapter } from './adapters/pi-agent/index'
+import { createAimaExtension } from './adapters/pi-coding-agent/extension'
 import { PiCodingAgentAdapter } from './adapters/pi-coding-agent/index'
+import { buildMcpTools } from './adapters/pi-coding-agent/mcp-tools'
 import { Amygdala } from './amygdala/index'
 import type { BrainIdentity, ContextAssemblerConfig } from './context/index'
 import type { DmnConfig } from './dmn/index'
@@ -75,8 +84,10 @@ export interface AIMAInstanceConfig {
    */
   reloadOnRun?: boolean
   /**
-   * @internal Testing escape hatch: override the LLM query used for sub-execution.
-   * Prevents real API calls in unit tests.
+   * @internal Testing escape hatch: override the sub-execution LLM query.
+   * When provided, bypasses pi-coding-agent session creation entirely.
+   * Use this in unit tests to avoid real API calls and session setup.
+   * Signature matches SpawnExecutionSessionFn's inner logic.
    */
   _subQueryFn?: (prompt: string, model: string) => Promise<string>
 }
@@ -304,7 +315,8 @@ export class AIMAInstance {
   // ── Sub-Execution ─────────────────────────────────────────────────────────────
 
   /**
-   * Spawn an independent sub-execution session.
+   * Spawn an independent sub-execution session via pi-coding-agent.
+   * Uses Amygdala tool interception and EventBus tool events.
    * Used as the SpawnExecutionSessionFn injected into createAimaMcpServer().
    */
   private async spawnSubExecution(params: {
@@ -326,15 +338,11 @@ export class AIMAInstance {
     if (this._config._subQueryFn) {
       result = await this._config._subQueryFn(params.taskDescription, resolvedModel)
     } else {
-      const apiKey = this._config.apiKey ?? process.env.ANTHROPIC_API_KEY
-      const client = new Anthropic({ ...(apiKey !== undefined ? { apiKey } : {}) })
-      const response = await client.messages.create({
-        model: resolvedModel,
-        max_tokens: 8192,
-        messages: [{ role: 'user', content: params.taskDescription }],
-      })
-      const textBlock = response.content.find((b) => b.type === 'text')
-      result = textBlock?.type === 'text' ? textBlock.text : ''
+      result = await this.runSubExecutionViaPiAgent(
+        params.taskDescription,
+        resolvedModel,
+        executionSessionId,
+      )
     }
 
     this.eventBus.emit({
@@ -346,6 +354,72 @@ export class AIMAInstance {
     })
 
     return { executionSessionId, result }
+  }
+
+  private async runSubExecutionViaPiAgent(
+    taskDescription: string,
+    modelId: string,
+    executionSessionId: string,
+  ): Promise<string> {
+    const authStorage = AuthStorage.inMemory()
+    const apiKey = this._config.apiKey ?? process.env.ANTHROPIC_API_KEY
+    if (apiKey !== undefined) {
+      authStorage.setRuntimeApiKey('anthropic', apiKey)
+    }
+
+    const modelRegistry = new ModelRegistry(authStorage)
+    const model = getModel('anthropic', modelId as Parameters<typeof getModel>[1])
+
+    // Wire Amygdala + EventBus — same infrastructure as main brain sessions
+    const extensionFactory = createAimaExtension(
+      'brainstem',
+      executionSessionId,
+      this.amygdala,
+      this.eventBus,
+      this.identityCache?.roles.brainstem?.allowedTools,
+    )
+
+    const loader = new DefaultResourceLoader({
+      noSkills: true,
+      noPromptTemplates: true,
+      noThemes: true,
+      systemPromptOverride: () =>
+        'You are a sub-execution agent. Complete the task provided and report your findings concisely.',
+      extensionFactories: [extensionFactory],
+    })
+    await loader.reload()
+
+    const mcpTools = buildMcpTools(this.workspace)
+    const sessionManager = SessionManager.inMemory()
+
+    const { session } = await createAgentSession({
+      model,
+      authStorage,
+      modelRegistry,
+      sessionManager,
+      resourceLoader: loader,
+      customTools: mcpTools,
+    })
+
+    await session.prompt(taskDescription)
+
+    // Extract last assistant text from completed session messages
+    const messages = session.messages
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (
+        msg !== undefined &&
+        'role' in msg &&
+        msg.role === 'assistant' &&
+        Array.isArray(msg.content)
+      ) {
+        const textBlock = (msg.content as Array<{ type: string; text?: string }>).find(
+          (c) => c.type === 'text',
+        )
+        if (textBlock?.text) return textBlock.text
+      }
+    }
+    return ''
   }
 
   // ── Internals ────────────────────────────────────────────────────────────────
