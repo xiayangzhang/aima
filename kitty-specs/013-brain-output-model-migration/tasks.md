@@ -55,7 +55,7 @@ description: "Work package task list for Feature 013 — Brain Output Model Migr
 - [x] T009 Implement `reply` event emission (`eventBus.emit({ event_type: 'thread.reply', ... })`)
 - [x] T010 Implement `handoff` passing (write to next brain's input slot before `activateBrain()`)
 - [x] T011 Implement legal transition validation (`isLegalTransition` → `updateThreadState('interrupted')`)
-- [ ] T012 Update `tests/unit/thread-runner.test.ts` + `tests/integration/brain-runtime/thread-lifecycle.test.ts` mock output format
+- [x] T012 Update `tests/unit/thread-runner.test.ts` + `tests/integration/brain-runtime/thread-lifecycle.test.ts` mock output format
 
 ### Implementation Notes
 - T006/T007/T008 all modify the same `route()` method in sequence; implement together to avoid partial states.
