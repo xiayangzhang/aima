@@ -8,10 +8,10 @@ subtasks:
   - "T005"
 title: "Amygdala Stage 3"
 phase: "Phase 1 - Implementation"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude"
+shell_pid: "54209"
 review_status: ""
 dependencies: []
 history:
@@ -380,3 +380,4 @@ await amygdala.check('custom_tool', {})  // 不被 Stage 1 block，进入 Stage 
 ## Activity Log
 
 - 2026-03-12T11:40:00Z – system – lane=planned – Prompt created.
+- 2026-03-12T12:41:29Z – claude – shell_pid=54209 – lane=doing – Started implementation via workflow command
