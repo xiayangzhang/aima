@@ -27,7 +27,7 @@
 - [x] T001 — `ICognitiveWorkspace` 接口新增 `getSessionContext` 签名
 - [x] T002 — `src/schema/memories.ts` 新增 `sessionId` 索引 + migration SQL
 - [x] T003 — `src/workspace/index.ts` 实现 `getSessionContext`
-- [ ] T004 — `tests/unit/workspace/workspace-session-context.test.ts` 单元测试
+- [x] T004 — `tests/unit/workspace/workspace-session-context.test.ts` 单元测试
 
 **Parallelization**: 无（T001→T002→T003→T004 顺序依赖）
 **Risks**: `asc` import 需确认已从 drizzle-orm 导入；注意 `forgotten=false` 过滤与其他方法保持一致
