@@ -104,7 +104,7 @@ description: "Work package task list for Feature 013 — Brain Output Model Migr
 - [x] T014 `shouldStartNewSegment`: `output?.mode === 'ROUTE'` → `output?.next === 'cortex'`; `output?.mode === 'RESPOND'` → `output?.reply != null && !output?.next`
 - [x] T015 `evaluateOutcome`: `output?.mode === 'RESPOND'` → `output?.reply != null`; `output?.mode === 'EXECUTE'` → `output?.next === 'brainstem'`
 - [x] T016 `buildEpisodicContent`: replace `mode`/`intent` fields with `next`/`hasReply` in serialized content
-- [ ] T017 Update all DMN test files (`helpers.ts` + 4 test files) — change mock output from `{ mode: '...' }` to `{ next: '...', reply: '...' }`
+- [x] T017 Update all DMN test files (`helpers.ts` + 4 test files) — change mock output from `{ mode: '...' }` to `{ next: '...', reply: '...' }`
 
 ### Implementation Notes
 - All 4 source changes (T013-T016) are in `src/dmn/reactive/index.ts` — do them in one pass.
