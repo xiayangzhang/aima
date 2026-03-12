@@ -1,8 +1,22 @@
 {
+  "accept_commit": null,
+  "acceptance_history": [
+    {
+      "accepted_at": "2026-03-12T12:05:03Z",
+      "accepted_by": "claude",
+      "accepted_from_commit": "15a769c96d9249ff7d2cce28717f2c25dac8397d",
+      "branch": "main",
+      "mode": "local"
+    }
+  ],
+  "acceptance_mode": "local",
+  "accepted_at": "2026-03-12T12:05:03Z",
+  "accepted_by": "claude",
+  "accepted_from_commit": "15a769c96d9249ff7d2cce28717f2c25dac8397d",
+  "created_at": "2026-03-12T00:00:00.000Z",
   "feature_number": "013",
-  "slug": "013-brain-output-model-migration",
   "friendly_name": "Brain Output Model Migration",
   "mission": "software-dev",
-  "source_description": "Feature 013 — Output Model Migration：将所有脑区的输出模型从 mode/intent 枚举迁移到 {next?, reply?, handoff?} 三字段解耦结构。当前 Limbic 用 mode 枚举（RESPOND/NO_REPLY/ROUTE/EXECUTE/DEFER），Cortex 用 intent 枚举（communicate/execute/both），导致无法同时表达「回复用户 + 路由给下一脑区」，且 Brainstem 完成后无法自主路由回 Limbic。迁移后三字段完全独立：next 是路由指令，reply 是对外输出，handoff 是脑间上下文，解除所有耦合。同时修复 routePending 对 Cortex/Brainstem 发起的 pending 创建新 Thread 而非路由到目标脑区的问题。",
-  "created_at": "2026-03-12T00:00:00.000Z"
+  "slug": "013-brain-output-model-migration",
+  "source_description": "Feature 013 \u2014 Output Model Migration\uff1a\u5c06\u6240\u6709\u8111\u533a\u7684\u8f93\u51fa\u6a21\u578b\u4ece mode/intent \u679a\u4e3e\u8fc1\u79fb\u5230 {next?, reply?, handoff?} \u4e09\u5b57\u6bb5\u89e3\u8026\u7ed3\u6784\u3002\u5f53\u524d Limbic \u7528 mode \u679a\u4e3e\uff08RESPOND/NO_REPLY/ROUTE/EXECUTE/DEFER\uff09\uff0cCortex \u7528 intent \u679a\u4e3e\uff08communicate/execute/both\uff09\uff0c\u5bfc\u81f4\u65e0\u6cd5\u540c\u65f6\u8868\u8fbe\u300c\u56de\u590d\u7528\u6237 + \u8def\u7531\u7ed9\u4e0b\u4e00\u8111\u533a\u300d\uff0c\u4e14 Brainstem \u5b8c\u6210\u540e\u65e0\u6cd5\u81ea\u4e3b\u8def\u7531\u56de Limbic\u3002\u8fc1\u79fb\u540e\u4e09\u5b57\u6bb5\u5b8c\u5168\u72ec\u7acb\uff1anext \u662f\u8def\u7531\u6307\u4ee4\uff0creply \u662f\u5bf9\u5916\u8f93\u51fa\uff0chandoff \u662f\u8111\u95f4\u4e0a\u4e0b\u6587\uff0c\u89e3\u9664\u6240\u6709\u8026\u5408\u3002\u540c\u65f6\u4fee\u590d routePending \u5bf9 Cortex/Brainstem \u53d1\u8d77\u7684 pending \u521b\u5efa\u65b0 Thread \u800c\u975e\u8def\u7531\u5230\u76ee\u6807\u8111\u533a\u7684\u95ee\u9898\u3002"
 }
