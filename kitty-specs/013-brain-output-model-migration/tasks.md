@@ -102,7 +102,7 @@ description: "Work package task list for Feature 013 — Brain Output Model Migr
 ### Included Subtasks
 - [x] T013 `handleEvent` DEFER detection: `output?.mode === 'DEFER'` → `output?.next === 'self'`
 - [x] T014 `shouldStartNewSegment`: `output?.mode === 'ROUTE'` → `output?.next === 'cortex'`; `output?.mode === 'RESPOND'` → `output?.reply != null && !output?.next`
-- [ ] T015 `evaluateOutcome`: `output?.mode === 'RESPOND'` → `output?.reply != null`; `output?.mode === 'EXECUTE'` → `output?.next === 'brainstem'`
+- [x] T015 `evaluateOutcome`: `output?.mode === 'RESPOND'` → `output?.reply != null`; `output?.mode === 'EXECUTE'` → `output?.next === 'brainstem'`
 - [ ] T016 `buildEpisodicContent`: replace `mode`/`intent` fields with `next`/`hasReply` in serialized content
 - [ ] T017 Update all DMN test files (`helpers.ts` + 4 test files) — change mock output from `{ mode: '...' }` to `{ next: '...', reply: '...' }`
 
