@@ -8,10 +8,10 @@ subtasks:
   - "T017"
 title: "DMN Reactive Updates"
 phase: "Phase 2 - Core Logic"
-lane: "planned"
+lane: "doing"
 assignee: ""
-agent: ""
-shell_pid: ""
+agent: "claude-wp03"
+shell_pid: "48454"
 review_status: ""
 reviewed_by: ""
 dependencies: ["WP01"]
@@ -314,3 +314,4 @@ cd /Volumes/leoyun/aima && bun test tests/unit/dmn/ tests/integration/dmn/
 ## Activity Log
 
 - 2026-03-12T10:23:39Z – system – lane=planned – Prompt created.
+- 2026-03-12T11:21:10Z – claude-wp03 – shell_pid=48454 – lane=doing – Started implementation via workflow command
