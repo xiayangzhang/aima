@@ -8,7 +8,7 @@ subtasks:
   - "T005"
 title: "Embedding Infrastructure"
 phase: "Phase 1 - Infrastructure"
-lane: "planned"
+lane: "for_review"
 assignee: ""
 agent: "claude"
 shell_pid: "85631"
@@ -289,3 +289,4 @@ export interface CognitiveWorkspaceConfig {
 
 - 2026-03-12T13:06:30Z – claude – shell_pid=85631 – lane=doing – Started review via workflow command
 - 2026-03-12T13:07:08Z – claude – shell_pid=85631 – lane=planned – Released — accidentally claimed during 016 review; no review performed
+- 2026-03-12T13:45:09Z – claude – shell_pid=85631 – lane=for_review – Moved to for_review
