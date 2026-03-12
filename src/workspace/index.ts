@@ -17,8 +17,8 @@ import {
   max,
   sql,
 } from 'drizzle-orm'
-import { cosineDistance } from 'drizzle-orm/sql/functions'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
+import { cosineDistance } from 'drizzle-orm/sql/functions'
 import type { BrainSignal, BrainSignalType } from '../adapters/index'
 import type { EmbeddingConfig } from '../embedding'
 import { generateEmbedding } from '../embedding'
@@ -59,6 +59,7 @@ function mapThreadRow(row: typeof threads.$inferSelect): Thread {
     sourceChannel: row.sourceChannel,
     initiatedBy: row.initiatedBy,
     trigger: row.trigger,
+    goal: row.goal ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -125,6 +126,31 @@ function mapMemoryRow(row: typeof memories.$inferSelect): MemoryEntry {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function extractRelatedEntityIds(entries: MemoryEntry[], max: number): string[] {
+  const ids: string[] = []
+  for (const entry of entries) {
+    if (entry.type !== 'semantic') continue
+    try {
+      const parsed = JSON.parse(entry.content) as Record<string, unknown>
+      const relatedEntityId = (parsed.related_to as Record<string, unknown> | undefined)
+        ?.related_entity_id
+      if (
+        typeof relatedEntityId === 'string' &&
+        relatedEntityId &&
+        !ids.includes(relatedEntityId)
+      ) {
+        ids.push(relatedEntityId)
+        if (ids.length >= max) break
+      }
+    } catch {
+      // skip non-JSON content or missing fields
+    }
+  }
+  return ids
 }
 
 // ─── CognitiveWorkspace ────────────────────────────────────────────────────────
@@ -220,6 +246,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
         initiatedBy: params.initiatedBy,
         trigger: params.trigger ?? null,
         sourceChannel: params.sourceChannel ?? null,
+        goal: params.goal ?? null,
       })
       .returning()
 
@@ -423,11 +450,9 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
   }
 
   private async generateAndStoreEmbedding(id: string, content: string): Promise<void> {
+    // biome-ignore lint/style/noNonNullAssertion: only called when this.options.embedding != null
     const embedding = await generateEmbedding(content, this.options.embedding!)
-    await this.db
-      .update(memories)
-      .set({ embedding })
-      .where(eq(memories.id, id))
+    await this.db.update(memories).set({ embedding }).where(eq(memories.id, id))
   }
 
   async searchMemory(filters: MemorySearchFilters): Promise<MemoryEntry[]> {
@@ -623,28 +648,47 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
 
   // ── Brain-Specific Retrieval ─────────────────────────────────────────────────
 
-  async getEntityContext(
+  private async _fetchEntityMemories(
     entityId: string,
-    opts?: { types?: MemoryType[]; limit?: number },
+    types?: MemoryType[],
+    limit = 10,
   ): Promise<MemoryEntry[]> {
     const conditions = [
       eq(memories.entityId, entityId),
       eq(memories.forgotten, false),
       isNull(memories.tInvalid),
     ]
-
-    if (opts?.types && opts.types.length > 0) {
-      conditions.push(inArray(memories.type, opts.types))
+    if (types && types.length > 0) {
+      conditions.push(inArray(memories.type, types))
     }
-
     const rows = await this.db
       .select()
       .from(memories)
       .where(and(...conditions))
       .orderBy(desc(memories.baseImportance), desc(memories.lastAccessedAt))
-      .limit(opts?.limit ?? 10)
-
+      .limit(limit)
     return rows.map(mapMemoryRow)
+  }
+
+  async getEntityContext(
+    entityId: string,
+    opts?: {
+      depth?: number // default 1, clamped to max 2
+      types?: MemoryType[]
+      limit?: number // default 10
+    },
+  ): Promise<MemoryEntry[]> {
+    const depth = Math.min(opts?.depth ?? 1, 2)
+    const anchorRows = await this._fetchEntityMemories(entityId, opts?.types, opts?.limit ?? 10)
+    if (depth < 2) return anchorRows
+
+    const relatedEntityIds = extractRelatedEntityIds(anchorRows, 5)
+    if (relatedEntityIds.length === 0) return anchorRows
+
+    const relatedResults = await Promise.all(
+      relatedEntityIds.map((relId) => this._fetchEntityMemories(relId, opts?.types, 3)),
+    )
+    return [...anchorRows, ...relatedResults.flat()]
   }
 
   async findSimilarSituations(
@@ -820,7 +864,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     if (rows.length === 0) return { anchor: null, events: [] }
 
     const events = rows.map(mapMemoryRow)
-    return { anchor: events[0], events }
+    return { anchor: events[0] ?? null, events }
   }
 
   /**

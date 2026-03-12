@@ -1,5 +1,5 @@
-import { callLlm, parseLlmJson, type LlmConfig } from '../llm'
 import type { BrainEventBus } from '../eventbus/index'
+import { type LlmConfig, callLlm, parseLlmJson } from '../llm'
 import type { CognitiveWorkspace } from '../workspace/index'
 
 // ─── Risk & Decision Types ────────────────────────────────────────────────────
@@ -78,8 +78,13 @@ export class Amygdala {
         const sorted = history.sort(
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         )
+        // biome-ignore lint/style/noNonNullAssertion: history.length > 0 guard above
         const recent = sorted[0]!
-        const parsed = JSON.parse(recent.content) as { tool: string; decision: string; reason: string }
+        const parsed = JSON.parse(recent.content) as {
+          tool: string
+          decision: string
+          reason: string
+        }
         const validDecisions: AmygdalaDecision[] = ['allow', 'block', 'escalate']
         if (validDecisions.includes(parsed.decision as AmygdalaDecision)) {
           return {

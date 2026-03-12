@@ -38,6 +38,7 @@ export interface Thread {
   sourceChannel: string | null // null = DMN-initiated, no external channel
   initiatedBy: string // 'dmn' | 'external:teams' | 'external:webhook' etc.
   trigger: string | null
+  goal: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -100,6 +101,7 @@ export interface CreateThreadParams {
   trigger?: string
   initiatedBy: string
   sourceChannel?: string | null
+  goal?: string
 }
 
 export interface WriteSlotParams {
@@ -173,7 +175,11 @@ export interface ICognitiveWorkspace {
   invalidateMemory(id: string): Promise<void>
   getEntityContext(
     entityId: string,
-    opts?: { types?: MemoryType[]; limit?: number },
+    opts?: {
+      depth?: number // default 1, clamped to max 2
+      types?: MemoryType[]
+      limit?: number // default 10
+    },
   ): Promise<MemoryEntry[]>
   findSimilarSituations(
     situation: string,
@@ -186,6 +192,10 @@ export interface ICognitiveWorkspace {
     limit?: number,
   ): Promise<MemoryEntry[]>
   // ── DMN Segment Tracking ─────────────────────────────────────────────────
+  getSegmentSequence(segmentId: string): Promise<MemoryEntry[]>
+  getSegmentsByTimeRange(range: { from: Date; to: Date }): Promise<
+    Array<{ segmentId: string; eventCount: number; avgImportance: number; maxCreatedAt: Date }>
+  >
   getSessionContext(sessionId: string): Promise<{
     anchor: MemoryEntry | null
     events: MemoryEntry[]
