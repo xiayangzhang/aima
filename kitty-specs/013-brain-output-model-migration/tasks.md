@@ -53,7 +53,7 @@ description: "Work package task list for Feature 013 — Brain Output Model Migr
 - [x] T007 Rewrite Cortex routing branch (`intent` enum → `BrainOutput.next`), remove `intent=both` hardcode
 - [x] T008 Rewrite Brainstem routing branch (remove `cortexOutput.intent` dependency, read `BrainOutput.next`)
 - [x] T009 Implement `reply` event emission (`eventBus.emit({ event_type: 'thread.reply', ... })`)
-- [ ] T010 Implement `handoff` passing (write to next brain's input slot before `activateBrain()`)
+- [x] T010 Implement `handoff` passing (write to next brain's input slot before `activateBrain()`)
 - [ ] T011 Implement legal transition validation (`isLegalTransition` → `updateThreadState('interrupted')`)
 - [ ] T012 Update `tests/unit/thread-runner.test.ts` + `tests/integration/brain-runtime/thread-lifecycle.test.ts` mock output format
 
