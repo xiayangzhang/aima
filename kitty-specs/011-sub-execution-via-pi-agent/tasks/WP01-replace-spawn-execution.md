@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Replace spawnSubExecution with pi-coding-agent session
-lane: "for_review"
+lane: "doing"
 dependencies: []
 subtasks:
 - T001
@@ -10,7 +10,7 @@ subtasks:
 phase: Phase 1 - Implementation
 assignee: ''
 agent: "claude-sonnet-4-6"
-shell_pid: "42204"
+shell_pid: "47492"
 review_status: ''
 reviewed_by: ''
 history:
@@ -323,3 +323,4 @@ expect(queryFn).toHaveBeenCalledWith('task', 'claude-opus-4-6')
 
 - 2026-03-12T00:05:23Z – claude-sonnet-4-6 – shell_pid=42204 – lane=doing – Started implementation via workflow command
 - 2026-03-12T00:08:09Z – claude-sonnet-4-6 – shell_pid=42204 – lane=for_review – Ready for review: replaced spawnSubExecution with pi-coding-agent session; @anthropic-ai/sdk Anthropic import removed; runSubExecutionViaPiAgent() added with Amygdala + EventBus wired; 5 unit tests green; typecheck + biome clean; 399 pass 0 fail
+- 2026-03-12T00:09:53Z – claude-sonnet-4-6 – shell_pid=47492 – lane=doing – Started review via workflow command
