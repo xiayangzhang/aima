@@ -1,0 +1,8 @@
+{
+  "feature_number": "030",
+  "slug": "030-episodic-cognitive-summary",
+  "friendly_name": "Episodic Cognitive Summary",
+  "mission": "software-dev",
+  "source_description": "Feature 030 — Episodic Cognitive Summary：升级 buildEpisodicContent，在 episodic 记录中加入 situation 字段。发现 payload.outputSlot 从未被填充，所有 DMN reactive 的 brain.complete 处理逻辑都在读 undefined。",
+  "created_at": "2026-03-13T00:00:00.000Z"
+}
