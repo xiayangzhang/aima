@@ -324,6 +324,145 @@ describe('DmnReactive', () => {
     })
   })
 
+  describe('buildEpisodicContent: cognitive summary format', () => {
+    // Helper: dispatch a brain.complete event and capture the content written to episodic memory
+    async function captureEpisodicContent(
+      overrides: Partial<BrainEvent> = {},
+    ): Promise<string | null> {
+      const config = makeConfig()
+      const reactive = new DmnReactive(config)
+      await reactive.start()
+      const bus = config.eventBus as unknown as { _dispatch: (e: BrainEvent) => void }
+
+      bus._dispatch(
+        makeEvent({
+          event_type: 'brain.complete',
+          brain: 'limbic',
+          thread_id: 'thread-test',
+          payload: {},
+          ...overrides,
+        }),
+      )
+      await new Promise((r) => setTimeout(r, 10))
+
+      const calls = (config.workspace.writeMemory as ReturnType<typeof mock>).mock.calls
+      const episodicCall = calls.find((c) => (c[0] as { type?: string }).type === 'episodic')
+      return episodicCall ? (episodicCall[0] as { content: string }).content : null
+    }
+
+    it('routing case: content contains brain, route decision, handoff excerpt, status, thread', async () => {
+      const content = await captureEpisodicContent({
+        brain: 'limbic',
+        thread_id: 'thread-abc',
+        payload: {
+          outputSlot: {
+            status: 'done',
+            output: {
+              next: 'cortex',
+              handoff: 'Please continue with this task',
+            },
+          },
+        },
+      })
+
+      expect(content).not.toBeNull()
+      expect(content).toContain('[limbic]')
+      expect(content).toContain('route → cortex')
+      expect(content).toContain('handoff: "Please continue with this task"')
+      expect(content).toContain('status: done')
+      expect(content).toContain('thread: thread-abc')
+    })
+
+    it('complete case: content contains decided complete, no handoff', async () => {
+      const content = await captureEpisodicContent({
+        brain: 'cortex',
+        thread_id: 'thread-done',
+        payload: {
+          outputSlot: {
+            status: 'done',
+            output: { next: null },
+          },
+        },
+      })
+
+      expect(content).not.toBeNull()
+      expect(content).toContain('[cortex] decided: complete')
+      expect(content).not.toContain('handoff')
+    })
+
+    it('defer case: content contains decided defer', async () => {
+      const content = await captureEpisodicContent({
+        brain: 'brainstem',
+        thread_id: 'thread-defer',
+        payload: {
+          outputSlot: {
+            status: 'done',
+            output: { next: 'self' },
+          },
+        },
+      })
+
+      expect(content).not.toBeNull()
+      expect(content).toContain('[brainstem] decided: defer')
+    })
+
+    it('error case: content contains decided error and stopReason', async () => {
+      const content = await captureEpisodicContent({
+        brain: 'limbic',
+        thread_id: 'thread-err',
+        payload: {
+          outputSlot: { status: 'error' },
+          stopReason: 'max_tokens',
+        },
+      })
+
+      expect(content).not.toBeNull()
+      expect(content).toContain('[limbic] decided: error')
+      expect(content).toContain('stopReason: max_tokens')
+    })
+
+    it('reply present: content includes reply excerpt truncated to 100 chars', async () => {
+      const longReply = 'A'.repeat(200)
+      const content = await captureEpisodicContent({
+        brain: 'cortex',
+        thread_id: 'thread-reply',
+        payload: {
+          outputSlot: {
+            status: 'done',
+            output: {
+              next: null,
+              reply: longReply,
+            },
+          },
+        },
+      })
+
+      expect(content).not.toBeNull()
+      expect(content).toContain('reply: "')
+      // The reply in content must not exceed 100 chars (plus surrounding quotes)
+      const replyMatch = content?.match(/reply: "([^"]*)"/)
+      expect(replyMatch).not.toBeNull()
+      expect(replyMatch?.[1].length).toBeLessThanOrEqual(100)
+    })
+
+    it('no JSON: content must not contain { or }', async () => {
+      const content = await captureEpisodicContent({
+        brain: 'limbic',
+        thread_id: 'thread-nojson',
+        payload: {
+          outputSlot: {
+            status: 'done',
+            output: { next: 'cortex', handoff: 'some task', reply: 'hello' },
+          },
+        },
+      })
+
+      expect(content).not.toBeNull()
+      expect(content).not.toContain('{')
+      expect(content).not.toContain('}')
+    })
+  })
+
   describe('handler error isolation', () => {
     it('handler error emits dmn.handler_error without throwing', async () => {
       const config = makeConfig()

@@ -237,16 +237,37 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
     const { brain, thread_id, payload } = event
     const outputSlot = payload.outputSlot as Record<string, unknown> | undefined
     const output = outputSlot?.output as Record<string, unknown> | undefined
-    return JSON.stringify({
-      brain,
-      threadId: thread_id,
-      status: outputSlot?.status,
-      next: (output as Record<string, unknown> | undefined)?.next,
-      hasReply: (output as Record<string, unknown> | undefined)?.reply != null,
-      handoff: (output as Record<string, unknown> | undefined)?.handoff || null,
-      stopReason: payload.stopReason,
-      timestamp: new Date().toISOString(),
-    })
+    const status = outputSlot?.status as string | undefined
+    const next = (output?.next as string | undefined) ?? null
+    const handoff = (output?.handoff as string | undefined) ?? null
+    const reply = (output?.reply as string | undefined) ?? null
+    const stopReason = payload.stopReason as string | undefined
+
+    // Derive routing decision token
+    const decision =
+      stopReason && stopReason !== 'end_turn'
+        ? 'error'
+        : next === null || next === undefined
+          ? 'complete'
+          : next === 'self'
+            ? 'defer'
+            : `route → ${next}`
+
+    const parts: string[] = [`[${brain}] decided: ${decision}`]
+
+    if (handoff) {
+      parts.push(`handoff: "${handoff.slice(0, 200)}"`)
+    }
+    if (reply) {
+      parts.push(`reply: "${reply.slice(0, 100)}"`)
+    }
+    if (decision === 'error' && stopReason) {
+      parts.push(`stopReason: ${stopReason}`)
+    }
+    parts.push(`status: ${status ?? 'unknown'}`)
+    parts.push(`thread: ${thread_id}`)
+
+    return parts.join(' | ')
   }
 
   // ── Responsibility 5: Memory usage feedback ────────────────────────────────
