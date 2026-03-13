@@ -90,6 +90,52 @@ describe('assembleBlock4', () => {
     expect(injectedMemoryIds).toHaveLength(0)
   })
 
+  test('limbic + entityId → getEntityContext called (not searchMemory)', async () => {
+    const entityMemory = makeMemory('e1', 'semantic', 'entity fact')
+    let getEntityContextCalled = false
+    let searchMemoryCalled = false
+
+    const mockWorkspace = {
+      getEntityContext: async (_id: string) => {
+        getEntityContextCalled = true
+        return [entityMemory]
+      },
+      searchMemory: async () => {
+        searchMemoryCalled = true
+        return []
+      },
+    } as Parameters<typeof assembleBlock4>[1]
+
+    const { injectedMemoryIds } = await assembleBlock4('limbic', mockWorkspace, 'thread-1', {
+      entityId: 'user:alex',
+    })
+    expect(getEntityContextCalled).toBe(true)
+    expect(searchMemoryCalled).toBe(false)
+    expect(injectedMemoryIds).toContain('e1')
+  })
+
+  test('limbic + no entityId → searchMemory called (fallback path)', async () => {
+    const semanticMemory = makeMemory('s1', 'semantic', 'generic fact')
+    let getEntityContextCalled = false
+    let searchMemoryCalled = false
+
+    const mockWorkspace = {
+      getEntityContext: async () => {
+        getEntityContextCalled = true
+        return []
+      },
+      searchMemory: async () => {
+        searchMemoryCalled = true
+        return [semanticMemory]
+      },
+    } as Parameters<typeof assembleBlock4>[1]
+
+    const { injectedMemoryIds } = await assembleBlock4('limbic', mockWorkspace, 'thread-1')
+    expect(getEntityContextCalled).toBe(false)
+    expect(searchMemoryCalled).toBe(true)
+    expect(injectedMemoryIds).toContain('s1')
+  })
+
   test('deduplicates memories appearing in multiple queries', async () => {
     const sharedMemory = {
       id: 'shared',
