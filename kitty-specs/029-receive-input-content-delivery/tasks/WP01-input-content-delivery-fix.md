@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Input Content Delivery Fix
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks:
 - T001
@@ -12,7 +12,8 @@ phase: Phase 1
 assignee: ''
 agent: ''
 shell_pid: "42419"
-review_status: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-13T00:00:00Z'
   lane: planned
@@ -324,3 +325,4 @@ test('assembleBlock3 omits trigger when null', async () => {
 ## Activity Log
 
 - 2026-03-13T00:00:00Z – system – lane=planned – Prompt created.
+- 2026-03-13T07:14:47Z – unknown – shell_pid=42419 – lane=done – Review passed: receive() stores input.content as trigger, activateBrain() uses triggerContent as initialPrompt, assembleBlock3() shows trigger. Rebase on 028 resolved correctly. 457 unit tests pass, typecheck clean.
