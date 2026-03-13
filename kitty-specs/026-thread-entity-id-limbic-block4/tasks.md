@@ -15,7 +15,7 @@
 
 **Subtasks**:
 - [x] T001: Schema + 迁移 + 类型 + Workspace（`threads.ts`、`0005` SQL 迁移、`types/index.ts`、`workspace/index.ts` 的 `mapThreadRow` + `createThread`）
-- [ ] T002: Runner 集成（`runner/index.ts`：扩展 `buildBlock4Opts` Pick 类型，Limbic 分支优先 entityId）
+- [x] T002: Runner 集成（`runner/index.ts`：扩展 `buildBlock4Opts` Pick 类型，Limbic 分支优先 entityId）
 - [ ] T003: 单元测试（≥6 个：createThread entityId 持久化、buildBlock4Opts entityId 路径、null fallback、Cortex regression、Block 4 assembly getEntityContext 调用）
 
 **Dependencies**: none
