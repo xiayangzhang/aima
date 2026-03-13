@@ -5,7 +5,7 @@ subtasks:
   - "T002"
 title: "Episodic Content Quality — buildEpisodicContent upgrade + tests"
 phase: "Phase 1 - Implementation + Tests"
-lane: "doing"
+lane: "for_review"
 assignee: ""
 agent: ""
 shell_pid: "22381"
@@ -172,3 +172,7 @@ describe('buildEpisodicContent format', () => {
 - `brain.complete` is the `event_type`; `level` defaults to `'INFO'` in `makeEvent()`
 
 **Verification**: `bun test tests/unit/dmn/dmn-reactive.test.ts` — all tests pass including existing ones.
+
+## Activity Log
+
+- 2026-03-13T05:36:03Z – unknown – shell_pid=22381 – lane=for_review – Implementation complete: buildEpisodicContent now outputs cognitive summary template string. 95 unit tests pass, zero typecheck errors, biome clean.
