@@ -66,11 +66,32 @@ function makeConfig(overrides: Partial<DmnConfig> = {}): DmnConfig & {
       writePending: mock(async () => ({}) as never),
       updateThreadState: mock(async () => {}),
       getLatestSegmentStates: mock(async () => new Map()),
+      getSlotsByThread: mock(async () => []),
+      getThread: mock(async () => null),
+      markMemoryUsed: mock(async () => {}),
     } as unknown as DmnConfig['workspace'],
     eventBus: mockEventBus,
     llm: { apiKey: 'test-key' },
     ...overrides,
   }
+}
+
+// Build a workspace stub with custom slot + thread data for brain.complete tests
+function makeWorkspaceWithSlots(
+  slots: Array<{ brain: string; status: string; input?: unknown; output?: unknown }>,
+  thread: { trigger?: string | null; goal?: string | null } | null = null,
+): DmnConfig['workspace'] {
+  return {
+    searchMemory: mock(async () => []),
+    writeMemory: mock(async () => ({}) as never),
+    writeSlot: mock(async () => ({}) as never),
+    writePending: mock(async () => ({}) as never),
+    updateThreadState: mock(async () => {}),
+    getLatestSegmentStates: mock(async () => new Map()),
+    getSlotsByThread: mock(async () => slots as never),
+    getThread: mock(async () => thread as never),
+    markMemoryUsed: mock(async () => {}),
+  } as unknown as DmnConfig['workspace']
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -325,11 +346,16 @@ describe('DmnReactive', () => {
   })
 
   describe('buildEpisodicContent: cognitive summary format', () => {
-    // Helper: dispatch a brain.complete event and capture the content written to episodic memory
+    // Helper: dispatch a brain.complete event and capture the content written to episodic memory.
+    // Slot + thread data come from the workspace mock (not the event payload), matching real runtime.
     async function captureEpisodicContent(
-      overrides: Partial<BrainEvent> = {},
+      eventOverrides: Partial<BrainEvent> = {},
+      slots: Array<{ brain: string; status: string; input?: unknown; output?: unknown }> = [],
+      thread: { trigger?: string | null; goal?: string | null } | null = null,
     ): Promise<string | null> {
-      const config = makeConfig()
+      const config = makeConfig({
+        workspace: makeWorkspaceWithSlots(slots, thread),
+      })
       const reactive = new DmnReactive(config)
       await reactive.start()
       const bus = config.eventBus as unknown as { _dispatch: (e: BrainEvent) => void }
@@ -340,7 +366,7 @@ describe('DmnReactive', () => {
           brain: 'limbic',
           thread_id: 'thread-test',
           payload: {},
-          ...overrides,
+          ...eventOverrides,
         }),
       )
       await new Promise((r) => setTimeout(r, 10))
@@ -351,115 +377,261 @@ describe('DmnReactive', () => {
     }
 
     it('routing case: content contains brain, route decision, handoff excerpt, status, thread', async () => {
-      const content = await captureEpisodicContent({
-        brain: 'limbic',
-        thread_id: 'thread-abc',
-        payload: {
-          outputSlot: {
-            status: 'done',
-            output: {
-              next: 'cortex',
-              handoff: 'Please continue with this task',
-            },
-          },
+      const content = await captureEpisodicContent({ brain: 'limbic', thread_id: 'thread-abc' }, [
+        {
+          brain: 'limbic',
+          status: 'done',
+          output: { next: 'cortex', handoff: 'Please continue with this task' },
         },
-      })
+      ])
 
       expect(content).not.toBeNull()
       expect(content).toContain('[limbic]')
-      expect(content).toContain('route → cortex')
+      expect(content).toContain('decided: route → cortex')
       expect(content).toContain('handoff: "Please continue with this task"')
       expect(content).toContain('status: done')
       expect(content).toContain('thread: thread-abc')
     })
 
     it('complete case: content contains decided complete, no handoff', async () => {
-      const content = await captureEpisodicContent({
-        brain: 'cortex',
-        thread_id: 'thread-done',
-        payload: {
-          outputSlot: {
-            status: 'done',
-            output: { next: null },
-          },
-        },
-      })
+      const content = await captureEpisodicContent({ brain: 'cortex', thread_id: 'thread-done' }, [
+        { brain: 'cortex', status: 'done', output: { next: null } },
+      ])
 
       expect(content).not.toBeNull()
-      expect(content).toContain('[cortex] decided: complete')
+      expect(content).toContain('[cortex]')
+      expect(content).toContain('decided: complete')
       expect(content).not.toContain('handoff')
     })
 
     it('defer case: content contains decided defer', async () => {
-      const content = await captureEpisodicContent({
-        brain: 'brainstem',
-        thread_id: 'thread-defer',
-        payload: {
-          outputSlot: {
-            status: 'done',
-            output: { next: 'self' },
-          },
-        },
-      })
+      const content = await captureEpisodicContent(
+        { brain: 'brainstem', thread_id: 'thread-defer' },
+        [{ brain: 'brainstem', status: 'done', output: { next: 'self' } }],
+      )
 
       expect(content).not.toBeNull()
-      expect(content).toContain('[brainstem] decided: defer')
+      expect(content).toContain('[brainstem]')
+      expect(content).toContain('decided: defer')
     })
 
     it('error case: content contains decided error and stopReason', async () => {
-      const content = await captureEpisodicContent({
-        brain: 'limbic',
-        thread_id: 'thread-err',
-        payload: {
-          outputSlot: { status: 'error' },
-          stopReason: 'max_tokens',
-        },
-      })
+      const content = await captureEpisodicContent(
+        { brain: 'limbic', thread_id: 'thread-err', payload: { stopReason: 'max_tokens' } },
+        [{ brain: 'limbic', status: 'error' }],
+      )
 
       expect(content).not.toBeNull()
-      expect(content).toContain('[limbic] decided: error')
+      expect(content).toContain('[limbic]')
+      expect(content).toContain('decided: error')
       expect(content).toContain('stopReason: max_tokens')
     })
 
     it('reply present: content includes reply excerpt truncated to 100 chars', async () => {
       const longReply = 'A'.repeat(200)
-      const content = await captureEpisodicContent({
-        brain: 'cortex',
-        thread_id: 'thread-reply',
-        payload: {
-          outputSlot: {
-            status: 'done',
-            output: {
-              next: null,
-              reply: longReply,
-            },
-          },
-        },
-      })
+      const content = await captureEpisodicContent({ brain: 'cortex', thread_id: 'thread-reply' }, [
+        { brain: 'cortex', status: 'done', output: { next: null, reply: longReply } },
+      ])
 
       expect(content).not.toBeNull()
       expect(content).toContain('reply: "')
-      // The reply in content must not exceed 100 chars (plus surrounding quotes)
       const replyMatch = content?.match(/reply: "([^"]*)"/)
       expect(replyMatch).not.toBeNull()
       expect(replyMatch?.[1].length).toBeLessThanOrEqual(100)
     })
 
     it('no JSON: content must not contain { or }', async () => {
-      const content = await captureEpisodicContent({
-        brain: 'limbic',
-        thread_id: 'thread-nojson',
-        payload: {
-          outputSlot: {
+      const content = await captureEpisodicContent(
+        { brain: 'limbic', thread_id: 'thread-nojson' },
+        [
+          {
+            brain: 'limbic',
             status: 'done',
             output: { next: 'cortex', handoff: 'some task', reply: 'hello' },
           },
-        },
-      })
+        ],
+      )
 
       expect(content).not.toBeNull()
       expect(content).not.toContain('{')
       expect(content).not.toContain('}')
+    })
+  })
+
+  describe('Feature 030: situation field + outputSlot enrichment', () => {
+    // Helper: dispatch brain.complete and capture episodic content written
+    async function dispatchAndCapture(
+      brain: string,
+      slots: Array<{ brain: string; status: string; input?: unknown; output?: unknown }>,
+      thread: { trigger?: string | null; goal?: string | null } | null = null,
+      extraPayload: Record<string, unknown> = {},
+    ): Promise<{ content: string | null; workspace: DmnConfig['workspace'] }> {
+      const workspace = makeWorkspaceWithSlots(slots, thread)
+      const config = makeConfig({ workspace })
+      const reactive = new DmnReactive(config)
+      await reactive.start()
+      const bus = config.eventBus as unknown as { _dispatch: (e: BrainEvent) => void }
+
+      bus._dispatch(
+        makeEvent({
+          event_type: 'brain.complete',
+          brain,
+          thread_id: 'thread-1',
+          payload: { injectedMemoryIds: [], ...extraPayload },
+        }),
+      )
+      await new Promise((r) => setTimeout(r, 10))
+
+      const calls = (workspace.writeMemory as ReturnType<typeof mock>).mock.calls
+      const episodicCall = calls.find((c) => (c[0] as { type?: string }).type === 'episodic')
+      const content = episodicCall ? (episodicCall[0] as { content: string }).content : null
+      return { content, workspace }
+    }
+
+    it('T030-A: Cortex episodic includes situation from slot.input.handoff', async () => {
+      const { content } = await dispatchAndCapture(
+        'cortex',
+        [
+          {
+            brain: 'cortex',
+            status: 'done',
+            input: { handoff: '需要分析：用户询问发票 X' },
+            output: { next: 'brainstem', handoff: '任务：查找发票 X' },
+          },
+        ],
+        { trigger: '用户询问发票' },
+      )
+
+      expect(content).not.toBeNull()
+      expect(content).toContain('situation: "需要分析：用户询问发票 X"')
+      expect(content).toContain('decided: route → brainstem')
+      expect(content).toContain('handoff: "任务：查找发票 X"')
+    })
+
+    it('T030-B: Limbic episodic uses thread.trigger when slot.input has no handoff', async () => {
+      const { content } = await dispatchAndCapture(
+        'limbic',
+        [
+          {
+            brain: 'limbic',
+            status: 'done',
+            input: null,
+            output: { next: 'cortex', handoff: '需要分析：预算审批' },
+          },
+        ],
+        { trigger: '批准预算' },
+      )
+
+      expect(content).not.toBeNull()
+      expect(content).toContain('situation: "批准预算"')
+      expect(content).toContain('decided: route → cortex')
+    })
+
+    it('T030-C: situation field omitted when no handoff and no trigger', async () => {
+      const { content } = await dispatchAndCapture(
+        'limbic',
+        [{ brain: 'limbic', status: 'done', input: null, output: { next: 'cortex' } }],
+        { trigger: null },
+      )
+
+      expect(content).not.toBeNull()
+      expect(content).not.toContain('situation:')
+      expect(content).toContain('[limbic]')
+      expect(content).toContain('decided:')
+    })
+
+    it('T030-C2: situation truncated at 200 chars', async () => {
+      const longSituation = 'X'.repeat(300)
+      const { content } = await dispatchAndCapture('cortex', [
+        {
+          brain: 'cortex',
+          status: 'done',
+          input: { handoff: longSituation },
+          output: { next: null },
+        },
+      ])
+
+      expect(content).not.toBeNull()
+      expect(content).toContain('situation: "')
+      const situationMatch = content?.match(/situation: "([^"]*)"/)
+      expect(situationMatch?.[1].length).toBeLessThanOrEqual(200)
+    })
+
+    it('T030-D1: feedbackMemoryUsage returns negative for error slot', async () => {
+      const { workspace } = await dispatchAndCapture(
+        'cortex',
+        [{ brain: 'cortex', status: 'error', input: null, output: null }],
+        { trigger: null },
+        { injectedMemoryIds: ['mem-1'] },
+      )
+
+      expect(workspace.markMemoryUsed).toHaveBeenCalledWith(['mem-1'], 'negative')
+    })
+
+    it('T030-D2: feedbackMemoryUsage returns positive when output has reply', async () => {
+      const { workspace } = await dispatchAndCapture(
+        'limbic',
+        [
+          {
+            brain: 'limbic',
+            status: 'done',
+            input: null,
+            output: { reply: '已完成审批', next: null },
+          },
+        ],
+        { trigger: '批准预算', goal: null },
+        { injectedMemoryIds: ['mem-2'] },
+      )
+
+      expect(workspace.markMemoryUsed).toHaveBeenCalledWith(['mem-2'], 'positive')
+    })
+
+    it('T030-D3: feedbackMemoryUsage returns neutral for routing without reply (not to brainstem)', async () => {
+      // evaluateOutcome: no error, no reply, no brainstem route → neutral
+      const { workspace } = await dispatchAndCapture(
+        'limbic',
+        [
+          {
+            brain: 'limbic',
+            status: 'done',
+            input: null,
+            output: { next: 'cortex', handoff: '分析请求' },
+          },
+        ],
+        { trigger: null, goal: null },
+        { injectedMemoryIds: ['mem-3'] },
+      )
+
+      expect(workspace.markMemoryUsed).toHaveBeenCalledWith(['mem-3'], 'neutral')
+    })
+
+    it('T030-E: retroactiveCorrection skips searchMemory (and LLM) for healthy brain.complete', async () => {
+      // Healthy slot: status=done, output non-null → hasError=false, hasNoOutput=false → returns early
+      const { workspace } = await dispatchAndCapture(
+        'cortex',
+        [
+          {
+            brain: 'cortex',
+            status: 'done',
+            input: null,
+            output: { next: 'brainstem', handoff: '任务 X' },
+          },
+        ],
+        { trigger: null },
+        { injectedMemoryIds: [] },
+      )
+
+      // retroactiveCorrection returns early for healthy output — searchMemory for episodic+brain_complete
+      // should NOT be called (the only searchMemory path in the healthy case would be isTopicSwitch,
+      // which only fires after segState.nextSeq > 5 on a reply-and-no-next output)
+      const searchCalls = (workspace.searchMemory as ReturnType<typeof mock>).mock.calls
+      const retroactiveCalls = searchCalls.filter(
+        (c) =>
+          (c[0] as { type?: string }).type === 'episodic' &&
+          Array.isArray((c[0] as { tags?: string[] }).tags) &&
+          (c[0] as { tags: string[] }).tags.includes('brain_complete'),
+      )
+      expect(retroactiveCalls).toHaveLength(0)
     })
   })
 

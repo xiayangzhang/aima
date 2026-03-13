@@ -130,10 +130,27 @@ export class DmnReactive {
   // ── brain.complete: four responsibilities in parallel ──────────────────────
 
   private async handleBrainComplete(event: BrainEvent): Promise<void> {
+    const { brain, thread_id } = event
+    if (!thread_id) return
+
+    // Enrich the event with real Slot + Thread data from workspace.
+    // Sub-responsibilities read payload.outputSlot and payload.thread instead of
+    // receiving undefined (the brain.complete emitter does not include slot data).
+    const [slots, thread] = await Promise.all([
+      this.config.workspace.getSlotsByThread(thread_id),
+      this.config.workspace.getThread(thread_id),
+    ])
+    const outputSlot = slots.find((s) => s.brain === brain) ?? null
+
+    const enrichedEvent: BrainEvent = {
+      ...event,
+      payload: { ...event.payload, outputSlot, thread },
+    }
+
     await Promise.all([
-      this.assignSegmentAndWriteEpisodic(event), // Responsibility 3 + 4
-      this.feedbackMemoryUsage(event), // Responsibility 5
-      this.retroactiveCorrection(event), // Responsibility 2
+      this.assignSegmentAndWriteEpisodic(enrichedEvent), // Responsibility 3 + 4
+      this.feedbackMemoryUsage(enrichedEvent), // Responsibility 5
+      this.retroactiveCorrection(enrichedEvent), // Responsibility 2
     ])
   }
 
@@ -235,13 +252,19 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
 
   private buildEpisodicContent(event: BrainEvent): string {
     const { brain, thread_id, payload } = event
-    const outputSlot = payload.outputSlot as Record<string, unknown> | undefined
+    const outputSlot = payload.outputSlot as Record<string, unknown> | null | undefined
     const output = outputSlot?.output as Record<string, unknown> | undefined
     const status = outputSlot?.status as string | undefined
     const next = (output?.next as string | undefined) ?? null
     const handoff = (output?.handoff as string | undefined) ?? null
     const reply = (output?.reply as string | undefined) ?? null
     const stopReason = payload.stopReason as string | undefined
+
+    // Extract situation: from slot.input.handoff (upstream handoff) or thread.trigger
+    const slotInput = outputSlot?.input as Record<string, unknown> | null | undefined
+    const handoffIn = (slotInput?.handoff as string | undefined) ?? null
+    const thread = (payload.thread as { trigger?: string | null } | undefined) ?? null
+    const situation = handoffIn ?? thread?.trigger ?? null
 
     // Derive routing decision token
     // 'end_turn' = raw LLM stop reason; 'done' = adapter-normalized success — both are non-error
@@ -254,8 +277,12 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
             ? 'defer'
             : `route → ${next}`
 
-    const parts: string[] = [`[${brain}] decided: ${decision}`]
+    const parts: string[] = [`[${brain}]`]
 
+    if (situation) {
+      parts.push(`situation: "${situation.slice(0, 200)}"`)
+    }
+    parts.push(`decided: ${decision}`)
     if (handoff) {
       parts.push(`handoff: "${handoff.slice(0, 200)}"`)
     }

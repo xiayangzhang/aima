@@ -32,6 +32,7 @@ function makeThread(opts: { id: string; goal: string | null }): Thread {
     sourceChannel: null,
     initiatedBy: 'external:teams',
     trigger: null,
+    entityId: null,
     goal: opts.goal,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -70,20 +71,23 @@ function makeConfig() {
   const mockEventBus = {
     subscribe: mock((h: (e: BrainEvent) => void) => {
       subscribers.push(h)
-      return () => { subscribers.splice(subscribers.indexOf(h), 1) }
+      return () => {
+        subscribers.splice(subscribers.indexOf(h), 1)
+      }
     }),
-    emit: mock(() => ({} as ReturnType<typeof mockEventBus.emit>)),
+    emit: mock(() => ({}) as ReturnType<typeof mockEventBus.emit>),
     _dispatch: (e: BrainEvent) => subscribers.forEach((h) => h(e)),
   }
 
   const mockWorkspace = {
     searchMemory: mock(async () => []),
-    writeMemory: mock(async () => ({} as never)),
+    writeMemory: mock(async () => ({}) as never),
     markMemoryUsed: mock(async () => {}),
     getThread: mock(async () => null as Thread | null),
-    writePending: mock(async () => ({} as never)),
+    getSlotsByThread: mock(async () => [] as never),
+    writePending: mock(async () => ({}) as never),
     updateThreadState: mock(async () => {}),
-    writeSlot: mock(async () => ({} as never)),
+    writeSlot: mock(async () => ({}) as never),
     getLatestSegmentStates: mock(async () => new Map()),
   }
 
@@ -109,7 +113,12 @@ describe('feedbackMemoryUsage — goal-based evaluation', () => {
   // V1: goal + reply + achieved=true → positive
   it('calls markMemoryUsed with positive when LLM evaluates goal as achieved', async () => {
     const { config, bus, ws } = makeConfig()
-    ws.getThread.mockResolvedValue(makeThread({ id: 'thread-goal-1', goal: 'Send a confirmation email reply' }))
+    ws.getThread.mockResolvedValue(
+      makeThread({ id: 'thread-goal-1', goal: 'Send a confirmation email reply' }),
+    )
+    ws.getSlotsByThread.mockResolvedValue([
+      { brain: 'limbic', status: 'done', output: { reply: 'I have sent the confirmation email.' } },
+    ] as never)
     mockCallLlm.mockResolvedValue('{"achieved": true, "reason": "reply confirms email sent"}')
 
     const reactive = new DmnReactive(config)
@@ -133,6 +142,13 @@ describe('feedbackMemoryUsage — goal-based evaluation', () => {
   it('calls markMemoryUsed with negative when LLM evaluates goal as not achieved', async () => {
     const { config, bus, ws } = makeConfig()
     ws.getThread.mockResolvedValue(makeThread({ id: 'thread-goal-2', goal: 'Book the flight' }))
+    ws.getSlotsByThread.mockResolvedValue([
+      {
+        brain: 'limbic',
+        status: 'done',
+        output: { reply: 'I need more information about your travel dates.' },
+      },
+    ] as never)
     mockCallLlm.mockResolvedValue('{"achieved": false, "reason": "no booking confirmation"}')
 
     const reactive = new DmnReactive(config)
@@ -155,6 +171,9 @@ describe('feedbackMemoryUsage — goal-based evaluation', () => {
   it('falls back to heuristic when thread.goal is null', async () => {
     const { config, bus, ws } = makeConfig()
     ws.getThread.mockResolvedValue(makeThread({ id: 'thread-no-goal', goal: null }))
+    ws.getSlotsByThread.mockResolvedValue([
+      { brain: 'limbic', status: 'done', output: { reply: 'Hello, how can I help?' } },
+    ] as never)
 
     const reactive = new DmnReactive(config)
     await reactive.start()
@@ -178,6 +197,9 @@ describe('feedbackMemoryUsage — goal-based evaluation', () => {
   it('falls back to heuristic when getThread returns null', async () => {
     const { config, bus, ws } = makeConfig()
     ws.getThread.mockResolvedValue(null)
+    ws.getSlotsByThread.mockResolvedValue([
+      { brain: 'limbic', status: 'done', output: { reply: 'some reply' } },
+    ] as never)
 
     const reactive = new DmnReactive(config)
     await reactive.start()
@@ -200,6 +222,9 @@ describe('feedbackMemoryUsage — goal-based evaluation', () => {
   it('silently falls back to heuristic when callLlm throws', async () => {
     const { config, bus, ws } = makeConfig()
     ws.getThread.mockResolvedValue(makeThread({ id: 'thread-llm-fail', goal: 'some goal' }))
+    ws.getSlotsByThread.mockResolvedValue([
+      { brain: 'limbic', status: 'done', output: { reply: 'some reply' } },
+    ] as never)
     mockCallLlm.mockRejectedValue(new Error('llm timeout'))
 
     const reactive = new DmnReactive(config)
@@ -235,7 +260,8 @@ describe('feedbackMemoryUsage — goal-based evaluation', () => {
     )
     await new Promise((r) => setTimeout(r, 20))
 
-    expect(ws.getThread).not.toHaveBeenCalled()
+    // getThread is called by handleBrainComplete enrichment, but feedbackMemoryUsage
+    // returns early when injectedMemoryIds is empty → no LLM, no markMemoryUsed
     expect(mockCallLlm).not.toHaveBeenCalled()
     expect(ws.markMemoryUsed).not.toHaveBeenCalled()
     await reactive.stop()
@@ -245,6 +271,9 @@ describe('feedbackMemoryUsage — goal-based evaluation', () => {
   it('falls back to heuristic when goal exists but reply is null', async () => {
     const { config, bus, ws } = makeConfig()
     ws.getThread.mockResolvedValue(makeThread({ id: 'thread-no-reply', goal: 'some goal' }))
+    ws.getSlotsByThread.mockResolvedValue([
+      { brain: 'limbic', status: 'done', output: {} },
+    ] as never)
 
     const reactive = new DmnReactive(config)
     await reactive.start()
