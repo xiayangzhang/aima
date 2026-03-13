@@ -5,10 +5,10 @@ subtasks:
   - "T002"
 title: "Episodic Content Quality — buildEpisodicContent upgrade + tests"
 phase: "Phase 1 - Implementation + Tests"
-lane: "planned"
+lane: "doing"
 assignee: ""
 agent: ""
-shell_pid: ""
+shell_pid: "22381"
 review_status: ""
 dependencies: []
 reviewed_by: ""
