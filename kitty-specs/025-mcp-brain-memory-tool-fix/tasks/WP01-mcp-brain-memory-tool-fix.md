@@ -1,14 +1,14 @@
 ---
 work_package_id: WP01
 title: Fix MCP brain memory tools and add unit tests
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks: [T001, T002, T003, T004]
 assignee: ""
 agent: "claude"
 shell_pid: "31160"
-review_status: ""
-reviewed_by: ""
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
   - timestamp: "2026-03-13T00:00:00Z"
     lane: "planned"
@@ -217,3 +217,4 @@ function getToolHandler(server: ReturnType<typeof createAimaMcpServer>, toolName
 
 - 2026-03-13T05:35:55Z – unknown – shell_pid=19501 – lane=for_review – All 3 tools fixed. 6 unit tests pass. 431 total unit tests, 0 regressions. typecheck clean. biome clean on changed files.
 - 2026-03-13T05:36:06Z – claude – shell_pid=31160 – lane=doing – Started review via workflow command
+- 2026-03-13T05:36:28Z – claude – shell_pid=31160 – lane=done – Review passed: all 3 handlers wired to correct workspace methods (getEntityContext/findSimilarSituations/getProcedure), fallback paths correct, depth TODO present, facts included in V3 response, 6 tests pass, no regressions
