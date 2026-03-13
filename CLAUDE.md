@@ -258,6 +258,37 @@ Mock 规则：
 - One Feature = one worktree (`spec-kitty implement WP##`)
 - Before any `git push`: confirm GitHub account with Leo
 
+### ⚠️ Worktree Flow is MANDATORY
+
+Every implementation session MUST follow this flow — no exceptions:
+
+```bash
+# 1. Start: create worktree (always use spec-kitty, never manual git)
+spec-kitty implement WP01        # or WP02, etc.
+
+# 2. Work inside the worktree
+cd .worktrees/<feature>-WP01
+# ... implement, test, commit ...
+
+# 3. Move to for_review when done
+spec-kitty agent tasks move-task WP01 --to for_review --note "..."
+
+# 4. After review passes — merge from inside the worktree
+spec-kitty merge
+```
+
+**Why this is non-negotiable:**
+- `spec-kitty merge` only works from inside a worktree — running it from `main` will fail
+- Direct commits to `main` bypass review and skip audit trail
+- Without a worktree, there is no safe rollback path
+
+**If you find yourself working directly on `main` (no worktree):**
+1. Stop immediately — do not commit to main
+2. Create a branch: `git checkout -b <feature-slug>-WP01`
+3. Commit your work there
+4. Merge manually via PR or `git merge --no-ff` after review
+5. Note this deviation in the WP activity log
+
 ---
 
 ## Open Source Guidelines

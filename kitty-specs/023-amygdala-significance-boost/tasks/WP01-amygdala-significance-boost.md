@@ -6,19 +6,24 @@ subtasks:
   - "T003"
 title: "Amygdala Significance Boost — Emit + DMN Episodic Encoding + Tests"
 phase: "Phase 1 - Full Implementation"
-lane: "planned"
+lane: "done"
 assignee: ""
-agent: ""
+agent: "claude"
 shell_pid: ""
-review_status: ""
+review_status: "approved"
 dependencies: []
-reviewed_by: ""
+reviewed_by: "claude"
 history:
   - timestamp: "2026-03-13T00:00:00Z"
     lane: "planned"
     agent: "system"
     shell_pid: ""
     action: "Prompt generated via spec-kitty agent workflow"
+  - timestamp: "2026-03-13T05:00:00Z"
+    lane: "done"
+    agent: "claude"
+    shell_pid: ""
+    action: "Review passed: significance_boost emitted in amygdala.interrupt payload, DMN handleAmygdalaInterrupt writes episodic+significance_mark, haiku fallback guard added, 476/0 unit tests"
 ---
 
 # Work Package Prompt: WP01 — Amygdala Significance Boost
