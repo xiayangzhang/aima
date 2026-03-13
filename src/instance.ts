@@ -268,8 +268,8 @@ export class AIMAInstance {
 
     const thread = await this.workspace.createThread({
       initiatedBy: 'external',
+      trigger: input.content,
       ...(input.channel !== undefined ? { sourceChannel: input.channel } : {}),
-      ...(input.externalId !== undefined ? { trigger: input.externalId } : {}),
     })
 
     // Activate Limbic — the entry point for all external input

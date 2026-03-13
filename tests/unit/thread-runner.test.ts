@@ -821,6 +821,76 @@ describe('ThreadRunner.buildBlock4Opts', () => {
   })
 })
 
+// ─── activateBrain triggerContent tests (T029-C, T029-D) ─────────────────────
+
+describe('ThreadRunner.trigger() — initialPrompt wiring (T029)', () => {
+  test('T029-C: trigger() passes thread.trigger as initialPrompt for new session', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread({ trigger: 'approve the budget' })
+
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => []
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+
+    let capturedParams: { initialPrompt?: string } | null = null
+    const limbicAdapter: BrainAdapter = {
+      run: async (params) => {
+        capturedParams = params
+        return { sessionId: 'sess-l', output: {}, stopReason: 'done', injectedMemoryIds: [] }
+      },
+      inject: async () => {},
+      abort: () => {},
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>([['limbic', limbicAdapter]])
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    await runner.trigger('limbic', 'thread-1')
+
+    expect(capturedParams?.initialPrompt).toBe('approve the budget')
+    runner.stop()
+  })
+
+  test('T029-D: trigger() uses placeholder when thread.trigger is null', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread({ trigger: null })
+
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => []
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+
+    let capturedParams: { initialPrompt?: string } | null = null
+    const limbicAdapter: BrainAdapter = {
+      run: async (params) => {
+        capturedParams = params
+        return { sessionId: 'sess-l', output: {}, stopReason: 'done', injectedMemoryIds: [] }
+      },
+      inject: async () => {},
+      abort: () => {},
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>([['limbic', limbicAdapter]])
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    await runner.trigger('limbic', 'thread-1')
+
+    expect(capturedParams?.initialPrompt).toMatch(/^Thread thread-1 — activate limbic$/)
+    runner.stop()
+  })
+})
+
 describe('CognitiveWorkspace.waitForComplete', () => {
   test('resolves when thread_complete event fires', async () => {
     const workspace = new CognitiveWorkspace(mockDb)
