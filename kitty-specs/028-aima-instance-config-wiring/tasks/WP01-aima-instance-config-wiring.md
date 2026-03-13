@@ -1,14 +1,14 @@
 ---
 work_package_id: WP01
 title: Wire embedding and amygdala configs through AIMAInstance and add unit tests
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks: [T001, T002, T003]
 assignee: ""
 agent: ""
 shell_pid: "42255"
-review_status: ""
-reviewed_by: ""
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
   - timestamp: "2026-03-13T00:00:00Z"
     lane: "planned"
@@ -285,3 +285,7 @@ import type { EmbeddingConfig } from '../../src/embedding'
 - [ ] All existing tests in `aima-instance.test.ts` continue to pass (zero regression)
 - [ ] `bun run typecheck` zero errors
 - [ ] `biome check` passes
+
+## Activity Log
+
+- 2026-03-13T07:10:22Z – unknown – shell_pid=42255 – lane=done – Review passed: embedding and amygdala configs correctly wired through AIMAInstanceConfig. All 451 unit tests pass, typecheck and biome clean. haiku_enabled: false edge case handled.
