@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Thread Entity ID — Schema, Workspace, Runner, Tests
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks:
 - T001
@@ -10,7 +10,7 @@ subtasks:
 phase: Phase 1 - Implementation
 assignee: ''
 agent: ''
-shell_pid: ''
+shell_pid: "22536"
 review_status: ''
 reviewed_by: ''
 history:
