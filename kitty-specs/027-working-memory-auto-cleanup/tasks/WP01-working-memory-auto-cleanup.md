@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Wire clearWorkingMemory into ThreadRunner and add unit tests
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T001, T002, T003]
 assignee: ""
@@ -287,3 +287,7 @@ test('clearWorkingMemory throws → error swallowed, thread completes normally',
 - [ ] All existing tests in the suite still pass (zero regression)
 - [ ] `bun run typecheck` zero errors
 - [ ] `biome check` passes
+
+## Activity Log
+
+- 2026-03-13T05:39:06Z – unknown – shell_pid=33946 – lane=for_review – 2 fire-and-forget calls added at terminal paths. 4 unit tests (A-D) all pass. 445 total unit tests, 0 regressions. typecheck clean, biome clean.
