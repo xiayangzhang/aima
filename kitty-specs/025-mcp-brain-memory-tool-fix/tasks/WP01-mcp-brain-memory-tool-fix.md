@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Fix MCP brain memory tools and add unit tests
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: [T001, T002, T003, T004]
 assignee: ""
@@ -212,3 +212,7 @@ function getToolHandler(server: ReturnType<typeof createAimaMcpServer>, toolName
 - `biome check` passes (no lint errors)
 - All 6 new tests green
 - Existing test suite has no regressions (`bun test`)
+
+## Activity Log
+
+- 2026-03-13T05:35:55Z – unknown – shell_pid=19501 – lane=for_review – All 3 tools fixed. 6 unit tests pass. 431 total unit tests, 0 regressions. typecheck clean. biome clean on changed files.
