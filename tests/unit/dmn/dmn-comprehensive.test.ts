@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from 'bun:test'
 import { DmnConsolidation } from '../../../src/dmn/consolidation/index'
 import { DmnService, createDmnService } from '../../../src/dmn/index'
-import * as llmModule from '../../../src/llm'
 import { DmnReactive } from '../../../src/dmn/reactive/index'
+import * as llmModule from '../../../src/llm'
 import { makeAlertEvent, makeBrainCompleteEvent, makeDmnConfig, makeMockWorkspace } from './helpers'
 
 // ─── T025: DmnService lifecycle ──────────────────────────────────────────────
@@ -1122,21 +1122,21 @@ describe('T034 — Episodic handoff content', () => {
 
     const handoffText = 'User asked about billing; routing to execution layer'
     const event = makeBrainCompleteEvent('thread-t034-v5', 'cortex', {
-      outputSlot: { status: 'done', output: { next: 'brainstem', reply: null, handoff: handoffText } },
+      outputSlot: {
+        status: 'done',
+        output: { next: 'brainstem', reply: null, handoff: handoffText },
+      },
       stopReason: 'done',
     })
     await bus._trigger(event)
 
     const episodic = ws._memories.filter((m) => m.type === 'episodic')
     expect(episodic.length).toBeGreaterThan(0)
-    const content = JSON.parse(episodic[0]?.content ?? '{}') as {
-      handoff: string | null
-      next: string | null
-      hasReply: boolean
-    }
-    expect(content.handoff).toBe(handoffText)
-    expect(content.next).toBe('brainstem')
-    expect(content.hasReply).toBe(false)
+    const content = episodic[0]?.content ?? ''
+    // stopReason='done' (not 'end_turn') triggers 'error' decision path
+    expect(content).toContain('[cortex]')
+    expect(content).toContain(`handoff: "${handoffText.slice(0, 200)}"`)
+    expect(content).not.toContain('reply:')
 
     await reactive.stop()
   })
@@ -1153,12 +1153,9 @@ describe('T034 — Episodic handoff content', () => {
     await bus._trigger(event)
 
     const episodic = ws._memories.filter((m) => m.type === 'episodic')
-    const content = JSON.parse(episodic[0]?.content ?? '{}') as {
-      handoff: unknown
-      hasReply: boolean
-    }
-    expect(content.handoff).toBeNull()
-    expect(content.hasReply).toBe(true)
+    const content = episodic[0]?.content ?? ''
+    expect(content).not.toContain('handoff:')
+    expect(content).toContain('reply: "Done"')
 
     await reactive.stop()
   })
@@ -1175,8 +1172,10 @@ describe('T034 — Episodic handoff content', () => {
     await bus._trigger(event)
 
     const episodic = ws._memories.filter((m) => m.type === 'episodic')
-    const content = JSON.parse(episodic[0]?.content ?? '{}') as { handoff: unknown }
-    expect(content.handoff).toBeNull()
+    const content = episodic[0]?.content ?? ''
+    // Empty string handoff is falsy — no handoff part in the output
+    expect(content).not.toContain('handoff:')
+    expect(content).toContain('[cortex]')
 
     await reactive.stop()
   })
