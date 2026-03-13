@@ -1,7 +1,7 @@
 ---
 work_package_id: "WP01"
 title: "Fix outputSlot gap + add situation field to episodic content"
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks: ["T001", "T002", "T003", "T004", "T005"]
 shell_pid: "98834"
@@ -423,3 +423,7 @@ expect(episodicRecords[0].content).toContain('situation:')
 ```bash
 spec-kitty implement WP01 030-episodic-cognitive-summary
 ```
+
+## Activity Log
+
+- 2026-03-13T10:28:58Z – unknown – shell_pid=98834 – lane=for_review – All subtasks complete. Unit: 513 pass (26 new T030 tests). Integration: 10/10 DMN tests pass. TypeScript clean. Biome: no new errors.
