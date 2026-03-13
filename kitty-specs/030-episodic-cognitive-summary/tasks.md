@@ -22,7 +22,7 @@
 
 - [x] T001: `handleBrainComplete` — 并发获取 slot+thread，构造 enriched event，传给三个子职责
 - [x] T002: `buildEpisodicContent` — 从 enriched payload 提取 situation，插入格式字符串
-- [ ] T003: 单元测试 Scenarios A/B/C（situation 字段正确性）
+- [x] T003: 单元测试 Scenarios A/B/C（situation 字段正确性）
 - [ ] T004: 单元测试 Scenarios D/E（feedbackMemoryUsage outcome / retroactiveCorrection 跳过）
 - [ ] T005: 集成测试 — 更新 `tests/integration/dmn/dmn.test.ts` 的 episodic content 断言
 
