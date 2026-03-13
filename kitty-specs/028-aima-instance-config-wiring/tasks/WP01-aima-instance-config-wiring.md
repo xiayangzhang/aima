@@ -1,12 +1,12 @@
 ---
 work_package_id: WP01
 title: Wire embedding and amygdala configs through AIMAInstance and add unit tests
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks: [T001, T002, T003]
 assignee: ""
 agent: ""
-shell_pid: ""
+shell_pid: "42255"
 review_status: ""
 reviewed_by: ""
 history:
