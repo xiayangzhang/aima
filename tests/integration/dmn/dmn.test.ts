@@ -174,12 +174,13 @@ describeWithDb('DMN integration — brain.complete four responsibilities (T034)'
 
     const thread = await workspace.createThread({ initiatedBy: 'integration-test-T034b' })
 
-    // Write a semantic memory to be injected
+    // Write a semantic memory to be injected — use unique tag to avoid limit truncation
+    const uniqueTag = `test-T034b-${Date.now()}`
     const memory = await workspace.writeMemory({
       type: 'semantic',
       content: 'test knowledge for injection',
       baseImportance: 0.5,
-      tags: ['test'],
+      tags: [uniqueTag],
     })
 
     eventBus.emit({
@@ -199,7 +200,7 @@ describeWithDb('DMN integration — brain.complete four responsibilities (T034)'
     // Verify usage_outcomes.positive incremented
     const updated = await workspace.searchMemory({
       type: 'semantic',
-      tags: ['test'],
+      tags: [uniqueTag],
       excludeInvalid: true,
     })
     const updatedMemory = updated.find((m) => m.id === memory.id)

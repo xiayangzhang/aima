@@ -59,7 +59,7 @@ describeWithDb('Thread lifecycle (integration)', () => {
     })
   })
 
-  test('getActiveThreads includes waiting and interrupted threads', async () => {
+  test('getActiveThreads excludes waiting and interrupted threads (active only per interface spec)', async () => {
     await withTransaction(testDb.db, async (ws) => {
       const t1 = await ws.createThread({ initiatedBy: 'dmn' })
       const t2 = await ws.createThread({ initiatedBy: 'dmn' })
@@ -68,8 +68,9 @@ describeWithDb('Thread lifecycle (integration)', () => {
 
       const active = await ws.getActiveThreads()
       const ids = active.map((t) => t.id)
-      expect(ids).toContain(t1.id)
-      expect(ids).toContain(t2.id)
+      // Interface: getActiveThreads returns state='active' only
+      expect(ids).not.toContain(t1.id)
+      expect(ids).not.toContain(t2.id)
     })
   })
 

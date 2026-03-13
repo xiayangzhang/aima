@@ -144,17 +144,19 @@ describeWithDb('Hippocampus workspace methods (integration)', () => {
     await withTransaction(testDb.db, async (ws) => {
       const pastDate = new Date(Date.now() - 1000)
       const futureDate = new Date(Date.now() + 86_400_000)
+      // Use a unique tag so searchMemory returns only this test's entries (avoids default limit truncation)
+      const tag = `forget-expired-${Date.now()}`
 
-      const expired = await ws.writeMemory({ type: 'semantic', content: 'Expired memory', tags: [], expiresAt: pastDate })
-      const active = await ws.writeMemory({ type: 'semantic', content: 'Active memory', tags: [], expiresAt: futureDate })
-      const noExpiry = await ws.writeMemory({ type: 'semantic', content: 'No expiry', tags: [] })
+      const expired = await ws.writeMemory({ type: 'semantic', content: 'Expired memory', tags: [tag], expiresAt: pastDate })
+      const active = await ws.writeMemory({ type: 'semantic', content: 'Active memory', tags: [tag], expiresAt: futureDate })
+      const noExpiry = await ws.writeMemory({ type: 'semantic', content: 'No expiry', tags: [tag] })
 
       const count = await ws.forgetExpiredMemories(new Date())
 
       expect(count).toBeGreaterThanOrEqual(1)
 
       // expired should not appear in search results (forgotten=true)
-      const results = await ws.searchMemory({ type: 'semantic', tags: [] })
+      const results = await ws.searchMemory({ type: 'semantic', tags: [tag] })
       const ids = results.map((r) => r.id)
       expect(ids).not.toContain(expired.id)
       expect(ids).toContain(active.id)
@@ -165,12 +167,13 @@ describeWithDb('Hippocampus workspace methods (integration)', () => {
   test('forgetExpiredMemories does not touch pinned memories', async () => {
     await withTransaction(testDb.db, async (ws) => {
       const pastDate = new Date(Date.now() - 1000)
-      const pinned = await ws.writeMemory({ type: 'semantic', content: 'Pinned expired', tags: [], expiresAt: pastDate, pinned: true })
+      const tag = `pinned-expired-${Date.now()}`
+      const pinned = await ws.writeMemory({ type: 'semantic', content: 'Pinned expired', tags: [tag], expiresAt: pastDate, pinned: true })
 
       await ws.forgetExpiredMemories(new Date())
 
       // Pinned memory should still be retrievable
-      const results = await ws.searchMemory({ type: 'semantic', tags: [] })
+      const results = await ws.searchMemory({ type: 'semantic', tags: [tag] })
       const ids = results.map((r) => r.id)
       expect(ids).toContain(pinned.id)
     })

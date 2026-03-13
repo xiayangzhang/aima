@@ -244,8 +244,9 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
     const stopReason = payload.stopReason as string | undefined
 
     // Derive routing decision token
+    // 'end_turn' = raw LLM stop reason; 'done' = adapter-normalized success — both are non-error
     const decision =
-      stopReason && stopReason !== 'end_turn'
+      stopReason && stopReason !== 'end_turn' && stopReason !== 'done'
         ? 'error'
         : next === null || next === undefined
           ? 'complete'
