@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Thread Entity ID — Schema, Workspace, Runner, Tests
-lane: "for_review"
+lane: "done"
 dependencies: []
 subtasks:
 - T001
@@ -11,8 +11,8 @@ phase: Phase 1 - Implementation
 assignee: ''
 agent: ''
 shell_pid: "22536"
-review_status: ''
-reviewed_by: ''
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
 - timestamp: '2026-03-13T00:00:00Z'
   lane: planned
@@ -404,3 +404,4 @@ private buildBlock4Opts(
 ## Activity Log
 
 - 2026-03-13T05:36:13Z – unknown – shell_pid=22536 – lane=for_review – Implementation complete: Thread.entityId added to schema/types/workspace/runner. 429 unit tests pass, migration 0006 created, typecheck clean.
+- 2026-03-13T05:36:28Z – unknown – shell_pid=22536 – lane=done – Review passed: all FRs satisfied. Thread.entityId wired from DB migration (0006) through schema/types/workspace/runner. Limbic block4 entity path now reachable. 7 unit tests including getEntityContext vs searchMemory assertions. Zero regressions.
