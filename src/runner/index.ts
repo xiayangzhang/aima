@@ -147,6 +147,7 @@ export class ThreadRunner {
         // No next → thread ends
         if (next === null || next === undefined) {
           await this.workspace.updateThreadState(threadId, 'complete')
+          this.workspace.clearWorkingMemory(threadId).catch(() => {})
           this.workspace.notifyThreadComplete(threadId)
           return
         }
@@ -154,6 +155,7 @@ export class ThreadRunner {
         // Validate legal transition (includes 'self' — only limbic can defer)
         if (!isLegalTransition(currentBrain, next)) {
           await this.workspace.updateThreadState(threadId, 'interrupted')
+          this.workspace.clearWorkingMemory(threadId).catch(() => {})
           this.eventBus.emit({
             event_type: 'thread.interrupted',
             level: 'ALERT',
