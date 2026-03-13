@@ -24,7 +24,7 @@
 - [x] T002: `buildEpisodicContent` — 从 enriched payload 提取 situation，插入格式字符串
 - [x] T003: 单元测试 Scenarios A/B/C（situation 字段正确性）
 - [x] T004: 单元测试 Scenarios D/E（feedbackMemoryUsage outcome / retroactiveCorrection 跳过）
-- [ ] T005: 集成测试 — 更新 `tests/integration/dmn/dmn.test.ts` 的 episodic content 断言
+- [x] T005: 集成测试 — 更新 `tests/integration/dmn/dmn.test.ts` 的 episodic content 断言
 
 ### Implementation Notes
 
