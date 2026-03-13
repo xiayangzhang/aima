@@ -226,6 +226,8 @@ When in doubt, escalate.`
           causationId: event.event_id,
         })
 
+        const significanceBoost = decision === 'block' ? 0.4 : 0.2
+
         this.eventBus.emit({
           event_type: 'amygdala.interrupt',
           level: 'ALERT',
@@ -233,7 +235,7 @@ When in doubt, escalate.`
           thread_id: event.thread_id,
           session_id: event.session_id,
           causation_id: event.event_id,
-          payload: { tool: toolName, decision, reason },
+          payload: { tool: toolName, decision, reason, significance_boost: significanceBoost },
         })
       }
     })

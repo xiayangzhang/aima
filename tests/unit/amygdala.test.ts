@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:
 import { Amygdala } from '../../src/amygdala/index'
 import type { AmygdalaConfig } from '../../src/amygdala/index'
 import { BrainEventBus } from '../../src/eventbus/index'
-import { CognitiveWorkspace } from '../../src/workspace/index'
-import type { MemoryEntry } from '../../src/types/index'
 import * as llmModule from '../../src/llm'
+import type { MemoryEntry } from '../../src/types/index'
+import { CognitiveWorkspace } from '../../src/workspace/index'
 
 function makeMemoryEntry(opts: {
   decision?: string
@@ -280,7 +280,11 @@ describe('Amygdala Stage 2 — Implicit memory match', () => {
   test('V1 — returns block from memory when recent history shows block', async () => {
     const { getByTags, amygdala } = makeStage2Setup({ haiku_enabled: true })
     getByTags.mockResolvedValue([
-      makeMemoryEntry({ decision: 'block', reason: 'dangerous spawn', toolName: 'spawn_execution_session' }),
+      makeMemoryEntry({
+        decision: 'block',
+        reason: 'dangerous spawn',
+        toolName: 'spawn_execution_session',
+      }),
     ])
     const result = await amygdala.check('spawn_execution_session', {})
     expect(result.decision).toBe('block')
@@ -292,7 +296,11 @@ describe('Amygdala Stage 2 — Implicit memory match', () => {
   test('V2 — returns allow from memory when recent history shows allow', async () => {
     const { getByTags, amygdala } = makeStage2Setup({ haiku_enabled: true })
     getByTags.mockResolvedValue([
-      makeMemoryEntry({ decision: 'allow', reason: 'safe context', toolName: 'spawn_execution_session' }),
+      makeMemoryEntry({
+        decision: 'allow',
+        reason: 'safe context',
+        toolName: 'spawn_execution_session',
+      }),
     ])
     const result = await amygdala.check('spawn_execution_session', {})
     expect(result.decision).toBe('allow')
@@ -427,5 +435,49 @@ describe('Amygdala.startListening', () => {
     eventBus.emit({ event_type: 'brain.complete', level: 'INFO', brain: 'cortex', payload: {} })
     await new Promise((r) => setTimeout(r, 10))
     expect(workspace.hasSignal('amygdala_interrupt', '')).toBe(false)
+  })
+
+  test('emits significance_boost: 0.4 on block decision', async () => {
+    const { eventBus, amygdala } = makeSetup()
+    let capturedBoost: number | undefined
+    eventBus.subscribeLevel('ALERT', (e) => {
+      if (e.event_type === 'amygdala.interrupt') {
+        capturedBoost = e.payload.significance_boost as number
+      }
+    })
+
+    amygdala.startListening()
+    eventBus.emit({
+      event_type: 'tool.pre_use',
+      level: 'INFO',
+      brain: 'brainstem',
+      payload: { tool: 'bash', args: {} },
+    })
+
+    await new Promise((r) => setTimeout(r, 10))
+    expect(capturedBoost).toBe(0.4)
+  })
+
+  test('emits significance_boost: 0.2 on escalate decision', async () => {
+    const { eventBus, amygdala } = makeSetup({
+      rules: [{ toolName: 'custom_tool', decision: 'escalate', reason: 'test escalate' }],
+    })
+    let capturedBoost: number | undefined
+    eventBus.subscribeLevel('ALERT', (e) => {
+      if (e.event_type === 'amygdala.interrupt') {
+        capturedBoost = e.payload.significance_boost as number
+      }
+    })
+
+    amygdala.startListening()
+    eventBus.emit({
+      event_type: 'tool.pre_use',
+      level: 'INFO',
+      brain: 'brainstem',
+      payload: { tool: 'custom_tool', args: {} },
+    })
+
+    await new Promise((r) => setTimeout(r, 10))
+    expect(capturedBoost).toBe(0.2)
   })
 })

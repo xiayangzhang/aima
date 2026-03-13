@@ -485,12 +485,40 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
       conditions.push(gt(memories.createdAt, filters.createdAfter))
     }
 
+    const lim = filters.limit ?? 20
+
+    // ── Vector path: query + embedding config ──────────────────────────────────
+    if (filters.query != null && this.options.embedding != null) {
+      try {
+        const queryEmbedding = await generateEmbedding(filters.query, this.options.embedding)
+
+        const rows = await this.db
+          .select()
+          .from(memories)
+          .where(and(...conditions, isNotNull(memories.embedding)))
+          .orderBy(asc(cosineDistance(memories.embedding, queryEmbedding)))
+          .limit(lim)
+
+        if (rows.length > 0) {
+          return rows.map(mapMemoryRow)
+        }
+        // zero results → fall through to ILIKE
+      } catch {
+        // generateEmbedding failed (API error, timeout, etc.) → fall through to ILIKE
+      }
+    }
+
+    // ── ILIKE fallback (or no-query path) ──────────────────────────────────────
+    if (filters.query != null) {
+      conditions.push(ilike(memories.content, `%${filters.query}%`))
+    }
+
     const rows = await this.db
       .select()
       .from(memories)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(memories.baseImportance))
-      .limit(filters.limit ?? 20)
+      .limit(lim)
 
     return rows.map(mapMemoryRow)
   }

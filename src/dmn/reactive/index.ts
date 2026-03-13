@@ -111,6 +111,11 @@ export class DmnReactive {
       await this.handleDefer(event)
     }
 
+    // Amygdala interrupt: episodic memory + significance mark
+    if (event_type === 'amygdala.interrupt' && level === 'ALERT') {
+      await this.handleAmygdalaInterrupt(event)
+    }
+
     // Responsibility 7: signal capture (INFO+ events)
     if (level === 'INFO' || level === 'COMPLIANCE' || level === 'ALERT') {
       await this.handleSignalCapture(event)
@@ -483,9 +488,52 @@ Only set needs_correction=true if there is a clear, significant error. Be conser
       }
     }
 
-    // No rule matched + unhandled ALERT (non-retryable) → Haiku fallback
-    if (event.level === 'ALERT' && !event.payload.retryable) {
+    // No rule matched + unhandled ALERT (non-retryable, not amygdala.interrupt) → Haiku fallback
+    if (
+      event.level === 'ALERT' &&
+      !event.payload.retryable &&
+      event.event_type !== 'amygdala.interrupt'
+    ) {
       await this.haikuSignalFallback(event)
+    }
+  }
+
+  // ── Amygdala interrupt: episodic write + significance mark ─────────────────
+
+  private async handleAmygdalaInterrupt(event: BrainEvent): Promise<void> {
+    const { thread_id, payload } = event
+    const workspace = this.config.workspace
+    const significanceBoost = (payload.significance_boost as number | undefined) ?? 0
+
+    await workspace.writeMemory({
+      type: 'episodic',
+      sourceBrain: 'amygdala',
+      ...(thread_id != null ? { threadId: thread_id } : {}),
+      content: JSON.stringify({
+        event_type: 'amygdala_interrupt',
+        tool: payload.tool,
+        decision: payload.decision,
+        reason: payload.reason,
+        boost: significanceBoost,
+      }),
+      baseImportance: Math.min(1.0, 0.5 + significanceBoost),
+      tags: ['amygdala_interrupt', 'amygdala'],
+    })
+
+    if (significanceBoost > 0) {
+      await workspace.writeMemory({
+        type: 'episodic',
+        sourceBrain: 'amygdala',
+        ...(thread_id != null ? { threadId: thread_id } : {}),
+        content: JSON.stringify({
+          event_type: 'significance_mark',
+          boost: significanceBoost,
+          trigger: 'amygdala',
+          original_brain: 'amygdala',
+        }),
+        baseImportance: Math.min(1.0, 0.7 + significanceBoost),
+        tags: ['significance_mark', 'amygdala'],
+      })
     }
   }
 

@@ -1,8 +1,8 @@
 import { describe, expect, it, mock } from 'bun:test'
 import type { BrainEvent } from '../../../src/adapters/index'
-import type { BrainEventBus } from '../../../src/eventbus/index'
 import type { DmnConfig } from '../../../src/dmn/index'
 import { DmnReactive } from '../../../src/dmn/reactive/index'
+import type { BrainEventBus } from '../../../src/eventbus/index'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -37,22 +37,33 @@ function makeConfig(overrides: Partial<DmnConfig> = {}): DmnConfig & {
       }
     }),
     emit: mock((params) => {
-      const event = { ...params, event_id: 'emitted', occurred_at: new Date(), schema_version: '1.0' } as ReturnType<BrainEventBus['emit']>
+      const event = {
+        ...params,
+        event_id: 'emitted',
+        occurred_at: new Date(),
+        schema_version: '1.0',
+      } as ReturnType<BrainEventBus['emit']>
       emitted.push(event)
       return event
     }),
     // expose for test inspection
     _subscribers: subscribers,
     _emitted: emitted,
-    _dispatch: (e: BrainEvent) => subscribers.forEach((h) => h(e)),
-  } as unknown as BrainEventBus & { _subscribers: typeof subscribers; _emitted: typeof emitted; _dispatch: (e: BrainEvent) => void }
+    _dispatch: (e: BrainEvent) => {
+      for (const h of subscribers) h(e)
+    },
+  } as unknown as BrainEventBus & {
+    _subscribers: typeof subscribers
+    _emitted: typeof emitted
+    _dispatch: (e: BrainEvent) => void
+  }
 
   return {
     workspace: {
       searchMemory: mock(async () => []),
-      writeMemory: mock(async () => ({} as never)),
-      writeSlot: mock(async () => ({} as never)),
-      writePending: mock(async () => ({} as never)),
+      writeMemory: mock(async () => ({}) as never),
+      writeSlot: mock(async () => ({}) as never),
+      writePending: mock(async () => ({}) as never),
       updateThreadState: mock(async () => {}),
       getLatestSegmentStates: mock(async () => new Map()),
     } as unknown as DmnConfig['workspace'],
@@ -70,7 +81,9 @@ describe('DmnReactive', () => {
       const config = makeConfig()
       const reactive = new DmnReactive(config)
       await reactive.start()
-      expect((config.eventBus as unknown as { _subscribers: unknown[] })._subscribers).toHaveLength(1)
+      expect((config.eventBus as unknown as { _subscribers: unknown[] })._subscribers).toHaveLength(
+        1,
+      )
     })
 
     it('start() is idempotent', async () => {
@@ -78,7 +91,9 @@ describe('DmnReactive', () => {
       const reactive = new DmnReactive(config)
       await reactive.start()
       await reactive.start()
-      expect((config.eventBus as unknown as { _subscribers: unknown[] })._subscribers).toHaveLength(1)
+      expect((config.eventBus as unknown as { _subscribers: unknown[] })._subscribers).toHaveLength(
+        1,
+      )
     })
 
     it('stop() unsubscribes from eventBus', async () => {
@@ -86,7 +101,9 @@ describe('DmnReactive', () => {
       const reactive = new DmnReactive(config)
       await reactive.start()
       await reactive.stop()
-      expect((config.eventBus as unknown as { _subscribers: unknown[] })._subscribers).toHaveLength(0)
+      expect((config.eventBus as unknown as { _subscribers: unknown[] })._subscribers).toHaveLength(
+        0,
+      )
     })
 
     // Fix 3: restore segment tracking on start()
@@ -98,9 +115,9 @@ describe('DmnReactive', () => {
       const config = makeConfig({
         workspace: {
           searchMemory: mock(async () => []),
-          writeMemory: mock(async () => ({} as never)),
-          writeSlot: mock(async () => ({} as never)),
-          writePending: mock(async () => ({} as never)),
+          writeMemory: mock(async () => ({}) as never),
+          writeSlot: mock(async () => ({}) as never),
+          writePending: mock(async () => ({}) as never),
           updateThreadState: mock(async () => {}),
           getLatestSegmentStates: mock(async () => restoredState),
         } as unknown as typeof config.workspace,
@@ -109,7 +126,10 @@ describe('DmnReactive', () => {
       await reactive.start()
       // getLatestSegmentStates was called once on start
       // biome-ignore lint/suspicious/noExplicitAny: accessing private for test verification
-      const segments = (reactive as unknown as Record<string, any>).threadSegments as Map<string, { segmentId: string; nextSeq: number }>
+      const segments = (reactive as unknown as Record<string, any>).threadSegments as Map<
+        string,
+        { segmentId: string; nextSeq: number }
+      >
       expect(segments.get('thread-abc')).toEqual({ segmentId: 'seg-123', nextSeq: 5 })
       expect(segments.get('thread-xyz')).toEqual({ segmentId: 'seg-456', nextSeq: 2 })
       await reactive.stop()
@@ -141,7 +161,10 @@ describe('DmnReactive', () => {
         expect.objectContaining({ status: 'pending' }),
       )
       expect(config.workspace.writeMemory).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'working', tags: expect.arrayContaining(['dmn_retry_count']) }),
+        expect.objectContaining({
+          type: 'working',
+          tags: expect.arrayContaining(['dmn_retry_count']),
+        }),
       )
     })
 
@@ -189,8 +212,115 @@ describe('DmnReactive', () => {
           triggerAt: expect.any(Date),
         }),
       )
-      const call = (config.workspace.writePending as ReturnType<typeof mock>).mock.calls[0][0] as { triggerAt: Date }
+      const call = (config.workspace.writePending as ReturnType<typeof mock>).mock.calls[0][0] as {
+        triggerAt: Date
+      }
       expect(call.triggerAt.getTime()).toBeGreaterThanOrEqual(before + 5000)
+    })
+  })
+
+  describe('Amygdala interrupt: episodic write + significance mark', () => {
+    it('writes episodic memory with boosted baseImportance on amygdala.interrupt ALERT', async () => {
+      const config = makeConfig()
+      const reactive = new DmnReactive(config)
+      await reactive.start()
+      const bus = config.eventBus as unknown as { _dispatch: (e: BrainEvent) => void }
+
+      bus._dispatch(
+        makeEvent({
+          event_type: 'amygdala.interrupt',
+          level: 'ALERT',
+          brain: 'amygdala',
+          thread_id: 'thread-amyg',
+          payload: { tool: 'bash', decision: 'block', reason: 'blocked', significance_boost: 0.4 },
+        }),
+      )
+      await new Promise((r) => setTimeout(r, 10))
+
+      expect(config.workspace.writeMemory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'episodic',
+          sourceBrain: 'amygdala',
+          baseImportance: 0.9,
+          tags: expect.arrayContaining(['amygdala_interrupt']),
+        }),
+      )
+    })
+
+    it('writes significance_mark when boost > 0', async () => {
+      const config = makeConfig()
+      const reactive = new DmnReactive(config)
+      await reactive.start()
+      const bus = config.eventBus as unknown as { _dispatch: (e: BrainEvent) => void }
+
+      bus._dispatch(
+        makeEvent({
+          event_type: 'amygdala.interrupt',
+          level: 'ALERT',
+          brain: 'amygdala',
+          thread_id: 'thread-amyg',
+          payload: { tool: 'bash', decision: 'block', reason: 'blocked', significance_boost: 0.4 },
+        }),
+      )
+      await new Promise((r) => setTimeout(r, 10))
+
+      expect(config.workspace.writeMemory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tags: expect.arrayContaining(['significance_mark']),
+        }),
+      )
+    })
+
+    it('uses baseImportance=0.5 when significance_boost is absent', async () => {
+      const config = makeConfig()
+      const reactive = new DmnReactive(config)
+      await reactive.start()
+      const bus = config.eventBus as unknown as { _dispatch: (e: BrainEvent) => void }
+
+      bus._dispatch(
+        makeEvent({
+          event_type: 'amygdala.interrupt',
+          level: 'ALERT',
+          brain: 'amygdala',
+          thread_id: 'thread-amyg',
+          payload: { tool: 'bash', decision: 'block', reason: 'blocked' },
+        }),
+      )
+      await new Promise((r) => setTimeout(r, 10))
+
+      expect(config.workspace.writeMemory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'episodic',
+          baseImportance: 0.5,
+        }),
+      )
+      // No significance_mark when boost is 0
+      const allCalls = (config.workspace.writeMemory as ReturnType<typeof mock>).mock.calls
+      const hasSigMark = allCalls.some(
+        (call) =>
+          Array.isArray((call[0] as { tags?: string[] }).tags) &&
+          (call[0] as { tags: string[] }).tags.includes('significance_mark'),
+      )
+      expect(hasSigMark).toBe(false)
+    })
+
+    it('does not write for non-ALERT amygdala.interrupt events', async () => {
+      const config = makeConfig()
+      const reactive = new DmnReactive(config)
+      await reactive.start()
+      const bus = config.eventBus as unknown as { _dispatch: (e: BrainEvent) => void }
+
+      bus._dispatch(
+        makeEvent({
+          event_type: 'amygdala.interrupt',
+          level: 'INFO',
+          brain: 'amygdala',
+          payload: { tool: 'bash', decision: 'block', reason: 'blocked', significance_boost: 0.4 },
+        }),
+      )
+      await new Promise((r) => setTimeout(r, 10))
+
+      expect(config.workspace.writeMemory).not.toHaveBeenCalled()
     })
   })
 
@@ -204,7 +334,10 @@ describe('DmnReactive', () => {
 
       const reactive = new DmnReactive(config)
       await reactive.start()
-      const bus = config.eventBus as unknown as { _dispatch: (e: BrainEvent) => void; _emitted: BrainEvent[] }
+      const bus = config.eventBus as unknown as {
+        _dispatch: (e: BrainEvent) => void
+        _emitted: BrainEvent[]
+      }
 
       bus._dispatch(
         makeEvent({
