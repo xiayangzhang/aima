@@ -1,12 +1,12 @@
 ---
 work_package_id: WP01
 title: Wire clearWorkingMemory into ThreadRunner and add unit tests
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks: [T001, T002, T003]
 assignee: ""
 agent: ""
-shell_pid: ""
+shell_pid: "33946"
 review_status: ""
 reviewed_by: ""
 history:
