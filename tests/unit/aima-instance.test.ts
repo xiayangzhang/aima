@@ -8,6 +8,18 @@ function getAdapters(instance: AIMAInstance): Map<string, { config: Record<strin
   return (instance as unknown as Record<string, any>).threadRunner.adapters
 }
 
+// Helper to extract the workspace options from a constructed AIMAInstance.
+function getWorkspaceOptions(instance: AIMAInstance): Record<string, unknown> {
+  // biome-ignore lint/suspicious/noExplicitAny: accessing private members for unit testing
+  return (instance as unknown as Record<string, any>).workspace.options
+}
+
+// Helper to extract the amygdala config from a constructed AIMAInstance.
+function getAmygdalaConfig(instance: AIMAInstance): Record<string, unknown> {
+  // biome-ignore lint/suspicious/noExplicitAny: accessing private members for unit testing
+  return (instance as unknown as Record<string, any>).amygdala.config
+}
+
 describe('AIMAInstance', () => {
   test('can be constructed without errors (no DB connection used at construction)', () => {
     // Construction is synchronous; postgres() is lazy (no connection until first query)
@@ -137,5 +149,75 @@ describe('AIMAInstance — per-brain adapter instances (pi-agent)', () => {
     expect(adapters.get('limbic')?.config.modelId).toBe('claude-haiku-4-5-20251001')
     expect(adapters.get('cortex')?.config.modelId).toBe('claude-opus-4-6')
     expect(adapters.get('brainstem')?.config.modelId).toBe('claude-sonnet-4-6')
+  })
+})
+
+// ─── T028: embedding and amygdala config wiring ────────────────────────────────
+
+describe('AIMAInstance — embedding config wiring (T028-A)', () => {
+  test('no embedding config → workspace options has no embedding field', () => {
+    const instance = new AIMAInstance({
+      databaseUrl: 'postgresql://localhost/test',
+      adapter: 'claude-sdk',
+    })
+    const opts = getWorkspaceOptions(instance)
+    expect(opts.embedding).toBeUndefined()
+  })
+
+  test('embedding config passed through → workspace options contains embedding', () => {
+    const embeddingConfig = { apiKey: 'sk-test', model: 'text-embedding-3-small' }
+    const instance = new AIMAInstance({
+      databaseUrl: 'postgresql://localhost/test',
+      adapter: 'claude-sdk',
+      embedding: embeddingConfig,
+    })
+    const opts = getWorkspaceOptions(instance)
+    expect(opts.embedding).toEqual(embeddingConfig)
+  })
+})
+
+describe('AIMAInstance — amygdala config wiring (T028-B)', () => {
+  test('no amygdala config → amygdala config has no llm or haiku_enabled', () => {
+    const instance = new AIMAInstance({
+      databaseUrl: 'postgresql://localhost/test',
+      adapter: 'claude-sdk',
+    })
+    const cfg = getAmygdalaConfig(instance)
+    expect(cfg.llm).toBeUndefined()
+    expect(cfg.haiku_enabled).toBeUndefined()
+    expect(cfg.riskLevels).toBeUndefined()
+  })
+
+  test('amygdala.llm and haiku_enabled passed through to Amygdala config', () => {
+    const llmConfig = { apiKey: 'sk-ant-test', model: 'claude-haiku-4-5-20251001' }
+    const instance = new AIMAInstance({
+      databaseUrl: 'postgresql://localhost/test',
+      adapter: 'claude-sdk',
+      amygdala: { llm: llmConfig, haiku_enabled: true },
+    })
+    const cfg = getAmygdalaConfig(instance)
+    expect(cfg.llm).toEqual(llmConfig)
+    expect(cfg.haiku_enabled).toBe(true)
+  })
+
+  test('amygdala.riskLevels passed through to Amygdala config', () => {
+    const riskLevels = { my_tool: 'high' as const }
+    const instance = new AIMAInstance({
+      databaseUrl: 'postgresql://localhost/test',
+      adapter: 'claude-sdk',
+      amygdala: { riskLevels },
+    })
+    const cfg = getAmygdalaConfig(instance)
+    expect(cfg.riskLevels).toEqual(riskLevels)
+  })
+
+  test('amygdala.haiku_enabled: false is passed through (not omitted)', () => {
+    const instance = new AIMAInstance({
+      databaseUrl: 'postgresql://localhost/test',
+      adapter: 'claude-sdk',
+      amygdala: { haiku_enabled: false },
+    })
+    const cfg = getAmygdalaConfig(instance)
+    expect(cfg.haiku_enabled).toBe(false)
   })
 })

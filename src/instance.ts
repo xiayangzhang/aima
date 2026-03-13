@@ -19,12 +19,14 @@ import { Amygdala } from './amygdala/index'
 import type { BrainIdentity, ContextAssemblerConfig } from './context/index'
 import type { DmnConfig } from './dmn/index'
 import { DmnService } from './dmn/index'
+import type { EmbeddingConfig } from './embedding'
 import { getEventBus } from './eventbus/index'
 import type { BrainEventBus } from './eventbus/index'
 import { HippocampusConsolidation } from './hippocampus/index'
 import type { HippocampusConfig } from './hippocampus/index'
 import { IdentityLoader } from './identity/index'
 import type { IdentityCache } from './identity/index'
+import type { LlmConfig } from './llm'
 import type { SpawnExecutionSessionFn } from './mcp/index'
 import { ThreadRunner } from './runner/index'
 import * as schema from './schema/index'
@@ -83,6 +85,22 @@ export interface AIMAInstanceConfig {
    * Adds file I/O latency; intended for development/debugging only.
    */
   reloadOnRun?: boolean
+  /**
+   * Embedding config for pgvector semantic memory search.
+   * If omitted, all memory searches fall back to ILIKE text matching.
+   */
+  embedding?: EmbeddingConfig
+  /**
+   * Amygdala configuration for risk evaluation behavior.
+   */
+  amygdala?: {
+    /** LLM config for Stage 3 evaluation (required for Stage 3 to activate) */
+    llm?: LlmConfig
+    /** Per-tool risk level overrides. Default: 'low' for all tools */
+    riskLevels?: Record<string, 'low' | 'medium' | 'high'>
+    /** Enable Stage 3 LLM evaluation for high-risk tools */
+    haiku_enabled?: boolean
+  }
   /**
    * @internal Testing escape hatch: override the sub-execution LLM query.
    * When provided, bypasses pi-coding-agent session creation entirely.
@@ -144,13 +162,25 @@ export class AIMAInstance {
     const pgClient = postgres(config.databaseUrl)
     this.pgClient = pgClient
     const db = drizzle(pgClient, { schema })
-    this.workspace = new CognitiveWorkspace(db)
+    this.workspace = new CognitiveWorkspace(db, {
+      ...(config.embedding ? { embedding: config.embedding } : {}),
+    })
 
     // Process-level singleton EventBus
     this.eventBus = getEventBus()
 
     // Amygdala (default rules)
-    this.amygdala = new Amygdala({}, this.workspace, this.eventBus)
+    this.amygdala = new Amygdala(
+      {
+        ...(config.amygdala?.llm ? { llm: config.amygdala.llm } : {}),
+        ...(config.amygdala?.riskLevels ? { riskLevels: config.amygdala.riskLevels } : {}),
+        ...(config.amygdala?.haiku_enabled !== undefined
+          ? { haiku_enabled: config.amygdala.haiku_enabled }
+          : {}),
+      },
+      this.workspace,
+      this.eventBus,
+    )
     const amygdala = this.amygdala
 
     // Identity loader (optional)
