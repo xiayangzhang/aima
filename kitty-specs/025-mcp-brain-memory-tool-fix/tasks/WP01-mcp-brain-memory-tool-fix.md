@@ -1,12 +1,12 @@
 ---
 work_package_id: WP01
 title: Fix MCP brain memory tools and add unit tests
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks: [T001, T002, T003, T004]
 assignee: ""
 agent: ""
-shell_pid: ""
+shell_pid: "19501"
 review_status: ""
 reviewed_by: ""
 history:
