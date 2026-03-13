@@ -2,7 +2,7 @@
 
 ## WP01 — Significance boost emission + DMN episodic encoding
 
-**Lane**: planned
+**Lane**: done
 **Depends on**: none
 
 | ID   | Task | Details |

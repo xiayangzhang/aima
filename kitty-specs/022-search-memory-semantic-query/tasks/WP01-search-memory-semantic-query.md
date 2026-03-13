@@ -6,7 +6,7 @@ subtasks:
   - "T003"
 title: "searchMemory Semantic Query Upgrade — Interface + Implementation + Tests"
 phase: "Phase 1 - Interface + Implementation + Tests"
-lane: "for_review"
+lane: "done"
 assignee: ""
 agent: ""
 shell_pid: ""
