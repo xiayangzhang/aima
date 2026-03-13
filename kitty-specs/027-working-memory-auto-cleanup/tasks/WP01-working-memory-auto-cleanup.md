@@ -1,14 +1,14 @@
 ---
 work_package_id: WP01
 title: Wire clearWorkingMemory into ThreadRunner and add unit tests
-lane: "doing"
+lane: "done"
 dependencies: []
 subtasks: [T001, T002, T003]
 assignee: ""
 agent: "claude"
 shell_pid: "37605"
-review_status: ""
-reviewed_by: ""
+review_status: "approved"
+reviewed_by: "XIAYANG ZHANG"
 history:
   - timestamp: "2026-03-13T00:00:00Z"
     lane: "planned"
@@ -292,3 +292,4 @@ test('clearWorkingMemory throws → error swallowed, thread completes normally',
 
 - 2026-03-13T05:39:06Z – unknown – shell_pid=33946 – lane=for_review – 2 fire-and-forget calls added at terminal paths. 4 unit tests (A-D) all pass. 445 total unit tests, 0 regressions. typecheck clean, biome clean.
 - 2026-03-13T05:39:10Z – claude – shell_pid=37605 – lane=doing – Started review via workflow command
+- 2026-03-13T05:39:20Z – claude – shell_pid=37605 – lane=done – Review passed: fire-and-forget clearWorkingMemory added at both terminal paths (complete + interrupted), handleDefer unchanged, all 4 scenario tests pass, no regression
