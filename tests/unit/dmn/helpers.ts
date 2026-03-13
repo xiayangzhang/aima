@@ -186,8 +186,6 @@ export function makeMockWorkspace() {
           status: data.status ?? 'pending',
           input: data.input ?? null,
           output: data.output ?? null,
-          intent: data.intent ?? null,
-          complexityHint: data.complexityHint ?? null,
           executionSessionId: data.executionSessionId ?? null,
           createdAt: new Date(),
           updatedAt: new Date(),
