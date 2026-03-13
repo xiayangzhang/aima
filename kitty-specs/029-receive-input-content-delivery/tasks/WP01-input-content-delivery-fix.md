@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Input Content Delivery Fix
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks:
 - T001
@@ -11,7 +11,7 @@ subtasks:
 phase: Phase 1
 assignee: ''
 agent: ''
-shell_pid: ''
+shell_pid: "42419"
 review_status: ''
 history:
 - timestamp: '2026-03-13T00:00:00Z'
