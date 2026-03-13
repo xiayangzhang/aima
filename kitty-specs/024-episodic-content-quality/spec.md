@@ -1,6 +1,6 @@
 # Feature 024 — Episodic Content Quality
 
-## Status: draft
+## Status: merged
 
 ## Background
 

@@ -1,7 +1,7 @@
 # Feature Specification: Thread Entity ID for Limbic Block 4
 
 **Feature**: 026-thread-entity-id-limbic-block4
-**Status**: Draft
+**Status**: merged
 **Created**: 2026-03-13
 **Depends on**: Feature 001 (workspace schema), Feature 008 (Block 4 hints), Feature 020 (getEntityContext depth)
 
