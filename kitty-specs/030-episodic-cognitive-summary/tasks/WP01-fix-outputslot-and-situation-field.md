@@ -1,9 +1,10 @@
 ---
 work_package_id: "WP01"
 title: "Fix outputSlot gap + add situation field to episodic content"
-lane: "planned"
+lane: "doing"
 dependencies: []
 subtasks: ["T001", "T002", "T003", "T004", "T005"]
+shell_pid: "98834"
 history:
   - date: "2026-03-13"
     lane: "planned"
