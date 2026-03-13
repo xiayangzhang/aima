@@ -141,14 +141,34 @@ export function buildMcpTools(workspace: CognitiveWorkspace): ToolDefinition[] {
       description: 'Entity-centric memory retrieval (Limbic)',
       parameters: Type.Object({
         entityId: Type.String({ description: 'Entity ID to retrieve context for' }),
+        types: Type.Optional(
+          Type.Array(
+            Type.Union([
+              Type.Literal('semantic'),
+              Type.Literal('episodic'),
+              Type.Literal('procedural'),
+              Type.Literal('working'),
+              Type.Literal('implicit'),
+            ]),
+            { description: 'Filter by memory types' },
+          ),
+        ),
+        depth: Type.Optional(
+          Type.Integer({ minimum: 1, maximum: 2, description: 'Relationship traversal depth' }),
+        ),
         limit: Type.Optional(Type.Integer({ minimum: 1 })),
       }),
       async execute(_toolCallId, params) {
-        const { entityId, limit } = params as { entityId: string; limit?: number }
-        const results = await workspace.searchMemory({
-          entityId,
+        const { entityId, types, depth, limit } = params as {
+          entityId: string
+          types?: MemoryType[]
+          depth?: number
+          limit?: number
+        }
+        const results = await workspace.getEntityContext(entityId, {
+          ...(types !== undefined ? { types } : {}),
+          ...(depth !== undefined ? { depth } : {}),
           ...(limit !== undefined ? { limit } : {}),
-          excludeInvalid: true,
         })
         return ok(results)
       },
@@ -160,10 +180,20 @@ export function buildMcpTools(workspace: CognitiveWorkspace): ToolDefinition[] {
       label: 'Memory Similar Situations',
       description: 'Situation-based memory retrieval combining episodic and procedural (Cortex)',
       parameters: Type.Object({
+        situation: Type.Optional(
+          Type.String({ description: 'Current situation or query text for semantic matching' }),
+        ),
         limit: Type.Optional(Type.Integer({ minimum: 1 })),
       }),
       async execute(_toolCallId, params) {
-        const { limit } = params as { limit?: number }
+        const { situation, limit } = params as { situation?: string; limit?: number }
+        if (situation !== undefined) {
+          const result = await workspace.findSimilarSituations(situation, {
+            ...(limit !== undefined ? { limit } : {}),
+          })
+          return ok(result)
+        }
+        // Fallback: no situation provided — generic searchMemory
         const cap = limit ?? 5
         const [episodes, procedures] = await Promise.all([
           workspace.searchMemory({ type: 'episodic', limit: cap, excludeInvalid: true }),

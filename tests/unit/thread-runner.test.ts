@@ -65,6 +65,9 @@ describe('ThreadRunner routing', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => [] // prevent DB calls from assembleBlock4
   }
 
@@ -192,6 +195,9 @@ describe('ThreadRunner routing — extended', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
   }
 
@@ -290,19 +296,6 @@ describe('ThreadRunner routing — extended', () => {
     let brainstemCalled = false
     const pendingThread = makeThread({ id: 'pending-thread' })
 
-    workspace.removeExpiredPending = async () => {}
-    workspace.getPendingObservations = async () => [
-      {
-        id: 'obs-1',
-        targetBrain: 'brainstem',
-        note: 'test pending',
-        threadId: null,
-        triggerAt: new Date(Date.now() - 1000), // already due
-        expiresAt: new Date(Date.now() + 60_000),
-        addedAt: new Date(),
-        baseImportance: 0.5,
-      },
-    ]
     workspace.createThread = async () => {
       createdThreads.push('pending-thread')
       return pendingThread
@@ -311,6 +304,9 @@ describe('ThreadRunner routing — extended', () => {
     workspace.getThread = async () => pendingThread
     workspace.getSlotsByThread = async () => []
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => [] // empty during recovery
     workspace.searchMemory = async () => []
     workspace.updateThreadState = async (_id, state) => {
       pendingThread.state = state
@@ -329,6 +325,19 @@ describe('ThreadRunner routing — extended', () => {
     const runner = makeRunner(adapters, workspace, eventBus)
     await runner.start()
 
+    // Set real pending items after recovery, before routePending call
+    workspace.getPendingObservations = async () => [
+      {
+        id: 'obs-1',
+        targetBrain: 'brainstem',
+        note: 'test pending',
+        threadId: null,
+        triggerAt: new Date(Date.now() - 1000), // already due
+        expiresAt: new Date(Date.now() + 60_000),
+        addedAt: new Date(),
+        baseImportance: 0.5,
+      },
+    ]
     await runner.routePending()
 
     expect(createdThreads).toHaveLength(1)
@@ -377,15 +386,19 @@ describe('ThreadRunner routing — extended', () => {
     runner.stop()
   })
 
-  // Fix 1: crash recovery skips 'waiting' threads
+  // Fix 1: crash recovery interrupts waiting threads with no pending (not re-activates)
   test('crash recovery does not re-activate waiting threads', async () => {
     const workspace = new CognitiveWorkspace(mockDb)
     const eventBus = new BrainEventBus()
-    const waitingThread = makeThread({ state: 'waiting' })
+    const waitingThread = makeThread({ id: 'thread-1', state: 'waiting' })
     let limbicActivated = false
 
     // getActiveThreads returns only 'active' threads — waiting thread excluded
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => [waitingThread]
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => [] // no live pending → thread is stuck
+    workspace.updateThreadState = async (_id, state) => { waitingThread.state = state }
     workspace.getThread = async () => waitingThread
     workspace.getSlotsByThread = async () => []
     workspace.searchMemory = async () => []
@@ -417,19 +430,6 @@ describe('ThreadRunner routing — extended', () => {
     const newThreads: string[] = []
     let activatedOnThread: string | null = null
 
-    workspace.removeExpiredPending = async () => {}
-    workspace.getPendingObservations = async () => [
-      {
-        id: 'obs-defer',
-        targetBrain: 'limbic',
-        note: 'DEFER timeout',
-        threadId: 'original-thread',
-        triggerAt: new Date(Date.now() - 1000), // already due
-        expiresAt: new Date(Date.now() + 60_000),
-        addedAt: new Date(),
-        baseImportance: 0.5,
-      },
-    ]
     workspace.createThread = async () => {
       newThreads.push('created')
       return makeThread({ id: 'new-thread' })
@@ -438,6 +438,21 @@ describe('ThreadRunner routing — extended', () => {
     workspace.getThread = async (id) => (id === 'original-thread' ? originalThread : null)
     workspace.getSlotsByThread = async () => []
     workspace.getActiveThreads = async () => []
+    // During recovery, originalThread has live pending → leave it alone
+    workspace.getWaitingThreads = async () => [originalThread]
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => [
+      {
+        id: 'obs-defer',
+        targetBrain: 'limbic',
+        note: 'DEFER timeout',
+        threadId: 'original-thread',
+        triggerAt: new Date(Date.now() - 1000),
+        expiresAt: new Date(Date.now() + 60_000),
+        addedAt: new Date(),
+        baseImportance: 0.5,
+      },
+    ]
     workspace.searchMemory = async () => []
     workspace.updateThreadState = async (id, state) => {
       if (id === 'original-thread') originalThread.state = state
@@ -484,6 +499,9 @@ describe('ThreadRunner routing — extended', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
 
     const adapters = new Map<CognitiveBrainType, BrainAdapter>()
@@ -510,6 +528,9 @@ describe('ThreadRunner routing — extended', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
 
     const adapters = new Map<CognitiveBrainType, BrainAdapter>()
@@ -539,6 +560,9 @@ describe('ThreadRunner routing — extended', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
     workspace.writeSlot = async (_tid, brain, data) => {
       writtenSlotBrain = brain
@@ -586,6 +610,9 @@ describe('ThreadRunner routing — extended', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
 
     const adapters = new Map<CognitiveBrainType, BrainAdapter>()
@@ -616,6 +643,9 @@ describe('ThreadRunner routing — extended', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
     workspace.clearWorkingMemory = async (threadId) => {
       clearCalled = true
@@ -648,6 +678,9 @@ describe('ThreadRunner routing — extended', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
     workspace.clearWorkingMemory = async () => {
       clearCalled = true
@@ -677,6 +710,9 @@ describe('ThreadRunner routing — extended', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
     workspace.writePending = async () => ({
       id: 'p1',
@@ -715,6 +751,9 @@ describe('ThreadRunner routing — extended', () => {
       thread.state = state
     }
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
     workspace.clearWorkingMemory = async () => {
       throw new Error('db error')
@@ -832,6 +871,9 @@ describe('ThreadRunner.trigger() — initialPrompt wiring (T029)', () => {
     workspace.getThread = async () => thread
     workspace.getSlotsByThread = async () => []
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
     workspace.updateThreadState = async (_id, state) => {
       thread.state = state
@@ -865,6 +907,9 @@ describe('ThreadRunner.trigger() — initialPrompt wiring (T029)', () => {
     workspace.getThread = async () => thread
     workspace.getSlotsByThread = async () => []
     workspace.getActiveThreads = async () => []
+    workspace.getWaitingThreads = async () => []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
     workspace.updateThreadState = async (_id, state) => {
       thread.state = state
@@ -887,6 +932,82 @@ describe('ThreadRunner.trigger() — initialPrompt wiring (T029)', () => {
     await runner.trigger('limbic', 'thread-1')
 
     expect(capturedParams?.initialPrompt).toMatch(/^Thread thread-1 — activate limbic$/)
+    runner.stop()
+  })
+})
+
+// ─── GAP-2: recoverInFlightThreads — waiting thread handling ─────────────────
+
+describe('recoverInFlightThreads — waiting threads', () => {
+  function patchWorkspaceForRecovery(
+    workspace: CognitiveWorkspace,
+    opts: {
+      activeThreads?: Thread[]
+      waitingThreads?: Thread[]
+      pendingObservations?: Array<{ id: string; threadId: string | null; triggerAt: Date | null; expiresAt: Date }>
+    },
+  ) {
+    workspace.getActiveThreads = async () => opts.activeThreads ?? []
+    workspace.getWaitingThreads = async () => opts.waitingThreads ?? []
+    workspace.removeExpiredPending = async () => {}
+    workspace.getPendingObservations = async () =>
+      (opts.pendingObservations ?? []).map((p) => ({
+        id: p.id,
+        targetBrain: 'limbic' as const,
+        note: 'test',
+        threadId: p.threadId,
+        triggerAt: p.triggerAt,
+        expiresAt: p.expiresAt,
+        baseImportance: 0.5,
+        addedAt: new Date(),
+      }))
+    workspace.updateThreadState = async (_id, state) => {
+      const t = (opts.waitingThreads ?? []).find((w) => w.id === _id)
+      if (t) t.state = state
+    }
+    workspace.searchMemory = async () => []
+  }
+
+  test('waiting thread with live pending is left alone (routePending handles it)', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const waitingThread = makeThread({ id: 'wait-1', state: 'waiting' })
+    const emitted: string[] = []
+    eventBus.subscribe((e) => emitted.push(e.event_type))
+
+    patchWorkspaceForRecovery(workspace, {
+      waitingThreads: [waitingThread],
+      pendingObservations: [
+        { id: 'p-1', threadId: 'wait-1', triggerAt: new Date(Date.now() + 60_000), expiresAt: new Date(Date.now() + 120_000) },
+      ],
+    })
+
+    const runner = makeRunner(new Map(), workspace, eventBus)
+    await runner.start()
+
+    // waiting thread with live pending should NOT be interrupted
+    expect(waitingThread.state).toBe('waiting')
+    expect(emitted).not.toContain('thread.interrupted')
+    runner.stop()
+  })
+
+  test('waiting thread with no pending is interrupted on recovery', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const waitingThread = makeThread({ id: 'wait-2', state: 'waiting' })
+    const emitted: Array<{ type: string; threadId: string }> = []
+    eventBus.subscribe((e) => emitted.push({ type: e.event_type, threadId: e.thread_id ?? '' }))
+
+    patchWorkspaceForRecovery(workspace, {
+      waitingThreads: [waitingThread],
+      pendingObservations: [], // no live pending
+    })
+
+    const runner = makeRunner(new Map(), workspace, eventBus)
+    await runner.start()
+
+    expect(waitingThread.state).toBe('interrupted')
+    expect(emitted.some((e) => e.type === 'thread.interrupted' && e.threadId === 'wait-2')).toBe(true)
     runner.stop()
   })
 })

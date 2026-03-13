@@ -1,5 +1,9 @@
 # AIMA — 设想 vs 现实（深度评估）
 
+> **[ARCHIVED — 2026-03-13]** 本文中描述的所有已知问题（DEFER bug、Signal per-thread、
+> BrainOutput mode enum、DMN Reactive 七个职责）均已在 Features 012-030 中修复。
+> 请参考 Feature 031 审计报告获取最新差距分析。本文保留仅供历史参考，不再维护。
+
 > 本文评估当前实现（Features 001-011，399 测试，2026-03-12）是否真正实现了
 > `01-agent-architecture.md` 和 `02-memory-architecture.md` 所描述的认知目标。
 >

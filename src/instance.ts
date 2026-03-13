@@ -86,6 +86,11 @@ export interface AIMAInstanceConfig {
    */
   reloadOnRun?: boolean
   /**
+   * Interval in milliseconds for polling pending observations (DEFER mechanism).
+   * Defaults to 30_000 (30 seconds). Set to 0 to disable.
+   */
+  routePendingIntervalMs?: number
+  /**
    * Embedding config for pgvector semantic memory search.
    * If omitted, all memory searches fall back to ILIKE text matching.
    */
@@ -154,6 +159,7 @@ export class AIMAInstance {
   private readonly _config: AIMAInstanceConfig
   private readonly identityLoader?: IdentityLoader
   private identityCache: IdentityCache | null = null
+  private routePendingInterval: ReturnType<typeof setInterval> | null = null
 
   constructor(config: AIMAInstanceConfig) {
     this._config = config
@@ -233,9 +239,20 @@ export class AIMAInstance {
       await this.dmnService.start()
     }
     this.hippocampusConsolidation?.start()
+
+    const intervalMs = this._config.routePendingIntervalMs ?? 30_000
+    if (intervalMs > 0) {
+      this.routePendingInterval = setInterval(() => {
+        void this.threadRunner.routePending()
+      }, intervalMs)
+    }
   }
 
   async stop(): Promise<void> {
+    if (this.routePendingInterval !== null) {
+      clearInterval(this.routePendingInterval)
+      this.routePendingInterval = null
+    }
     if (this.dmnService) {
       await this.dmnService.stop()
     }

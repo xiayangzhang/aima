@@ -158,6 +158,7 @@ export interface ICognitiveWorkspace {
   updateThreadState(id: string, state: ThreadState): Promise<void>
   reopenThread(id: string, trigger: string): Promise<void>
   getActiveThreads(): Promise<Thread[]> // state = 'active' only (excludes waiting/complete/interrupted)
+  getWaitingThreads(): Promise<Thread[]> // state = 'waiting' (DEFER pending)
 
   // ── Slot ────────────────────────────────────────────────────────────────
   writeSlot(threadId: string, brain: BrainType, data: WriteSlotParams): Promise<Slot>
