@@ -13,6 +13,7 @@ export const threads = pgTable('threads', {
   sourceChannel: text('source_channel'),
   initiatedBy: text('initiated_by').notNull(),
   trigger: text('trigger'),
+  entityId: text('entity_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   goal: text('goal'),

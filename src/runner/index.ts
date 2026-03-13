@@ -275,10 +275,16 @@ export class ThreadRunner {
    */
   private buildBlock4Opts(
     brain: CognitiveBrainType,
-    thread: Pick<Thread, 'trigger'>,
+    thread: Pick<Thread, 'trigger' | 'entityId'>,
     slotMap: Record<string, Pick<Slot, 'output'> | undefined>,
   ): AssembleBlock4Opts | undefined {
-    if (brain === 'limbic' || brain === 'cortex') {
+    if (brain === 'limbic') {
+      if (thread.entityId) return { entityId: thread.entityId }
+      if (thread.trigger) return { situation: thread.trigger }
+      return undefined
+    }
+
+    if (brain === 'cortex') {
       if (!thread.trigger) return undefined
       return { situation: thread.trigger }
     }

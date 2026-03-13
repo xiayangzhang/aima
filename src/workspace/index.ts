@@ -59,6 +59,7 @@ function mapThreadRow(row: typeof threads.$inferSelect): Thread {
     sourceChannel: row.sourceChannel,
     initiatedBy: row.initiatedBy,
     trigger: row.trigger,
+    entityId: row.entityId ?? null,
     goal: row.goal ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -245,6 +246,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
       .values({
         initiatedBy: params.initiatedBy,
         trigger: params.trigger ?? null,
+        entityId: params.entityId ?? null,
         sourceChannel: params.sourceChannel ?? null,
         goal: params.goal ?? null,
       })

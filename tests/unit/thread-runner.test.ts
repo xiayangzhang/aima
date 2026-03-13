@@ -25,6 +25,8 @@ function makeThread(overrides: Partial<Thread> = {}): Thread {
     sourceChannel: null,
     initiatedBy: 'test',
     trigger: null,
+    entityId: null,
+    goal: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -342,14 +344,25 @@ describe('ThreadRunner routing — extended', () => {
     let writtenState: string | null = null
     let writtenPending: { threadId?: string } | null = null
 
-    patchWorkspace(workspace, thread, () => [makeSlot('limbic', { next: 'self', timeout_ms: 5000 })])
+    patchWorkspace(workspace, thread, () => [
+      makeSlot('limbic', { next: 'self', timeout_ms: 5000 }),
+    ])
     workspace.updateThreadState = async (_id, state) => {
       thread.state = state
       writtenState = state
     }
     workspace.writePending = async (params) => {
       writtenPending = params
-      return { id: 'p1', targetBrain: 'limbic', note: '', threadId: params.threadId ?? null, triggerAt: new Date(), expiresAt: new Date(), baseImportance: 0.5, addedAt: new Date() }
+      return {
+        id: 'p1',
+        targetBrain: 'limbic',
+        note: '',
+        threadId: params.threadId ?? null,
+        triggerAt: new Date(),
+        expiresAt: new Date(),
+        baseImportance: 0.5,
+        addedAt: new Date(),
+      }
     }
 
     const adapters = new Map<CognitiveBrainType, BrainAdapter>()
@@ -519,7 +532,9 @@ describe('ThreadRunner routing — extended', () => {
     let writtenSlotData: unknown = null
 
     workspace.getThread = async () => thread
-    workspace.getSlotsByThread = async () => [makeSlot('brainstem', { next: 'limbic', handoff: 'task done' })]
+    workspace.getSlotsByThread = async () => [
+      makeSlot('brainstem', { next: 'limbic', handoff: 'task done' }),
+    ]
     workspace.updateThreadState = async (_id, state) => {
       thread.state = state
     }
@@ -595,8 +610,9 @@ describe('ThreadRunner.buildBlock4Opts', () => {
     brain: CognitiveBrainType,
     trigger: string | null,
     cortexOutput: Record<string, unknown> | null = null,
+    entityId: string | null = null,
   ) {
-    const thread = { trigger }
+    const thread = { trigger, entityId }
     const slotMap: Record<string, { output: unknown } | undefined> =
       cortexOutput !== null ? { cortex: { output: cortexOutput } } : {}
     // biome-ignore lint/suspicious/noExplicitAny: accessing private method for unit testing
@@ -610,21 +626,33 @@ describe('ThreadRunner.buildBlock4Opts', () => {
     return makeRunner(adapters, workspace, eventBus)
   }
 
-  test('limbic + trigger present → { situation: trigger }', () => {
+  test('limbic + entityId present → { entityId } (entityId takes priority over trigger)', () => {
     const runner = makeTestRunner()
-    const result = callBuildBlock4Opts(runner, 'limbic', 'user said hello')
+    const result = callBuildBlock4Opts(runner, 'limbic', 'hello', null, 'user:alex')
+    expect(result).toEqual({ entityId: 'user:alex' })
+  })
+
+  test('limbic + entityId null + trigger present → { situation: trigger }', () => {
+    const runner = makeTestRunner()
+    const result = callBuildBlock4Opts(runner, 'limbic', 'user said hello', null, null)
     expect(result).toEqual({ situation: 'user said hello' })
   })
 
-  test('limbic + trigger null → undefined', () => {
+  test('limbic + entityId null + trigger null → undefined', () => {
     const runner = makeTestRunner()
-    const result = callBuildBlock4Opts(runner, 'limbic', null)
+    const result = callBuildBlock4Opts(runner, 'limbic', null, null, null)
     expect(result).toBeUndefined()
   })
 
-  test('cortex + trigger present → { situation: trigger }', () => {
+  test('cortex + entityId present → { situation: trigger } (cortex ignores entityId)', () => {
     const runner = makeTestRunner()
-    const result = callBuildBlock4Opts(runner, 'cortex', 'plan this task')
+    const result = callBuildBlock4Opts(runner, 'cortex', 'plan this task', null, 'user:alex')
+    expect(result).toEqual({ situation: 'plan this task' })
+  })
+
+  test('cortex + trigger present + entityId null → { situation: trigger }', () => {
+    const runner = makeTestRunner()
+    const result = callBuildBlock4Opts(runner, 'cortex', 'plan this task', null, null)
     expect(result).toEqual({ situation: 'plan this task' })
   })
 

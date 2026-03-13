@@ -38,6 +38,7 @@ export interface Thread {
   sourceChannel: string | null // null = DMN-initiated, no external channel
   initiatedBy: string // 'dmn' | 'external:teams' | 'external:webhook' etc.
   trigger: string | null
+  entityId: string | null
   goal: string | null
   createdAt: Date
   updatedAt: Date
@@ -99,6 +100,7 @@ export interface PendingObservation {
 
 export interface CreateThreadParams {
   trigger?: string
+  entityId?: string
   initiatedBy: string
   sourceChannel?: string | null
   goal?: string
