@@ -1,7 +1,7 @@
 ---
 work_package_id: WP01
 title: Thread Entity ID — Schema, Workspace, Runner, Tests
-lane: "doing"
+lane: "for_review"
 dependencies: []
 subtasks:
 - T001
@@ -400,3 +400,7 @@ private buildBlock4Opts(
 3. T002：Cortex 分支是否完全不变（entityId 存在时仍返回 `{ situation }`）
 4. T003：测试 3 是否验证 `{ entityId }` 而非 `{ situation }`（核心路径）
 5. 迁移文件格式是否与现有迁移一致（IF NOT EXISTS，无 transaction）
+
+## Activity Log
+
+- 2026-03-13T05:36:13Z – unknown – shell_pid=22536 – lane=for_review – Implementation complete: Thread.entityId added to schema/types/workspace/runner. 429 unit tests pass, migration 0006 created, typecheck clean.
