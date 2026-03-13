@@ -125,13 +125,24 @@ export function createAimaMcpServer(
             .array(z.enum(['semantic', 'episodic', 'procedural', 'working', 'implicit']))
             .optional(),
           limit: z.number().int().positive().optional(),
+          // TODO(Feature 020): pass depth once getEntityContext signature accepts it
+          depth: z
+            .number()
+            .int()
+            .min(1)
+            .max(2)
+            .optional()
+            .describe('Relationship depth (reserved for Feature 020)'),
         },
         handler: async (args) => {
-          const { entityId, limit } = args as { entityId: string; limit?: number }
-          const results = await workspace.searchMemory({
-            entityId,
+          const { entityId, types, limit } = args as {
+            entityId: string
+            types?: MemoryType[]
+            limit?: number
+          }
+          const results = await workspace.getEntityContext(entityId, {
+            ...(types !== undefined ? { types } : {}),
             ...(limit !== undefined ? { limit } : {}),
-            excludeInvalid: true,
           })
           return {
             content: [{ type: 'text' as const, text: JSON.stringify(results) }],
@@ -144,10 +155,23 @@ export function createAimaMcpServer(
         name: 'memory_similar_situations',
         description: 'Situation-based memory retrieval combining episodic and procedural (Cortex)',
         inputSchema: {
+          situation: z
+            .string()
+            .optional()
+            .describe('Current situation or query text for semantic matching'),
           limit: z.number().int().positive().optional(),
         },
         handler: async (args) => {
-          const { limit } = args as { limit?: number }
+          const { situation, limit } = args as { situation?: string; limit?: number }
+          if (situation !== undefined) {
+            const result = await workspace.findSimilarSituations(situation, {
+              ...(limit !== undefined ? { limit } : {}),
+            })
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+            }
+          }
+          // Fallback: no situation provided — generic searchMemory
           const [episodes, procedures] = await Promise.all([
             workspace.searchMemory({ type: 'episodic', limit: limit ?? 5, excludeInvalid: true }),
             workspace.searchMemory({ type: 'procedural', limit: limit ?? 5, excludeInvalid: true }),
@@ -163,11 +187,25 @@ export function createAimaMcpServer(
         name: 'memory_procedure',
         description: 'Task procedure retrieval (Brainstem)',
         inputSchema: {
+          taskType: z.string().optional().describe('Task type or description for procedure lookup'),
           tags: z.array(z.string()).optional().describe('Filter by tags (e.g. task type)'),
           limit: z.number().int().positive().optional(),
         },
         handler: async (args) => {
-          const { tags, limit } = args as { tags?: string[]; limit?: number }
+          const { taskType, tags, limit } = args as {
+            taskType?: string
+            tags?: string[]
+            limit?: number
+          }
+          if (taskType !== undefined) {
+            const results = await workspace.getProcedure(taskType, {
+              ...(limit !== undefined ? { limit } : {}),
+            })
+            return {
+              content: [{ type: 'text' as const, text: JSON.stringify(results) }],
+            }
+          }
+          // Fallback: no taskType provided — generic searchMemory with tags
           const results = await workspace.searchMemory({
             type: 'procedural',
             ...(tags !== undefined ? { tags } : {}),
