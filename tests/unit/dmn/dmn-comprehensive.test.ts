@@ -1121,11 +1121,12 @@ describe('T034 — Episodic handoff content', () => {
     await reactive.start()
 
     const handoffText = 'User asked about billing; routing to execution layer'
+    // Write slot to workspace so handleBrainComplete enrichment can find it
+    await ws.writeSlot('thread-t034-v5', 'cortex', {
+      status: 'done',
+      output: { next: 'brainstem', reply: null, handoff: handoffText },
+    })
     const event = makeBrainCompleteEvent('thread-t034-v5', 'cortex', {
-      outputSlot: {
-        status: 'done',
-        output: { next: 'brainstem', reply: null, handoff: handoffText },
-      },
       stopReason: 'done',
     })
     await bus._trigger(event)
@@ -1146,8 +1147,12 @@ describe('T034 — Episodic handoff content', () => {
     const reactive = new DmnReactive(config)
     await reactive.start()
 
+    // Write slot to workspace so handleBrainComplete enrichment can find it
+    await ws.writeSlot('thread-t034-v6', 'cortex', {
+      status: 'done',
+      output: { next: null, reply: 'Done' },
+    })
     const event = makeBrainCompleteEvent('thread-t034-v6', 'cortex', {
-      outputSlot: { status: 'done', output: { next: null, reply: 'Done' } },
       stopReason: 'done',
     })
     await bus._trigger(event)

@@ -30,21 +30,25 @@ function makeConfig(overrides: Partial<DmnConfig> = {}) {
   const mockEventBus = {
     subscribe: mock((h: (e: BrainEvent) => void) => {
       subscribers.push(h)
-      return () => { subscribers.splice(subscribers.indexOf(h), 1) }
+      return () => {
+        subscribers.splice(subscribers.indexOf(h), 1)
+      }
     }),
-    emit: mock(() => ({} as ReturnType<typeof mockEventBus.emit>)),
+    emit: mock(() => ({}) as ReturnType<typeof mockEventBus.emit>),
     _dispatch: (e: BrainEvent) => subscribers.forEach((h) => h(e)),
   }
 
   const mockWorkspace = {
     searchMemory: mock(async () => []),
-    writeMemory: mock(async () => ({} as never)),
+    writeMemory: mock(async () => ({}) as never),
     markMemoryUsed: mock(async () => {}),
     pushSignal: mock(() => {}),
-    writePending: mock(async () => ({} as never)),
+    writePending: mock(async () => ({}) as never),
     updateThreadState: mock(async () => {}),
-    writeSlot: mock(async () => ({} as never)),
+    writeSlot: mock(async () => ({}) as never),
     getLatestSegmentStates: mock(async () => new Map()),
+    getSlotsByThread: mock(async () => [] as never),
+    getThread: mock(async () => null),
   }
 
   return {
@@ -95,18 +99,17 @@ describe('DmnReactive — brain.complete handler', () => {
 
     it('starts new segment on error slot status', async () => {
       const { config, bus, ws } = makeConfig()
+      // 1st event: healthy slot; 2nd event: error slot — enrichment fetches from workspace
+      ;(config.workspace.getSlotsByThread as ReturnType<typeof mock>)
+        .mockResolvedValueOnce([{ brain: 'limbic', status: 'done', output: {} }] as never)
+        .mockResolvedValueOnce([{ brain: 'limbic', status: 'error', output: {} }] as never)
       const reactive = new DmnReactive(config)
       await reactive.start()
 
       bus._dispatch(makeBrainCompleteEvent({ thread_id: 'thread-B' }))
       await new Promise((r) => setTimeout(r, 20))
 
-      bus._dispatch(
-        makeBrainCompleteEvent({
-          thread_id: 'thread-B',
-          payload: { outputSlot: { status: 'error', output: {} }, injectedMemoryIds: [] },
-        }),
-      )
+      bus._dispatch(makeBrainCompleteEvent({ thread_id: 'thread-B' }))
       await new Promise((r) => setTimeout(r, 20))
 
       const calls = (ws.writeMemory as ReturnType<typeof mock>).mock.calls
@@ -167,6 +170,10 @@ describe('DmnReactive — brain.complete handler', () => {
   describe('Responsibility 5: memory usage feedback', () => {
     it('calls markMemoryUsed with injected IDs and positive outcome on RESPOND', async () => {
       const { config, bus, ws } = makeConfig()
+      // Configure workspace to return a slot with reply → evaluateOutcome returns 'positive'
+      ;(config.workspace.getSlotsByThread as ReturnType<typeof mock>).mockResolvedValue([
+        { brain: 'limbic', status: 'done', output: { reply: 'text' } },
+      ] as never)
       const reactive = new DmnReactive(config)
       await reactive.start()
 
@@ -174,7 +181,6 @@ describe('DmnReactive — brain.complete handler', () => {
         makeBrainCompleteEvent({
           payload: {
             injectedMemoryIds: ['mem-1', 'mem-2'],
-            outputSlot: { status: 'done', output: { reply: 'text' } },
           },
         }),
       )
@@ -185,6 +191,10 @@ describe('DmnReactive — brain.complete handler', () => {
 
     it('negative outcome on error slot', async () => {
       const { config, bus, ws } = makeConfig()
+      // Configure workspace to return an error slot → evaluateOutcome returns 'negative'
+      ;(config.workspace.getSlotsByThread as ReturnType<typeof mock>).mockResolvedValue([
+        { brain: 'limbic', status: 'error', output: {} },
+      ] as never)
       const reactive = new DmnReactive(config)
       await reactive.start()
 
@@ -192,7 +202,6 @@ describe('DmnReactive — brain.complete handler', () => {
         makeBrainCompleteEvent({
           payload: {
             injectedMemoryIds: ['mem-3'],
-            outputSlot: { status: 'error', output: {} },
           },
         }),
       )

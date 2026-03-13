@@ -174,6 +174,13 @@ describeWithDb('DMN integration — brain.complete four responsibilities (T034)'
 
     const thread = await workspace.createThread({ initiatedBy: 'integration-test-T034b' })
 
+    // Write the limbic slot with reply so handleBrainComplete enrichment finds it
+    // and evaluateOutcome returns 'positive'
+    await workspace.writeSlot(thread.id, 'limbic', {
+      status: 'done',
+      output: { reply: 'Answer' },
+    })
+
     // Write a semantic memory to be injected — use unique tag to avoid limit truncation
     const uniqueTag = `test-T034b-${Date.now()}`
     const memory = await workspace.writeMemory({
@@ -190,7 +197,6 @@ describeWithDb('DMN integration — brain.complete four responsibilities (T034)'
       thread_id: thread.id,
       payload: {
         injectedMemoryIds: [memory.id],
-        outputSlot: { status: 'done', output: { reply: 'Answer' } },
         stopReason: 'done',
       },
     })
@@ -227,6 +233,12 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
     const thread = await workspace.createThread({ initiatedBy: 'integration-test-T036a' })
     const handoffText = 'User asked about billing; routing to execution layer'
 
+    // Write the cortex slot so handleBrainComplete enrichment can find it
+    await workspace.writeSlot(thread.id, 'cortex', {
+      status: 'done',
+      output: { next: 'brainstem', reply: null, handoff: handoffText },
+    })
+
     eventBus.emit({
       event_type: 'brain.complete',
       level: 'INFO',
@@ -234,10 +246,6 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
       thread_id: thread.id,
       payload: {
         injectedMemoryIds: [],
-        outputSlot: {
-          status: 'done',
-          output: { next: 'brainstem', reply: null, handoff: handoffText },
-        },
         stopReason: 'done',
       },
     })
@@ -252,7 +260,9 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
     expect(episodic.length).toBeGreaterThan(0)
 
     const content = episodic[0]?.content ?? ''
-    expect(content).toContain('[cortex] decided: route → brainstem')
+    // New format: [cortex] | decided: route → brainstem (separate parts joined with ' | ')
+    expect(content).toContain('[cortex]')
+    expect(content).toContain('decided: route → brainstem')
     expect(content).toContain(`handoff: "${handoffText.slice(0, 200)}"`)
     expect(content).not.toContain('reply:')
   })
@@ -262,6 +272,12 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
 
     const thread = await workspace.createThread({ initiatedBy: 'integration-test-T036b' })
 
+    // Write the limbic slot so handleBrainComplete enrichment can find it
+    await workspace.writeSlot(thread.id, 'limbic', {
+      status: 'done',
+      output: { reply: 'Hello there' },
+    })
+
     eventBus.emit({
       event_type: 'brain.complete',
       level: 'INFO',
@@ -269,7 +285,6 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
       thread_id: thread.id,
       payload: {
         injectedMemoryIds: [],
-        outputSlot: { status: 'done', output: { reply: 'Hello there' } },
         stopReason: 'done',
       },
     })
@@ -284,7 +299,9 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
     expect(episodic.length).toBeGreaterThan(0)
 
     const content = episodic[0]?.content ?? ''
-    expect(content).toContain('[limbic] decided: complete')
+    // New format: [limbic] | decided: complete (separate parts joined with ' | ')
+    expect(content).toContain('[limbic]')
+    expect(content).toContain('decided: complete')
     expect(content).toContain('reply: "Hello there"')
     expect(content).not.toContain('handoff:')
   })
