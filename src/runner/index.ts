@@ -192,7 +192,7 @@ export class ThreadRunner {
 
   private async handleDefer(output: BrainOutput | null, threadId: string): Promise<void> {
     const timeoutMs =
-      (output as Record<string, unknown> | null)?.timeout_ms as number | undefined ?? 60_000
+      ((output as Record<string, unknown> | null)?.timeout_ms as number | undefined) ?? 60_000
     const triggerAt = new Date(Date.now() + timeoutMs)
     await this.workspace.updateThreadState(threadId, 'waiting')
     await this.workspace.writePending({

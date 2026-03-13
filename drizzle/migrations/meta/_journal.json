@@ -36,6 +36,13 @@
       "when": 1741824000000,
       "tag": "0004_vector_embedding",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773326237442,
+      "tag": "0005_clean_mattie_franklin",
+      "breakpoints": true
     }
   ]
 }

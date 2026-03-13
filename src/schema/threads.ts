@@ -15,6 +15,7 @@ export const threads = pgTable('threads', {
   trigger: text('trigger'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  goal: text('goal'),
 })
 
 export type ThreadRow = typeof threads.$inferSelect

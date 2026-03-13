@@ -250,8 +250,45 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
     const injectedIds = event.payload.injectedMemoryIds as string[] | undefined
     if (!injectedIds || injectedIds.length === 0) return
 
-    const outcome = this.evaluateOutcome(event)
-    await this.config.workspace.markMemoryUsed(injectedIds, outcome)
+    // Pre-compute heuristic outcome — always available as fallback
+    const fallbackOutcome = this.evaluateOutcome(event)
+
+    // Goal-based evaluation: attempt quality signal if thread has a goal
+    if (event.thread_id) {
+      try {
+        const thread = await this.config.workspace.getThread(event.thread_id)
+        const goal = thread?.goal
+
+        if (goal) {
+          const outputSlot = event.payload.outputSlot as Record<string, unknown> | undefined
+          const output = outputSlot?.output as Record<string, unknown> | undefined
+          const reply = output?.reply as string | undefined
+
+          if (reply) {
+            const prompt = `You are evaluating whether an AI response achieved a stated goal.
+
+Goal: ${goal}
+
+Response: ${reply}
+
+Did the response achieve the goal? Respond with JSON: {"achieved": boolean, "reason": string}`
+
+            const llmResponse = await callLlm(prompt, this.config.llm)
+            const result = parseLlmJson<{ achieved: boolean; reason: string }>(llmResponse, {
+              achieved: false,
+              reason: 'evaluation failed',
+            })
+            const outcome: UsageOutcome = result.achieved ? 'positive' : 'negative'
+            await this.config.workspace.markMemoryUsed(injectedIds, outcome)
+            return
+          }
+        }
+      } catch {
+        // Goal evaluation failed — fall through to heuristic
+      }
+    }
+
+    await this.config.workspace.markMemoryUsed(injectedIds, fallbackOutcome)
   }
 
   private evaluateOutcome(event: BrainEvent): UsageOutcome {

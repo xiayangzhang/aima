@@ -61,7 +61,7 @@ export const memories = pgTable(
       .where(sql`session_id IS NOT NULL`),
     embeddingHnswIdx: index('idx_memories_embedding_hnsw')
       // biome-ignore lint/suspicious/noExplicitAny: Drizzle HNSW index type inference requires any
-      .using('hnsw', table.embedding as any)
+      .using('hnsw', (table.embedding as any).op('vector_cosine_ops'))
       .with({ m: 16, ef_construction: 64 }),
   }),
 )
