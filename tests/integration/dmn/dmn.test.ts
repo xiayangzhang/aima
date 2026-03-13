@@ -233,7 +233,10 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
       thread_id: thread.id,
       payload: {
         injectedMemoryIds: [],
-        outputSlot: { status: 'done', output: { next: 'brainstem', reply: null, handoff: handoffText } },
+        outputSlot: {
+          status: 'done',
+          output: { next: 'brainstem', reply: null, handoff: handoffText },
+        },
         stopReason: 'done',
       },
     })
@@ -247,14 +250,10 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
     })
     expect(episodic.length).toBeGreaterThan(0)
 
-    const content = JSON.parse(episodic[0]?.content ?? '{}') as {
-      handoff: string | null
-      next: unknown
-      hasReply: boolean
-    }
-    expect(content.handoff).toBe(handoffText)
-    expect(content.next).toBe('brainstem')
-    expect(content.hasReply).toBe(false)
+    const content = episodic[0]?.content ?? ''
+    expect(content).toContain('[cortex] decided: route → brainstem')
+    expect(content).toContain(`handoff: "${handoffText.slice(0, 200)}"`)
+    expect(content).not.toContain('reply:')
   })
 
   test('brain.complete without handoff → episodic content has handoff: null in DB', async () => {
@@ -283,8 +282,10 @@ describeWithDb('DMN integration — feature 015 quality improvements (T036)', ()
     })
     expect(episodic.length).toBeGreaterThan(0)
 
-    const content = JSON.parse(episodic[0]?.content ?? '{}') as { handoff: unknown }
-    expect(content.handoff).toBeNull()
+    const content = episodic[0]?.content ?? ''
+    expect(content).toContain('[limbic] decided: complete')
+    expect(content).toContain('reply: "Hello there"')
+    expect(content).not.toContain('handoff:')
   })
 
   // NOTE: T036c (correction pre-check integration test) is intentionally omitted.
