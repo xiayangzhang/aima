@@ -599,6 +599,144 @@ describe('ThreadRunner routing — extended', () => {
     expect(replyEvents[0]?.payload).toMatchObject({ reply: 'Hello, World!', threadId: 'thread-1' })
     runner.stop()
   })
+
+  // ── Working memory cleanup tests ─────────────────────────────────────────────
+
+  // Scenario A: clearWorkingMemory called on normal completion (next === null)
+  test('clearWorkingMemory called when thread completes normally (next: null)', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    let clearCalled = false
+    let clearCalledWith: string | null = null
+
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => [makeSlot('limbic', { next: null })]
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+    workspace.clearWorkingMemory = async (threadId) => {
+      clearCalled = true
+      clearCalledWith = threadId
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'limbic', 'done')
+    await new Promise((r) => setTimeout(r, 30))
+
+    expect(clearCalled).toBe(true)
+    expect(clearCalledWith).toBe('thread-1')
+    runner.stop()
+  })
+
+  // Scenario B: clearWorkingMemory called on interrupted state (illegal transition)
+  test('clearWorkingMemory called when thread is interrupted (illegal transition)', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    let clearCalled = false
+
+    workspace.getThread = async () => thread
+    // cortex → self is illegal per legal transition table
+    workspace.getSlotsByThread = async () => [makeSlot('cortex', { next: 'self' })]
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+    workspace.clearWorkingMemory = async () => {
+      clearCalled = true
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'cortex', 'done')
+    await new Promise((r) => setTimeout(r, 30))
+
+    expect(clearCalled).toBe(true)
+    runner.stop()
+  })
+
+  // Scenario C: clearWorkingMemory NOT called on DEFER (limbic next: self)
+  test('clearWorkingMemory NOT called on DEFER (limbic next: self)', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    let clearCalled = false
+
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => [makeSlot('limbic', { next: 'self' })]
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+    workspace.writePending = async () => ({
+      id: 'p1',
+      targetBrain: 'limbic',
+      threadId: 'thread-1',
+      note: '',
+      triggerAt: null,
+      expiresAt: null,
+      createdAt: new Date(),
+    })
+    workspace.clearWorkingMemory = async () => {
+      clearCalled = true
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    workspace.notifySlotDone('thread-1', 'limbic', 'done')
+    await new Promise((r) => setTimeout(r, 30))
+
+    expect(clearCalled).toBe(false)
+    runner.stop()
+  })
+
+  // Scenario D: cleanup failure is swallowed — no error propagates from route()
+  test('clearWorkingMemory failure does not propagate on thread completion', async () => {
+    const workspace = new CognitiveWorkspace(mockDb)
+    const eventBus = new BrainEventBus()
+    const thread = makeThread()
+    let notifyCalledAfterError = false
+
+    workspace.getThread = async () => thread
+    workspace.getSlotsByThread = async () => [makeSlot('limbic', { next: null })]
+    workspace.updateThreadState = async (_id, state) => {
+      thread.state = state
+    }
+    workspace.getActiveThreads = async () => []
+    workspace.searchMemory = async () => []
+    workspace.clearWorkingMemory = async () => {
+      throw new Error('db error')
+    }
+    workspace.notifyThreadComplete = (threadId) => {
+      notifyCalledAfterError = true
+      // Call the default implementation to fire subscribers
+      CognitiveWorkspace.prototype.notifyThreadComplete.call(workspace, threadId)
+    }
+
+    const adapters = new Map<CognitiveBrainType, BrainAdapter>()
+    const runner = makeRunner(adapters, workspace, eventBus)
+    await runner.start()
+
+    // Should not throw
+    workspace.notifySlotDone('thread-1', 'limbic', 'done')
+    await new Promise((r) => setTimeout(r, 30))
+
+    // notifyThreadComplete still fires even though clearWorkingMemory threw
+    expect(notifyCalledAfterError).toBe(true)
+    runner.stop()
+  })
 })
 
 // ─── buildBlock4Opts unit tests ───────────────────────────────────────────────
