@@ -182,7 +182,7 @@ export class ThreadRunner {
 
         const nextBrain = next as CognitiveBrainType
         const opts = this.buildBlock4Opts(nextBrain, thread, slotMap)
-        await this.activateBrain(nextBrain, threadId, opts)
+        await this.activateBrain(nextBrain, threadId, opts, thread.trigger ?? undefined)
         currentBrain = nextBrain
       }
     } finally {
@@ -217,13 +217,14 @@ export class ThreadRunner {
     const slotMap = Object.fromEntries(slots.map((s) => [s.brain, s]))
 
     const opts = this.buildBlock4Opts(brain, thread, slotMap)
-    await this.activateBrain(brain, threadId, opts)
+    await this.activateBrain(brain, threadId, opts, thread.trigger ?? undefined)
   }
 
   private async activateBrain(
     brain: CognitiveBrainType,
     threadId: string,
     opts?: AssembleBlock4Opts,
+    triggerContent?: string,
   ): Promise<void> {
     const adapter = this.adapters.get(brain)
     if (!adapter) throw new Error(`No adapter registered for brain: ${brain}`)
@@ -251,7 +252,12 @@ export class ThreadRunner {
 
     const params: BrainRunParams = existingSessionId
       ? { brain, threadId, systemPrompt }
-      : { brain, threadId, systemPrompt, initialPrompt: `Thread ${threadId} — activate ${brain}` }
+      : {
+          brain,
+          threadId,
+          systemPrompt,
+          initialPrompt: triggerContent ?? `Thread ${threadId} — activate ${brain}`,
+        }
 
     const result = await adapter.run(params)
 
@@ -342,7 +348,7 @@ export class ThreadRunner {
 
       if (doneSlots.length === 0) {
         // Thread exists but Limbic was never activated
-        await this.activateBrain('limbic', thread.id)
+        await this.activateBrain('limbic', thread.id, undefined, thread.trigger ?? undefined)
       } else {
         // Re-route from the most recently completed Slot
         const lastDone = doneSlots.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0]

@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { assembleBlock4, assembleBlock12, assembleContext } from '../../src/context/index'
+import {
+  assembleBlock3,
+  assembleBlock4,
+  assembleBlock12,
+  assembleContext,
+} from '../../src/context/index'
 import type { ContextAssemblerConfig } from '../../src/context/index'
-import type { MemoryEntry } from '../../src/types/index'
+import type { MemoryEntry, Thread } from '../../src/types/index'
 
 const config: ContextAssemblerConfig = {
   identities: {
@@ -248,5 +253,43 @@ describe('assembleContext', () => {
     expect(result.systemPrompt).toContain('## Current Context')
     expect(result.systemPrompt).toContain('thread_id: t1')
     expect(result.injectedMemoryIds).toHaveLength(0)
+  })
+})
+
+// ─── assembleBlock3 trigger display tests (T029-F, T029-G) ───────────────────
+
+describe('assembleBlock3 — trigger display (T029)', () => {
+  function makeThreadStub(trigger: string | null): Thread {
+    return {
+      id: 't1',
+      state: 'active',
+      sourceChannel: null,
+      initiatedBy: 'external',
+      trigger,
+      entityId: null,
+      goal: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  }
+
+  test('T029-F: assembleBlock3 includes trigger line when thread.trigger is set', async () => {
+    const mockWorkspace = {
+      getThread: async () => makeThreadStub('approve the budget'),
+      getSlotsByThread: async () => [],
+    } as Parameters<typeof assembleBlock3>[1]
+
+    const result = await assembleBlock3('limbic', mockWorkspace, 't1', 'UTC')
+    expect(result).toContain('- trigger: approve the budget')
+  })
+
+  test('T029-G: assembleBlock3 omits trigger line when thread.trigger is null', async () => {
+    const mockWorkspace = {
+      getThread: async () => makeThreadStub(null),
+      getSlotsByThread: async () => [],
+    } as Parameters<typeof assembleBlock3>[1]
+
+    const result = await assembleBlock3('limbic', mockWorkspace, 't1', 'UTC')
+    expect(result).not.toContain('trigger:')
   })
 })

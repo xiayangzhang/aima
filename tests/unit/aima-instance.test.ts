@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, mock, test } from 'bun:test'
 import { AIMAInstance } from '../../src/instance'
+import type { Thread } from '../../src/types/index'
 
 // Helper to extract the adapters map from a constructed AIMAInstance.
 // Uses cast to access private members — acceptable in unit tests.
@@ -219,5 +220,82 @@ describe('AIMAInstance — amygdala config wiring (T028-B)', () => {
     })
     const cfg = getAmygdalaConfig(instance)
     expect(cfg.haiku_enabled).toBe(false)
+  })
+})
+
+// ─── receive() trigger wiring tests (T029-A, T029-B) ─────────────────────────
+
+// biome-ignore lint/suspicious/noExplicitAny: accessing private members for unit testing
+type AnyRecord = Record<string, any>
+
+function getWorkspace(instance: AIMAInstance): AnyRecord {
+  return (instance as unknown as AnyRecord).workspace
+}
+
+function getThreadRunner(instance: AIMAInstance): AnyRecord {
+  return (instance as unknown as AnyRecord).threadRunner
+}
+
+function makeCompletedThread(overrides: Partial<Thread> = {}): Thread {
+  return {
+    id: 'thread-recv',
+    state: 'active',
+    initiatedBy: 'external',
+    trigger: null,
+    sourceChannel: null,
+    entityId: null,
+    goal: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  }
+}
+
+describe('AIMAInstance.receive() — trigger wiring (T029)', () => {
+  test('T029-A: receive() stores content as thread trigger, not externalId', async () => {
+    const instance = new AIMAInstance({
+      databaseUrl: 'postgresql://localhost/test',
+      adapter: 'claude-sdk',
+    })
+    const workspace = getWorkspace(instance)
+    const runner = getThreadRunner(instance)
+
+    let capturedArgs: Record<string, unknown> | null = null
+    const returnedThread = makeCompletedThread({ id: 'thread-recv', trigger: 'approve the budget' })
+    workspace.createThread = mock(async (args: Record<string, unknown>) => {
+      capturedArgs = args
+      return returnedThread
+    })
+    workspace.waitForComplete = mock(async () => {})
+    runner.trigger = mock(async () => {})
+
+    await instance.receive({ content: 'approve the budget', externalId: 'msg-123' })
+
+    expect(capturedArgs).not.toBeNull()
+    expect(capturedArgs?.trigger).toBe('approve the budget')
+    expect(Object.keys(capturedArgs ?? {})).not.toContain('externalId')
+  })
+
+  test('T029-B: receive() stores content as trigger when no externalId', async () => {
+    const instance = new AIMAInstance({
+      databaseUrl: 'postgresql://localhost/test',
+      adapter: 'claude-sdk',
+    })
+    const workspace = getWorkspace(instance)
+    const runner = getThreadRunner(instance)
+
+    let capturedArgs: Record<string, unknown> | null = null
+    const returnedThread = makeCompletedThread({ id: 'thread-recv', trigger: 'hello' })
+    workspace.createThread = mock(async (args: Record<string, unknown>) => {
+      capturedArgs = args
+      return returnedThread
+    })
+    workspace.waitForComplete = mock(async () => {})
+    runner.trigger = mock(async () => {})
+
+    await instance.receive({ content: 'hello' })
+
+    expect(capturedArgs).not.toBeNull()
+    expect(capturedArgs?.trigger).toBe('hello')
   })
 })

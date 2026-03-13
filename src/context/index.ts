@@ -87,6 +87,7 @@ export async function assembleBlock3(
     `- timezone: ${timezone}`,
     `- thread_id: ${threadId}`,
     `- thread_state: ${thread?.state ?? 'unknown'}`,
+    ...(thread?.trigger ? [`- trigger: ${thread.trigger}`] : []),
     '',
     '## Workspace Slots',
     slotsText || '  (no slots yet)',
