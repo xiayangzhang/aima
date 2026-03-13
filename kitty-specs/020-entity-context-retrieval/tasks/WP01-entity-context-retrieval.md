@@ -1,8 +1,16 @@
 ---
 wp: WP01
 feature: 020-entity-context-retrieval
-lane: todo
+lane: done
 depends_on: []
+review_status: approved
+reviewed_by: claude
+history:
+- timestamp: '2026-03-13T04:00:00Z'
+  lane: done
+  agent: claude
+  shell_pid: ''
+  action: 'Review passed: 019/020/021 reviewed together in single commit 0bc5c3d — 464/0 unit tests'
 ---
 
 # WP01 — Entity Context Retrieval Implementation
