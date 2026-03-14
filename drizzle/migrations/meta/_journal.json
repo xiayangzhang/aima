@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1773137579623,
+      "tag": "0000_huge_legion",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773306121650,
+      "tag": "0001_goofy_iron_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773313102881,
+      "tag": "0002_bumpy_hairball",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1773318337656,
+      "tag": "0003_free_gladiator",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1741824000000,
+      "tag": "0004_vector_embedding",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773326237442,
+      "tag": "0005_clean_mattie_franklin",
+      "breakpoints": true
+    }
+  ]
+}

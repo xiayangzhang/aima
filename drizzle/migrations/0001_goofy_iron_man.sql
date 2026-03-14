@@ -1,0 +1,1 @@
+ALTER TABLE "pending_observations" ADD COLUMN "thread_id" uuid;
