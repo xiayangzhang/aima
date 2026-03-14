@@ -341,6 +341,7 @@ export class ThreadRunner {
   // ── Crash Recovery ───────────────────────────────────────────────────────────
 
   private async recoverInFlightThreads(): Promise<void> {
+    // ── Active threads ────────────────────────────────────────────────────────
     const activeThreads = await this.workspace.getActiveThreads()
     for (const thread of activeThreads) {
       const slots = await this.workspace.getSlotsByThread(thread.id)
@@ -360,6 +361,29 @@ export class ThreadRunner {
           })
         }
       }
+    }
+
+    // ── Waiting threads (DEFER) ───────────────────────────────────────────────
+    const now = new Date()
+    await this.workspace.removeExpiredPending(now)
+    const pendingObs = await this.workspace.getPendingObservations()
+    const pendingThreadIds = new Set(pendingObs.map((p) => p.threadId).filter(Boolean) as string[])
+
+    const waitingThreads = await this.workspace.getWaitingThreads()
+    for (const thread of waitingThreads) {
+      if (!pendingThreadIds.has(thread.id)) {
+        // No live pending observation — thread is stuck; interrupt it
+        await this.workspace.updateThreadState(thread.id, 'interrupted')
+        this.eventBus.emit({
+          event_type: 'thread.interrupted',
+          level: 'ALERT',
+          brain: 'dmn',
+          thread_id: thread.id,
+          session_id: null,
+          payload: { reason: 'waiting_thread_no_pending_on_recovery', threadId: thread.id },
+        })
+      }
+      // Threads with live pending are handled by routePending() once the interval fires
     }
   }
 }

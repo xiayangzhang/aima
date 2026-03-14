@@ -9,6 +9,8 @@ function makeWorkspace(overrides: Partial<ICognitiveWorkspace> = {}): ICognitive
     readSlot: mock(async () => null),
     writeSlot: mock(async () => undefined),
     searchMemory: mock(async () => [] as MemoryEntry[]),
+    getEntityContext: mock(async () => [] as MemoryEntry[]),
+    findSimilarSituations: mock(async () => [] as MemoryEntry[]),
     ...overrides,
   } as unknown as ICognitiveWorkspace
 }
@@ -122,21 +124,30 @@ describe('buildMcpTools — memory_search', () => {
 // ─── memory_entity_context ────────────────────────────────────────────────────
 
 describe('buildMcpTools — memory_entity_context', () => {
-  test('calls searchMemory with entityId', async () => {
+  test('calls getEntityContext with entityId', async () => {
     const workspace = makeWorkspace()
     const tools = buildMcpTools(workspace as never)
     await execTool(tools, 'memory_entity_context', { entityId: 'entity-42' })
-    expect(workspace.searchMemory).toHaveBeenCalledWith(
-      expect.objectContaining({ entityId: 'entity-42', excludeInvalid: true }),
-    )
+    expect(workspace.getEntityContext).toHaveBeenCalledWith('entity-42', expect.any(Object))
   })
 
   test('passes limit when provided', async () => {
     const workspace = makeWorkspace()
     const tools = buildMcpTools(workspace as never)
     await execTool(tools, 'memory_entity_context', { entityId: 'e1', limit: 10 })
-    expect(workspace.searchMemory).toHaveBeenCalledWith(
-      expect.objectContaining({ entityId: 'e1', limit: 10 }),
+    expect(workspace.getEntityContext).toHaveBeenCalledWith(
+      'e1',
+      expect.objectContaining({ limit: 10 }),
+    )
+  })
+
+  test('passes depth when provided', async () => {
+    const workspace = makeWorkspace()
+    const tools = buildMcpTools(workspace as never)
+    await execTool(tools, 'memory_entity_context', { entityId: 'e1', depth: 2 })
+    expect(workspace.getEntityContext).toHaveBeenCalledWith(
+      'e1',
+      expect.objectContaining({ depth: 2 }),
     )
   })
 })
@@ -144,7 +155,7 @@ describe('buildMcpTools — memory_entity_context', () => {
 // ─── memory_similar_situations ────────────────────────────────────────────────
 
 describe('buildMcpTools — memory_similar_situations', () => {
-  test('calls searchMemory twice: episodic and procedural', async () => {
+  test('without situation: calls searchMemory twice (episodic + procedural fallback)', async () => {
     const workspace = makeWorkspace()
     const tools = buildMcpTools(workspace as never)
     await execTool(tools, 'memory_similar_situations', {})
@@ -155,7 +166,7 @@ describe('buildMcpTools — memory_similar_situations', () => {
     expect(types).toContain('procedural')
   })
 
-  test('returns { episodes, procedures } shape', async () => {
+  test('without situation: returns { episodes, procedures } shape', async () => {
     const workspace = makeWorkspace()
     const tools = buildMcpTools(workspace as never)
     const result = (await execTool(tools, 'memory_similar_situations', {})) as Record<
@@ -164,6 +175,17 @@ describe('buildMcpTools — memory_similar_situations', () => {
     >
     expect(result).toHaveProperty('episodes')
     expect(result).toHaveProperty('procedures')
+  })
+
+  test('with situation: calls findSimilarSituations', async () => {
+    const workspace = makeWorkspace()
+    const tools = buildMcpTools(workspace as never)
+    await execTool(tools, 'memory_similar_situations', { situation: 'user asked about billing' })
+    expect(workspace.findSimilarSituations).toHaveBeenCalledWith(
+      'user asked about billing',
+      expect.any(Object),
+    )
+    expect(workspace.searchMemory).not.toHaveBeenCalled()
   })
 })
 

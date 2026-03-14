@@ -372,7 +372,8 @@ Encoding 写入 episodic 时应用：`base_importance = 初始值 + significance
   partition_id:     string（写入方脑区）
   session_id:       string | null
   entity_id:        string | null（如 "colleague:alice" / "skill:procurement" / "segment:{uuid}"）
-  attribute:        string | null（如 "reliability" / "owner" / "metadata" / "related_to"）
+  // attribute 字段已移除——当前实现通过 entity_id + tags 表达实体关联，更简单且无损表达力。
+  // 若未来需要细粒度关系类型（如 "related_to" / "owner_of"），可通过 tags 约定命名空间实现。
   base_importance:  float
   pinned:           boolean
   source:           "brain" | "event_bus" | "dmn_consolidation" | "hippocampus"
@@ -431,64 +432,49 @@ Cortex 生成 → Encoding.write() → 重复使用 → markUsed(positive) 积�
 
 ---
 
-## 十三、Hippocampus 完整接口
+## 十三、Hippocampus 工程实现说明
+
+> **架构说明（代码实现 vs 概念模型的差异）**
+>
+> Hippocampus 在概念层面是"记忆编码 + 记忆回溯"的双模块。在工程实现中，
+> 这两个功能分别落地为：
+>
+> - **Encoding（写入/更新）**：`CognitiveWorkspace` 的 `writeMemory`、`markMemoryUsed`、
+>   `clearWorkingMemory`、`invalidateMemory` 等方法
+> - **Recall（检索/回溯）**：`CognitiveWorkspace` 的七个检索方法（见下）
+> - **Consolidation（巩固）**：独立运行的 `HippocampusConsolidation` 后台 batch 处理器
+>
+> Hippocampus 不是一个独立的运行单元——它是 CognitiveWorkspace（检索）
+> 和 DMN Consolidation（巩固）的概念层名称。下文的接口描述对应 `ICognitiveWorkspace` 实际实现。
+
+**七种检索场景的 CognitiveWorkspace 对应方法：**
 
 ```typescript
-// ── Encoding ────────────────────────────────────────────────────────────────
+// 场景 A：通用语义检索（兜底）
+searchMemory(filters: MemorySearchFilters): Promise<MemoryEntry[]>
 
-interface HippocampusEncoding {
-  write(entry: MemoryEntry): Promise<void>
-  markUsed(ids: string[], outcome: 'positive' | 'negative' | 'neutral'): Promise<void>
-  markAccessed(ids: string[]): Promise<void>   // 等价于 markUsed(ids, 'neutral')
-  forget(id: string): Promise<void>
-  clearWorkingMemory(threadId: string): Promise<void>
-  getSupersededBy(oldRecordId: string): Promise<MemoryEntry[]>  // TODO: 待有具体场景时实现
-}
+// 场景 B：DMN 专用——最近 session_anchor + 其后增量 event
+getSessionContext(sessionId: string): Promise<{ anchor: MemoryEntry | null; events: MemoryEntry[] }>
 
-// ── Recall ──────────────────────────────────────────────────────────────────
+// 场景 D：Limbic 专用——实体中心复合检索（depth=1-2 关联展开）
+getEntityContext(entityId: string, opts?: {
+  depth?: number        // 关联展开深度，默认 1，上限 2
+  types?: MemoryType[]
+  limit?: number
+}): Promise<MemoryEntry[]>
 
-interface HippocampusRecall {
-  // 场景 A：通用语义检索（兜底）
-  search(query: string, filters: MemoryFilters): Promise<MemoryEntry[]>
+// 场景 E：Cortex 专用——情境匹配复合检索（向量语义搜索）
+findSimilarSituations(situation: string, opts?: { limit?: number }): Promise<MemoryEntry[]>
 
-  // 场景 B：DMN 专用——最近 session_anchor + 其后增量 event
-  getSessionContext(sessionId: string): Promise<{
-    anchor: MemoryEntry | null
-    events: MemoryEntry[]
-  }>
+// 场景 F：Brainstem 专用——任务过程单项检索
+getProcedure(taskType: string, opts?: { limit?: number }): Promise<MemoryEntry[]>
 
-  // 场景 C：Amygdala 专用——implicit 记忆分级检索
-  getByTags(tags: string[], timeRange?: TimeRange, limit?: number): Promise<MemoryEntry[]>
-
-  // 场景 D：Limbic 专用——实体中心复合检索
-  getEntityContext(entityId: string, opts?: {
-    depth?: number        // 关联展开深度，默认 1，上限 2
-    types?: MemoryType[]
-    limit?: number
-  }): Promise<MemoryEntry[]>
-
-  // 场景 E：Cortex 专用——情境匹配复合检索
-  findSimilarSituations(situation: string, opts?: {
-    limit?: number
-  }): Promise<{
-    episodes:   MemoryEntry[]   // 相似历史情节
-    procedures: MemoryEntry[]   // 相关 Skill
-    facts:      MemoryEntry[]   // 相关 semantic 事实
-  }>
-
-  // 场景 F：Brainstem 专用——任务过程单项检索
-  getProcedure(taskType: string, opts?: { limit?: number }): Promise<MemoryEntry[]>
-
-  // 场景 G：Consolidation 内部——段回放（不对五脑直接暴露）
-  getSegmentSequence(segmentId: string): Promise<MemoryEntry[]>
-  getSegmentsByTimeRange(range: TimeRange): Promise<{
-    segmentId:       string
-    summary:         string
-    eventCount:      number
-    avgImportance:   number
-    hasRiskEvents:   boolean
-  }[]>
-}
+// 场景 G：Consolidation 内部——段回放
+getSegmentSequence(segmentId: string): Promise<MemoryEntry[]>
+getSegmentsByTimeRange(range: { from: Date; to: Date }): Promise<{
+  segmentId: string; eventCount: number; avgImportance: number; maxCreatedAt: Date
+}[]>
+```
 
 // ── 共用类型 ─────────────────────────────────────────────────────────────────
 

@@ -125,14 +125,7 @@ export function createAimaMcpServer(
             .array(z.enum(['semantic', 'episodic', 'procedural', 'working', 'implicit']))
             .optional(),
           limit: z.number().int().positive().optional(),
-          // TODO(Feature 020): pass depth once getEntityContext signature accepts it
-          depth: z
-            .number()
-            .int()
-            .min(1)
-            .max(2)
-            .optional()
-            .describe('Relationship depth (reserved for Feature 020)'),
+          depth: z.number().int().min(1).max(2).optional().describe('Relationship traversal depth'),
         },
         handler: async (args) => {
           const { entityId, types, limit } = args as {

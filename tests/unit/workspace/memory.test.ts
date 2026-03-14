@@ -403,6 +403,22 @@ describe('markMemoryUsed', () => {
 
     expect(calls.transactionCount).toBe(1)
   })
+
+  // GAP-3: lastAccessedAt must be set on every markMemoryUsed call
+  test('sets lastAccessedAt to a recent Date', async () => {
+    const fieldRows = [{ id: 'mem-1', usageOutcomes: { positive: 0, negative: 0, neutral: 0 } }]
+    const { db, calls } = makeMockDb({ memorySelectFieldsResult: fieldRows })
+    const ws = new CognitiveWorkspace(db)
+
+    const before = Date.now()
+    await ws.markMemoryUsed(['mem-1'], 'positive')
+    const after = Date.now()
+
+    const lastAccessedAt = calls.updates[0]?.setFields.lastAccessedAt as Date | undefined
+    expect(lastAccessedAt).toBeInstanceOf(Date)
+    expect(lastAccessedAt!.getTime()).toBeGreaterThanOrEqual(before)
+    expect(lastAccessedAt!.getTime()).toBeLessThanOrEqual(after)
+  })
 })
 
 // ─── clearWorkingMemory Tests ─────────────────────────────────────────────────

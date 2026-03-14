@@ -150,11 +150,12 @@ AIMA 负责：生命周期机制（Thread、Slot、crash recovery）、记忆基
 
 ```typescript
 {
-  next:              'limbic' | 'brainstem' | null
-  handoff:           string        // 给下一个脑区的规划摘要或任务描述
-  complexity_hint?:  'simple' | 'complex'   // 给 Brainstem 的执行复杂度提示（可选）
+  next:     'limbic' | 'brainstem' | null
+  handoff:  string   // 给下一个脑区的规划摘要或任务描述
 }
 ```
+
+> **注**：`complexity_hint` 字段在当前实现中未支持（规划中）。模型路由目前是 adapter 级别的静态配置（每个脑区绑定一个模型），动态复杂度路由是后续优化目标。
 
 `next = 'limbic'` → 结果需要对外表达，Limbic 组织回复。
 `next = 'brainstem'` → 有待执行的操作，Brainstem 执行。
@@ -182,9 +183,9 @@ AIMA 负责：生命周期机制（Thread、Slot、crash recovery）、记忆基
 
 子执行 session 的结果作为 **tool_result** 注入回主 session（主 session 只看结构化摘要，不见完整推理链），保护主 session 的 cache prefix 不被污染。子执行 session 的完整推理链通过 Event Bus（`COMPLIANCE` 事件携带子 `session_id`）保留，供审计和 DMN 学习使用。子执行结果不写入 episodic 记忆——episodic 是认知衍生物，不存基础设施标识符。
 
-**spawn 判断机制**：Haiku 做的是**结构性判断**（工具调用数量、依赖链深度、是否需要中间推理），不是语义复杂度判断——这对 Haiku 是可靠的。Cortex 在规划时可选注解 `complexity_hint: 'simple' | 'complex'` 写入 Brainstem Slot；Haiku 优先使用此提示，无提示时独立判断。Cortex 有更完整的任务上下文，能在规划阶段预判执行复杂度。
+**spawn 判断机制**：Haiku 做的是**结构性判断**（工具调用数量、依赖链深度、是否需要中间推理），不是语义复杂度判断——这对 Haiku 是可靠的。当前实现中，spawn 决策完全由 Brainstem 自行判断；`complexity_hint` 字段（规划中）将允许 Cortex 在规划阶段预判并注解执行复杂度，Brainstem 可优先使用此提示。
 
-**spawn 决策的反馈**：DMN 通过 `usage_outcomes` 追踪 spawn 决策质量——子执行 session 完成后的结果质量（由 DMN 评估）与"是否 spawn"的决策形成反馈对，持续偏差时写 pending 给 Cortex，建议更新 `complexity_hint` 的判断标准（作为 Skill 更新）。
+**spawn 决策的反馈**：DMN 通过 `usage_outcomes` 追踪 spawn 决策质量——子执行 session 完成后的结果质量（由 DMN 评估）与"是否 spawn"的决策形成反馈对，持续偏差时写 pending 给 Cortex，建议更新执行复杂度判断标准（作为 Skill 更新）。
 
 完整系统图见 `00-overview.md` §四。
 
@@ -287,17 +288,14 @@ Workspace
 ├── threads[]
 │   ├── thread_id
 │   ├── source_channel     // "teams_dm" | "email" | "webhook" | "scheduler" | "internal" | ...
-│   ├── source_account_id  // 通道内的账户/Bot ID，null 表示单账户（多账户场景：如同时运行两个 Teams Bot）
-│   ├── source_external_id // 外部系统的消息/请求 ID（null 表示内部触发）
 │   ├── initiated_by       // entity_id（发起方实体，人/系统/DMN 均可）
 │   ├── trigger            // 触发事件原始内容摘要
-│   ├── priority
 │   ├── state              // active | waiting | complete | interrupted
+│   │   // source_account_id / source_external_id / priority（规划中，多租户集成场景）
 │   └── slots
 │       ├── limbic:    { input, output: { next, reply?, handoff?, defer_timeout_ms? }, status }
-│       ├── cortex:    { input, output: { next, handoff, complexity_hint? }, status }
-│       │              // complexity_hint (optional): 'simple'|'complex' — Cortex 可选注解执行复杂度
-│       │              // Brainstem 优先使用；无则 Haiku 自行判断是否 spawn 子执行 session
+│       ├── cortex:    { input, output: { next, handoff? }, status }
+│       │              // complexity_hint（规划中）：动态执行复杂度提示，当前版本无此字段
 │       ├── brainstem: { input, output: { next, result? }, status, execution_session_id }  // 子执行 session ID 四态：
 │       │              // null   + status≠done → 未开始
 │       │              // non-null + status≠done → 执行中（或崩溃中断，见下方崩溃恢复）
@@ -460,9 +458,14 @@ Hippocampus Consolidation 在 `usage_outcomes` 收敛时对 `implicit` 记忆同
 
 ## 七、DMN（默认模式网络）
 
-DMN 是 AIMA 中**唯一能在没有外部触发的情况下主动分析并写入状态**的脑区。Limbic 和 Brainstem 响应外部输入（人类消息、系统事件），DMN 通过两种机制自发运作。
+DMN 的灵魂是两件事：**向过去反思**，**向未来预测**。
 
-**核心原则：DMN 从不调用 `activateBrain()`。** DMN 只写状态，路由始终由 Thread Runner 发起。DMN 有两条写入路径，对应不同的响应时效：
+其他脑区各自持有 LLM session，在自己的上下文里工作。DMN 没有自己的 LLM session——它不参与对话，不持有任何脑区的上下文，只读取其他脑区留下的**行为痕迹**（episodic 事件、slot 输出、pending 列表）。这种"上帝视角 + 无上下文"的组合，使 DMN 能跨越 Thread 边界观察整体模式，而不被任何单一对话的上下文污染。
+
+- **向过去反思**（Reactive）：其他脑区行为完成后，DMN 立即介入——写 episodic、评估偏差、发纠错信号。每次 LLM 调用都是无状态的一次性推理，输入是从 workspace 读取的近期行为片段。
+- **向未来预测**（Consolidation）：定期读取 episodic 增量，跨 Thread 识别模式，写 pending 预约未来激活。DMN 是系统里唯一能主动发起"这件事该在什么时候做"的角色。
+
+**核心约束：DMN 从不调用 `activateBrain()`。** DMN 只写状态，路由始终由 Thread Runner 发起。DMN 有两条写入路径，对应不同的响应时效：
 
 | 路径 | 写入目标 | 触发时效 | 典型场景 |
 |---|---|---|---|

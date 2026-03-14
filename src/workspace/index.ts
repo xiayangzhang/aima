@@ -291,6 +291,11 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
     return rows.map(mapThreadRow)
   }
 
+  async getWaitingThreads(): Promise<Thread[]> {
+    const rows = await this.db.select().from(threads).where(eq(threads.state, 'waiting'))
+    return rows.map(mapThreadRow)
+  }
+
   // ── Slot ────────────────────────────────────────────────────────────────────
 
   async writeSlot(threadId: string, brain: BrainType, data: WriteSlotParams): Promise<Slot> {
@@ -546,7 +551,7 @@ export class CognitiveWorkspace implements ICognitiveWorkspace {
         }
         await tx
           .update(memories)
-          .set({ usageOutcomes: updated, updatedAt: new Date() })
+          .set({ usageOutcomes: updated, lastAccessedAt: new Date(), updatedAt: new Date() })
           .where(eq(memories.id, row.id))
       }
     })
