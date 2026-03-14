@@ -458,9 +458,14 @@ Hippocampus Consolidation 在 `usage_outcomes` 收敛时对 `implicit` 记忆同
 
 ## 七、DMN（默认模式网络）
 
-DMN 是 AIMA 中**唯一能在没有外部触发的情况下主动分析并写入状态**的脑区。Limbic 和 Brainstem 响应外部输入（人类消息、系统事件），DMN 通过两种机制自发运作。
+DMN 的灵魂是两件事：**向过去反思**，**向未来预测**。
 
-**核心原则：DMN 从不调用 `activateBrain()`。** DMN 只写状态，路由始终由 Thread Runner 发起。DMN 有两条写入路径，对应不同的响应时效：
+其他脑区各自持有 LLM session，在自己的上下文里工作。DMN 没有自己的 LLM session——它不参与对话，不持有任何脑区的上下文，只读取其他脑区留下的**行为痕迹**（episodic 事件、slot 输出、pending 列表）。这种"上帝视角 + 无上下文"的组合，使 DMN 能跨越 Thread 边界观察整体模式，而不被任何单一对话的上下文污染。
+
+- **向过去反思**（Reactive）：其他脑区行为完成后，DMN 立即介入——写 episodic、评估偏差、发纠错信号。每次 LLM 调用都是无状态的一次性推理，输入是从 workspace 读取的近期行为片段。
+- **向未来预测**（Consolidation）：定期读取 episodic 增量，跨 Thread 识别模式，写 pending 预约未来激活。DMN 是系统里唯一能主动发起"这件事该在什么时候做"的角色。
+
+**核心约束：DMN 从不调用 `activateBrain()`。** DMN 只写状态，路由始终由 Thread Runner 发起。DMN 有两条写入路径，对应不同的响应时效：
 
 | 路径 | 写入目标 | 触发时效 | 典型场景 |
 |---|---|---|---|
