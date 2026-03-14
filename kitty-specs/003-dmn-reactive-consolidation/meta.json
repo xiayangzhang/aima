@@ -1,8 +1,0 @@
-{
-  "feature_number": "003",
-  "slug": "003-dmn-reactive-consolidation",
-  "friendly_name": "DMN Reactive & Consolidation",
-  "mission": "software-dev",
-  "source_description": "Feature 003 — DMN（默认模式网络）：DMN Reactive 事件监听器 + DMN Consolidation 批量后台任务",
-  "created_at": "2026-03-11T00:00:00Z"
-}

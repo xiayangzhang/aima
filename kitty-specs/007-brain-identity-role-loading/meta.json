@@ -1,8 +1,0 @@
-{
-  "feature_number": "007",
-  "slug": "007-brain-identity-role-loading",
-  "friendly_name": "Brain Identity & Role Loading",
-  "mission": "software-dev",
-  "source_description": "Feature 007 — Brain Identity & Role Loading：从 identityDir 目录加载 soul.md / brain-specific role.md / skill-index.md，注入 Context Assembly Block 1/2；role.md 中的工具权限声明覆盖 Amygdala 默认策略（解锁 bash/edit 等）",
-  "created_at": "2026-03-11T00:00:00Z"
-}

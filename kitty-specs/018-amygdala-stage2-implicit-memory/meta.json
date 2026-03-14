@@ -1,8 +1,0 @@
-{
-  "feature_number": "018",
-  "slug": "018-amygdala-stage2-implicit-memory",
-  "friendly_name": "Amygdala Stage 2 Implicit Memory",
-  "mission": "software-dev",
-  "source_description": "替换 src/amygdala/index.ts 中 Stage 2 的存根实现（const memoryResult = null），改为真实的隐性记忆检索。调用 workspace.getByTags(['amygdala_eval', toolName], undefined, 5) 拉取 Feature 016 写入的历史评估记录，取最新一条作为快速决策，绕过 LLM 调用。同时需要在 ICognitiveWorkspace interface 和 CognitiveWorkspace 实现中新增 getByTags 方法。",
-  "created_at": "2026-03-13T00:00:00.000Z"
-}

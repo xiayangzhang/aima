@@ -1,8 +1,0 @@
-{
-  "feature_number": "001",
-  "slug": "001-aima-core-workspace-schema",
-  "friendly_name": "AIMA Core — Workspace & Schema",
-  "mission": "software-dev",
-  "source_description": "建立 @aima/core 包的数据基础：PostgreSQL schema 定义（threads/slots/memories/pending_observations）和 CognitiveWorkspace DAO 层",
-  "created_at": "2026-03-10T00:00:00.000Z"
-}

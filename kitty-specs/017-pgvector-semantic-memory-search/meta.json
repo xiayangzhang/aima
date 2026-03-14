@@ -1,8 +1,0 @@
-{
-  "feature_number": "017",
-  "slug": "017-pgvector-semantic-memory-search",
-  "friendly_name": "pgvector Semantic Memory Search",
-  "mission": "software-dev",
-  "source_description": "Feature 017 — pgvector Semantic Search：将记忆系统的相似度检索从 ILIKE 字符串匹配升级为向量语义搜索。目标函数：findSimilarSituations()、getProcedure()（主要），searchMemory() 的 query 字段（次要）。改动：1. 数据库：启用 pgvector 扩展，memories 表新增 embedding vector(1536) 列（nullable），新增 HNSW 索引；2. 嵌入服务：src/embedding.ts，使用 OpenAI text-embedding-3-small，生成/缓存向量，接口与 src/llm.ts 风格一致；3. 写入时生成嵌入：CognitiveWorkspace.writeMemory() 在 DB 写入后异步生成并更新 embedding（fire-and-forget，失败不阻断）；4. 检索升级：findSimilarSituations() 和 getProcedure() 改为余弦相似度向量检索（embedding IS NOT NULL 时用向量，否则 fallback ILIKE）；5. Drizzle schema 更新：pgvector 列 + HNSW index",
-  "created_at": "2026-03-12T12:00:00Z"
-}
