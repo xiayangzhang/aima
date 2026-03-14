@@ -186,4 +186,14 @@ export class PiCodingAgentAdapter implements BrainAdapter {
       this.sessions.delete(key)
     }
   }
+
+  // ── BrainAdapter.resetSession() ───────────────────────────────────────────────
+
+  resetSession(brain: CognitiveBrainType, threadId: string): void {
+    this.sessions.delete(`${brain}:${threadId}`)
+  }
+
+  resetAllSessions(): void {
+    this.sessions.clear()
+  }
 }

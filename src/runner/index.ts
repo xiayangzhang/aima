@@ -79,6 +79,29 @@ export class ThreadRunner {
     })
   }
 
+  /**
+   * Reset the LLM session for all brains in a specific Thread.
+   * Clears conversation history so the next activation starts fresh.
+   * Does not affect DB Thread/Slot/Memory records.
+   */
+  resetSessions(threadId: string): void {
+    for (const brain of ['limbic', 'cortex', 'brainstem'] as const) {
+      this.brainSessions.delete(`${brain}:${threadId}`)
+      this.adapters.get(brain)?.resetSession(brain, threadId)
+    }
+  }
+
+  /**
+   * Reset all LLM sessions across all brains and threads.
+   * Used by AIMASession.newThread() to start completely fresh.
+   */
+  resetAllSessions(): void {
+    this.brainSessions.clear()
+    for (const adapter of this.adapters.values()) {
+      adapter.resetAllSessions()
+    }
+  }
+
   /** Update assembler config and rebuild cached Block 1+2 prefixes. */
   updateAssemblerConfig(config: ContextAssemblerConfig): void {
     this.assemblerConfig = config

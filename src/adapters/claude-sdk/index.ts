@@ -131,4 +131,17 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
       this.abortControllers.delete(key)
     }
   }
+
+  // ── BrainAdapter.resetSession() ───────────────────────────────────────────────
+
+  resetSession(brain: CognitiveBrainType, threadId: string): void {
+    const key = `${brain}:${threadId}`
+    this.sessionIds.delete(key)
+    this.abortControllers.delete(key)
+  }
+
+  resetAllSessions(): void {
+    this.sessionIds.clear()
+    this.abortControllers.clear()
+  }
 }
