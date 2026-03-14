@@ -93,14 +93,18 @@ describe('Scenario B: brain role file sets allowedTools', () => {
     expect(cache?.roles.brainstem?.allowedTools).toContain('bash')
   })
 
-  test('limbic.md without allowed_tools → empty allowedTools', async () => {
+  test('limbic.md without allowed_tools → merged with base default tools', async () => {
     await fs.writeFile(path.join(tmpDir, 'limbic.md'), '# Role\n情感理解')
     const instance = makeInstance(tmpDir)
     await instance.reloadIdentity()
-    expect(instance.getIdentityCache()?.roles.limbic?.allowedTools).toEqual([])
+    // identityDir limbic.md has no tools, so result = base default tools only
+    const tools = instance.getIdentityCache()?.roles.limbic?.allowedTools ?? []
+    expect(tools).toContain('workspace_read_slot')
+    expect(tools).toContain('workspace_write_slot')
+    expect(tools).toContain('memory_search')
   })
 
-  test('different brains have independent allowedTools', async () => {
+  test('different brains have independent allowedTools — override unions with base', async () => {
     await fs.writeFile(
       path.join(tmpDir, 'brainstem.md'),
       '---\nallowed_tools:\n  - bash\n  - edit\n---\nbody',
@@ -110,30 +114,41 @@ describe('Scenario B: brain role file sets allowedTools', () => {
     const instance = makeInstance(tmpDir)
     await instance.reloadIdentity()
     const cache = instance.getIdentityCache()
-    expect(cache?.roles.brainstem?.allowedTools).toEqual(['bash', 'edit'])
-    expect(cache?.roles.cortex?.allowedTools).toEqual([])
+    // brainstem: base tools ∪ {bash, edit}
+    expect(cache?.roles.brainstem?.allowedTools).toContain('bash')
+    expect(cache?.roles.brainstem?.allowedTools).toContain('edit')
+    expect(cache?.roles.brainstem?.allowedTools).toContain('workspace_read_slot')
+    // cortex: base tools only (cortex.md has no tool list)
+    expect(cache?.roles.cortex?.allowedTools).toContain('workspace_read_slot')
+    expect(cache?.roles.cortex?.allowedTools).toContain('memory_search')
+    expect(cache?.roles.cortex?.allowedTools).not.toContain('bash')
   })
 })
 
 // ─── Scenario C: missing brain file → graceful degradation ───────────────────
 
 describe('Scenario C: missing brain files degrade gracefully', () => {
-  test('empty identityDir → no error, all roles undefined in cache', async () => {
+  test('empty identityDir → no error, all roles populated from base defaults', async () => {
     const instance = makeInstance(tmpDir)
     await expect(instance.reloadIdentity()).resolves.toBeUndefined()
     const cache = instance.getIdentityCache()
-    expect(cache?.roles.limbic).toBeUndefined()
-    expect(cache?.roles.cortex).toBeUndefined()
-    expect(cache?.roles.brainstem).toBeUndefined()
+    // Base defaults always populate all three brain roles
+    expect(cache?.roles.limbic).toBeDefined()
+    expect(cache?.roles.cortex).toBeDefined()
+    expect(cache?.roles.brainstem).toBeDefined()
   })
 
-  test('only brainstem.md present → limbic and cortex roles remain undefined', async () => {
+  test('only brainstem.md present → limbic/cortex use base defaults, brainstem appended', async () => {
     await fs.writeFile(path.join(tmpDir, 'brainstem.md'), 'brainstem instructions')
     const instance = makeInstance(tmpDir)
     await instance.reloadIdentity()
     const cache = instance.getIdentityCache()
-    expect(cache?.roles.limbic).toBeUndefined()
+    // limbic and cortex still have base defaults
+    expect(cache?.roles.limbic).toBeDefined()
+    expect(cache?.roles.cortex).toBeDefined()
+    // brainstem: base + override appended
     expect(cache?.roles.brainstem?.body).toContain('brainstem instructions')
+    expect(cache?.roles.brainstem?.body).toContain('Brainstem — Execution')
   })
 
   test('nonexistent identityDir throws descriptive error', async () => {
@@ -145,20 +160,24 @@ describe('Scenario C: missing brain files degrade gracefully', () => {
 // ─── Scenario D: reloadIdentity() after file update → new policy ─────────────
 
 describe('Scenario D: reloadIdentity() updates cache for new sessions', () => {
-  test('initial load → no allowedTools; after update → allowedTools present', async () => {
-    // Initial state: brainstem.md with no allowed_tools
+  test('initial load → base tools only; after update → override tools added to union', async () => {
+    // Initial state: brainstem.md with no allowed_tools (base defaults apply)
     await fs.writeFile(path.join(tmpDir, 'brainstem.md'), '# 执行任务')
     const instance = makeInstance(tmpDir)
     await instance.reloadIdentity()
-    expect(instance.getIdentityCache()?.roles.brainstem?.allowedTools).toEqual([])
+    const toolsBefore = instance.getIdentityCache()?.roles.brainstem?.allowedTools ?? []
+    expect(toolsBefore).toContain('workspace_read_slot')
+    expect(toolsBefore).not.toContain('bash')
 
-    // Update file to add allowed_tools
+    // Update file to add allowed_tools — should union with base
     await fs.writeFile(
       path.join(tmpDir, 'brainstem.md'),
       '---\nallowed_tools:\n  - bash\n---\n# 执行任务',
     )
     await instance.reloadIdentity()
-    expect(instance.getIdentityCache()?.roles.brainstem?.allowedTools).toContain('bash')
+    const toolsAfter = instance.getIdentityCache()?.roles.brainstem?.allowedTools ?? []
+    expect(toolsAfter).toContain('bash')
+    expect(toolsAfter).toContain('workspace_read_slot')
   })
 
   test('second reloadIdentity() replaces previous cache entirely', async () => {
@@ -186,9 +205,14 @@ describe('backwards compatibility: no identityDir', () => {
     expect(instance.getIdentityCache()).toBeNull()
   })
 
-  test('reloadIdentity() is a no-op when identityDir not configured', async () => {
+  test('reloadIdentity() without identityDir loads base defaults', async () => {
     const instance = makeInstance()
     await expect(instance.reloadIdentity()).resolves.toBeUndefined()
-    expect(instance.getIdentityCache()).toBeNull()
+    // Cache is now populated with base defaults (not null)
+    const cache = instance.getIdentityCache()
+    expect(cache).not.toBeNull()
+    expect(cache?.roles.limbic).toBeDefined()
+    expect(cache?.roles.cortex).toBeDefined()
+    expect(cache?.roles.brainstem).toBeDefined()
   })
 })

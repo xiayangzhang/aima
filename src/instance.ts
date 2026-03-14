@@ -74,9 +74,13 @@ export interface AIMAInstanceConfig {
    */
   executionModel?: string
   /**
-   * Optional. Absolute path to identity directory.
-   * soul.md / skill-index.md / {brain}.md in this directory override Block 1/2 content.
-   * When omitted, behaviour is identical to the previous version.
+   * Optional. Absolute path to identity directory containing agent-layer Markdown files.
+   * - `soul.md` — agent persona and values
+   * - `skill-index.md` — available skills
+   * - `{brain}.md` — brain-specific additions appended after built-in base identity
+   *
+   * When omitted, AIMA runs with built-in base identity only (fully functional,
+   * no agent persona). Pass this to give the agent a name, personality, and skills.
    */
   identityDir?: string
   /**
@@ -115,26 +119,6 @@ export interface AIMAInstanceConfig {
   _subQueryFn?: (prompt: string, model: string) => Promise<string>
 }
 
-// ─── Default identities ───────────────────────────────────────────────────────
-
-const DEFAULT_IDENTITIES: Record<CognitiveBrainType, BrainIdentity> = {
-  limbic: {
-    role: 'Limbic — Communication & Routing',
-    instructions:
-      'You are the Limbic brain. Parse user intent, route to appropriate brain areas, and compose final responses.',
-  },
-  cortex: {
-    role: 'Cortex — Reasoning & Planning',
-    instructions:
-      'You are the Cortex brain. Analyze context, make routing decisions, and plan complex tasks.',
-  },
-  brainstem: {
-    role: 'Brainstem — Execution',
-    instructions:
-      'You are the Brainstem brain. Execute tasks using available tools and report results.',
-  },
-}
-
 // ─── AIMAInstance ─────────────────────────────────────────────────────────────
 
 /**
@@ -158,7 +142,7 @@ export class AIMAInstance {
   private dmnService?: DmnService
   private hippocampusConsolidation?: HippocampusConsolidation
   private readonly _config: AIMAInstanceConfig
-  private readonly identityLoader?: IdentityLoader
+  private readonly identityLoader: IdentityLoader
   private identityCache: IdentityCache | null = null
   private routePendingInterval: ReturnType<typeof setInterval> | null = null
 
@@ -190,10 +174,8 @@ export class AIMAInstance {
     )
     const amygdala = this.amygdala
 
-    // Identity loader (optional)
-    if (config.identityDir) {
-      this.identityLoader = new IdentityLoader(config.identityDir)
-    }
+    // Identity loader — always created; identityDir is optional (additive layer on top of base)
+    this.identityLoader = new IdentityLoader(config.identityDir)
 
     // Adapters
     const adapters = this.buildAdapters(config, amygdala)
@@ -278,11 +260,9 @@ export class AIMAInstance {
     externalId?: string
   }): Promise<{ threadId: string }> {
     // Identity lazy init / reload
-    if (this.identityLoader) {
-      if (this.identityCache === null || this._config.reloadOnRun) {
-        this.identityCache = await this.identityLoader.load()
-        this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
-      }
+    if (this.identityCache === null || this._config.reloadOnRun) {
+      this.identityCache = await this.identityLoader.load()
+      this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
     }
 
     const thread = await this.workspace.createThread({
@@ -319,11 +299,9 @@ export class AIMAInstance {
     },
   ): Promise<{ threadId: string }> {
     // Identity lazy init (same as receive())
-    if (this.identityLoader) {
-      if (this.identityCache === null || this._config.reloadOnRun) {
-        this.identityCache = await this.identityLoader.load()
-        this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
-      }
+    if (this.identityCache === null || this._config.reloadOnRun) {
+      this.identityCache = await this.identityLoader.load()
+      this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
     }
 
     // Reopen Thread with new trigger
@@ -348,11 +326,9 @@ export class AIMAInstance {
     channel?: string
     externalId?: string
   }): Promise<string> {
-    if (this.identityLoader) {
-      if (this.identityCache === null || this._config.reloadOnRun) {
-        this.identityCache = await this.identityLoader.load()
-        this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
-      }
+    if (this.identityCache === null || this._config.reloadOnRun) {
+      this.identityCache = await this.identityLoader.load()
+      this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
     }
 
     const thread = await this.workspace.createThread({
@@ -379,11 +355,9 @@ export class AIMAInstance {
       channel?: string
     },
   ): Promise<void> {
-    if (this.identityLoader) {
-      if (this.identityCache === null || this._config.reloadOnRun) {
-        this.identityCache = await this.identityLoader.load()
-        this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
-      }
+    if (this.identityCache === null || this._config.reloadOnRun) {
+      this.identityCache = await this.identityLoader.load()
+      this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
     }
 
     await this.workspace.reopenThread(threadId, input.content)
@@ -432,16 +406,14 @@ export class AIMAInstance {
   // ── Identity ─────────────────────────────────────────────────────────────────
 
   /**
-   * Reload all identity files from identityDir and refresh the in-memory cache.
-   * New sessions created after this call will use the updated identity.
+   * Reload identity (base defaults + identityDir if configured) and refresh
+   * the in-memory cache. New sessions created after this call will use the
+   * updated identity.
    *
    * Note: already-running sessions retain their original Extension tool policy;
    * only new brain:thread sessions pick up the new allowedTools.
-   *
-   * If identityDir is not configured, this method is a no-op.
    */
   async reloadIdentity(): Promise<void> {
-    if (!this.identityLoader) return
     this.identityCache = await this.identityLoader.load()
     this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
   }
@@ -675,10 +647,9 @@ export class AIMAInstance {
     const buildIdentity = (brain: CognitiveBrainType): BrainIdentity => {
       const roleEntry = cache?.roles[brain]
       const configOverride = config.identities?.[brain]
-      const defaults = DEFAULT_IDENTITIES[brain]
       return {
-        role: configOverride?.role ?? defaults.role,
-        instructions: roleEntry?.body || configOverride?.instructions || defaults.instructions,
+        role: configOverride?.role ?? `${brain.charAt(0).toUpperCase()}${brain.slice(1)}`,
+        instructions: roleEntry?.body || configOverride?.instructions || '',
       }
     }
 
