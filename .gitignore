@@ -20,10 +20,9 @@ dist/
 .github/copilot/
 .kittify/.dashboard
 .worktrees/
-# Prevent worktree-local kitty-specs/ (status managed in main repo)
-# kitty-specs/ is tracked in the main repo
-
 # Local-only directories (not tracked)
 docs/
 research/
 scripts/
+kitty-specs/
+contracts/

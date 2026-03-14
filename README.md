@@ -56,7 +56,7 @@ Inbound event (Teams / email / webhook / scheduler)
 ## Installation
 
 ```bash
-npm install @aima/core
+npm install @secondfirst/aima
 ```
 
 Requires:
@@ -75,7 +75,7 @@ Set `DATABASE_URL` in your environment, or pass `databaseUrl` directly to `creat
 ## Quick Start
 
 ```typescript
-import { createAIMASession } from '@aima/core'
+import { createAIMASession } from '@secondfirst/aima'
 
 const session = await createAIMASession({
   databaseUrl: process.env.DATABASE_URL!,
@@ -180,7 +180,7 @@ The source is organized by concern. Each module has its own README:
 For direct control over brain execution:
 
 ```typescript
-import { createAIMAInstance } from '@aima/core'
+import { createAIMAInstance } from '@secondfirst/aima'
 
 const instance = await createAIMAInstance({
   databaseUrl: process.env.DATABASE_URL!,

@@ -1,5 +1,5 @@
 {
-  "name": "@aima/core",
+  "name": "@secondfirst/aima",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.cjs",
