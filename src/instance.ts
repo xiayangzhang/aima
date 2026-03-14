@@ -10,7 +10,7 @@ import {
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { ClaudeAgentSDKAdapter } from './adapters/claude-sdk/index'
-import type { BrainAdapter } from './adapters/index'
+import type { BrainAdapter, BrainSignalType } from './adapters/index'
 import { PiAgentAdapter } from './adapters/pi-agent/index'
 import { createAimaExtension } from './adapters/pi-coding-agent/extension'
 import { PiCodingAgentAdapter } from './adapters/pi-coding-agent/index'
@@ -149,10 +149,11 @@ const DEFAULT_IDENTITIES: Record<CognitiveBrainType, BrainIdentity> = {
  *   await aima.stop()
  */
 export class AIMAInstance {
-  private readonly workspace: CognitiveWorkspace
-  private readonly eventBus: BrainEventBus
+  readonly workspace: CognitiveWorkspace
+  readonly eventBus: BrainEventBus
   private readonly threadRunner: ThreadRunner
   private readonly amygdala: Amygdala
+  private readonly _adaptersMap: Map<CognitiveBrainType, BrainAdapter>
   private pgClient: ReturnType<typeof postgres> | null = null
   private dmnService?: DmnService
   private hippocampusConsolidation?: HippocampusConsolidation
@@ -196,6 +197,7 @@ export class AIMAInstance {
 
     // Adapters
     const adapters = this.buildAdapters(config, amygdala)
+    this._adaptersMap = adapters
 
     // ContextAssembler config (built without identity at construction — lazy init on receive())
     const assemblerConfig = this.buildAssemblerConfig()
@@ -332,6 +334,99 @@ export class AIMAInstance {
     await this.workspace.waitForComplete(threadId)
 
     return { threadId }
+  }
+
+  // ── Async (fire-and-forget) variants ─────────────────────────────────────────
+
+  /**
+   * Non-blocking version of receive(). Creates a new Thread and triggers Limbic,
+   * but does NOT await waitForComplete(). Returns the threadId immediately.
+   * Caller is responsible for subscribing to events or polling thread state.
+   */
+  async receiveAsync(input: {
+    content: string
+    channel?: string
+    externalId?: string
+  }): Promise<string> {
+    if (this.identityLoader) {
+      if (this.identityCache === null || this._config.reloadOnRun) {
+        this.identityCache = await this.identityLoader.load()
+        this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
+      }
+    }
+
+    const thread = await this.workspace.createThread({
+      initiatedBy: 'external',
+      trigger: input.content,
+      ...(input.channel !== undefined ? { sourceChannel: input.channel } : {}),
+    })
+
+    // Fire-and-forget — caller awaits via event subscription or waitForComplete()
+    void this.threadRunner.trigger('limbic', thread.id)
+
+    return thread.id
+  }
+
+  /**
+   * Non-blocking version of continue(). Reopens the Thread and triggers Limbic,
+   * but does NOT await waitForComplete(). Returns immediately.
+   * Caller is responsible for subscribing to events or polling thread state.
+   */
+  async continueAsync(
+    threadId: string,
+    input: {
+      content: string
+      channel?: string
+    },
+  ): Promise<void> {
+    if (this.identityLoader) {
+      if (this.identityCache === null || this._config.reloadOnRun) {
+        this.identityCache = await this.identityLoader.load()
+        this.threadRunner.updateAssemblerConfig(this.buildAssemblerConfig())
+      }
+    }
+
+    await this.workspace.reopenThread(threadId, input.content)
+    void this.threadRunner.trigger('limbic', threadId)
+  }
+
+  // ── Session Reset ─────────────────────────────────────────────────────────────
+
+  /**
+   * Reset LLM conversation history for brain sessions.
+   * If threadId is provided, only that Thread's sessions are cleared.
+   * If omitted, ALL brain sessions across ALL threads are cleared.
+   *
+   * DB records (Thread/Slot/Memory) are not affected — episodic memory and
+   * knowledge persist. Only the in-memory LLM session state is wiped.
+   *
+   * Used by AIMASession.newThread() to implement "new conversation, same person"
+   * semantics.
+   */
+  resetBrainSessions(threadId?: string): void {
+    if (threadId !== undefined) {
+      this.threadRunner.resetSessions(threadId)
+    } else {
+      this.threadRunner.resetAllSessions()
+    }
+  }
+
+  // ── Signal Injection ─────────────────────────────────────────────────────────
+
+  /**
+   * Inject a signal into all brain adapters for the given thread.
+   * The active brain adapter will deliver it in real-time (steer/followUp);
+   * inactive adapters store it for delivery on next activation.
+   */
+  async injectToThread(
+    threadId: string,
+    type: BrainSignalType,
+    message: string,
+  ): Promise<void> {
+    const signal = { type, threadId, message }
+    for (const adapter of this._adaptersMap.values()) {
+      await adapter.inject(signal)
+    }
   }
 
   // ── Identity ─────────────────────────────────────────────────────────────────

@@ -37,6 +37,10 @@ export interface BrainAdapter {
   inject(signal: BrainSignal): Promise<void>
   // Abort the current loop (cooperative cancellation)
   abort(): void
+  // Reset the session for a specific brain+thread (clears LLM conversation history)
+  resetSession(brain: CognitiveBrainType, threadId: string): void
+  // Reset all sessions (clears all LLM conversation history)
+  resetAllSessions(): void
 }
 
 // ─── BrainEvent Types ─────────────────────────────────────────────────────────

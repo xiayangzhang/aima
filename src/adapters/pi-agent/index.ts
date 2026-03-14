@@ -129,6 +129,16 @@ export class PiAgentAdapter implements BrainAdapter {
     }
   }
 
+  // ── BrainAdapter.resetSession() ───────────────────────────────────────────────
+
+  resetSession(brain: CognitiveBrainType, threadId: string): void {
+    this.agentInstances.delete(`${brain}:${threadId}`)
+  }
+
+  resetAllSessions(): void {
+    this.agentInstances.clear()
+  }
+
   // ── EventBus Bridge ──────────────────────────────────────────────────────────
 
   private registerEventBridge(agent: Agent, brain: CognitiveBrainType, threadId: string): void {

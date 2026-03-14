@@ -95,3 +95,12 @@ export type { IdentityCache, RoleEntry } from './identity/index'
 // ── AIMAInstance ──────────────────────────────────────────────────────────────
 export type { AIMAInstanceConfig, AdapterType } from './instance'
 export { AIMAInstance, createAIMAInstance } from './instance'
+
+// ── Session (pi-coding-agent compatible API) ──────────────────────────────────
+export type {
+  CreateAIMASessionOptions,
+  PromptResult,
+  AIMASessionEvent,
+  AIMASessionEventListener,
+} from './session/index'
+export { AIMASession, createAIMASession } from './session/index'
