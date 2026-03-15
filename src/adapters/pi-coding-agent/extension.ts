@@ -133,29 +133,29 @@ export function createAimaExtension(
       })
     })
 
-    // ── agent_end: capture last text + emit brain.loop_end ───────────────────
+    // ── message_end: capture last assistant text for fallback slot write ─────
+    // Fires per-message (before agent_end), so lastTextRef is set by the time
+    // the fallback check runs in index.ts. Overwrites on each assistant message
+    // — the final value is the last assistant turn.
 
-    pi.on('agent_end', (event) => {
-      // Capture last assistant text message for fallback slot write (FR-002)
-      if (lastTextRef !== undefined) {
-        let lastText = ''
-        for (let i = event.messages.length - 1; i >= 0; i--) {
-          const m = event.messages[i]
-          if (!m || !('role' in m) || m.role !== 'assistant' || !('content' in m)) continue
-          const content = m.content
-          if (!Array.isArray(content)) break
-          for (let j = content.length - 1; j >= 0; j--) {
-            const block = content[j] as { type: string; text?: string } | undefined
-            if (block?.type === 'text' && typeof block.text === 'string') {
-              lastText = block.text
-              break
-            }
-          }
+    pi.on('message_end', (event) => {
+      if (lastTextRef === undefined) return
+      const m = event.message
+      if (!m || !('role' in m) || m.role !== 'assistant' || !('content' in m)) return
+      const content = m.content
+      if (!Array.isArray(content)) return
+      for (let j = content.length - 1; j >= 0; j--) {
+        const block = content[j] as { type: string; text?: string } | undefined
+        if (block?.type === 'text' && typeof block.text === 'string' && block.text) {
+          lastTextRef.value = block.text
           break
         }
-        lastTextRef.value = lastText
       }
+    })
 
+    // ── agent_end: emit brain.loop_end ────────────────────────────────────────
+
+    pi.on('agent_end', (event) => {
       // Accumulate token usage from all AssistantMessage turns (FR-002)
       if (tokenUsageRef !== undefined) {
         let inputTokens = 0

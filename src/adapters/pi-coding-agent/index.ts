@@ -155,6 +155,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
       if (slot?.output == null && slot?.status !== 'error') {
         await this.config.workspace.writeSlot(threadId, brain, {
           output: { reply: state.lastTextRef.value, _fallback: true },
+          status: 'done',
         })
       }
     }
