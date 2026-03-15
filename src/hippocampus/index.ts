@@ -151,7 +151,7 @@ Consider: same entities, continuous reasoning chain, same goal/task, directly re
 Respond with JSON only:
 {"merge": true/false, "reason": "one sentence explanation"}`
 
-    const response = await callLlm(prompt, this.config.llm, { maxTokens: 256 })
+    const { text: response } = await callLlm(prompt, this.config.llm, { maxTokens: 256 })
     const result = parseLlmJson<{ merge: boolean; reason: string }>(response, {
       merge: false,
       reason: 'parse failed',
@@ -250,7 +250,7 @@ Rules:
 - Keep content concise but specific (under 500 chars each)
 - Use null for entityId if the fact is not entity-specific`
 
-    const response = await callLlm(prompt, this.config.llm, { maxTokens: 2048 })
+    const { text: response } = await callLlm(prompt, this.config.llm, { maxTokens: 2048 })
     await this.processReplayResult(response, segment.segmentId, segment.avgImportance)
   }
 

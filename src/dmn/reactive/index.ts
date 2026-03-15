@@ -245,8 +245,15 @@ Current output: ${JSON.stringify(outputSlot?.output ?? {}).slice(0, 200)}
 
 Respond with JSON: {"topic_switched": boolean, "reason": string}`
 
-    const response = await callLlm(prompt, this.config.llm)
-    const result = parseLlmJson<{ topic_switched: boolean }>(response, { topic_switched: false })
+    const { text, usage } = await callLlm(prompt, this.config.llm)
+    this.config.eventBus.emit({
+      event_type: 'brain.token_usage',
+      level: 'INFO',
+      brain: 'dmn',
+      thread_id: event.thread_id,
+      payload: { brain: 'dmn', threadId: event.thread_id, tokenUsage: usage },
+    })
+    const result = parseLlmJson<{ topic_switched: boolean }>(text, { topic_switched: false })
     return result.topic_switched
   }
 
@@ -327,7 +334,17 @@ Response: ${reply}
 
 Did the response achieve the goal? Respond with JSON: {"achieved": boolean, "reason": string}`
 
-            const llmResponse = await callLlm(prompt, this.config.llm)
+            const { text: llmResponse, usage: feedbackUsage } = await callLlm(
+              prompt,
+              this.config.llm,
+            )
+            this.config.eventBus.emit({
+              event_type: 'brain.token_usage',
+              level: 'INFO',
+              brain: 'dmn',
+              thread_id: event.thread_id,
+              payload: { brain: 'dmn', threadId: event.thread_id, tokenUsage: feedbackUsage },
+            })
             const result = parseLlmJson<{ achieved: boolean; reason: string }>(llmResponse, {
               achieved: false,
               reason: 'evaluation failed',
@@ -406,7 +423,14 @@ Determine if any correction is needed. Respond with JSON:
 
 Only set needs_correction=true if there is a clear, significant error. Be conservative.`
 
-    const response = await callLlm(prompt, this.config.llm)
+    const { text: response, usage: correctionUsage } = await callLlm(prompt, this.config.llm)
+    this.config.eventBus.emit({
+      event_type: 'brain.token_usage',
+      level: 'INFO',
+      brain: 'dmn',
+      thread_id: thread_id,
+      payload: { brain: 'dmn', threadId: thread_id, tokenUsage: correctionUsage },
+    })
     const result = parseLlmJson<{
       needs_correction: boolean
       correction_type: string | null
@@ -600,7 +624,14 @@ Respond with JSON:
 
 Only set requires_followup=true if there is a clear, actionable follow-up needed.`
 
-    const response = await callLlm(prompt, this.config.llm)
+    const { text: response, usage: fallbackUsage } = await callLlm(prompt, this.config.llm)
+    this.config.eventBus.emit({
+      event_type: 'brain.token_usage',
+      level: 'INFO',
+      brain: 'dmn',
+      thread_id: event.thread_id,
+      payload: { brain: 'dmn', threadId: event.thread_id, tokenUsage: fallbackUsage },
+    })
     const result = parseLlmJson<{
       requires_followup: boolean
       target_brain: BrainType | null

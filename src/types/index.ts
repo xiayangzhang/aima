@@ -96,6 +96,16 @@ export interface PendingObservation {
   addedAt: Date
 }
 
+// ─── Token Usage ─────────────────────────────────────────────────────────────
+
+/** Per-brain LLM token consumption, emitted via EventBus after each brain run */
+export interface BrainTokenUsage {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+}
+
 // ─── Input Types ─────────────────────────────────────────────────────────────
 
 export interface CreateThreadParams {

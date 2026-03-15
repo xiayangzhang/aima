@@ -15,6 +15,8 @@ export type {
   UsageOutcome,
   // Brain output
   BrainOutput,
+  // Token tracking
+  BrainTokenUsage,
   // Entity types
   Thread,
   Slot,

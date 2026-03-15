@@ -132,8 +132,15 @@ When in doubt, escalate.`
     let reason = 'LLM evaluation failed — defaulting to escalate'
 
     try {
-      const response = await callLlm(prompt, this.config.llm ?? {})
-      const result = parseLlmJson<{ decision: string; reason: string }>(response, {
+      const { text, usage } = await callLlm(prompt, this.config.llm ?? {})
+      this.eventBus.emit({
+        event_type: 'brain.token_usage',
+        level: 'INFO',
+        brain: 'amygdala',
+        thread_id: null,
+        payload: { brain: 'amygdala', tokenUsage: usage },
+      })
+      const result = parseLlmJson<{ decision: string; reason: string }>(text, {
         decision: 'escalate',
         reason: 'parse failed',
       })

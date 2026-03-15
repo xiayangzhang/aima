@@ -27,6 +27,14 @@ export function createAimaExtension(
   eventBus: BrainEventBus,
   allowedTools?: string[],
   lastTextRef?: { value: string },
+  tokenUsageRef?: {
+    value: {
+      inputTokens: number
+      outputTokens: number
+      cacheReadTokens?: number
+      cacheWriteTokens?: number
+    } | null
+  },
 ): ExtensionFactory {
   return (pi) => {
     // Build per-brain override set from role's allowed_tools frontmatter
@@ -146,6 +154,33 @@ export function createAimaExtension(
           break
         }
         lastTextRef.value = lastText
+      }
+
+      // Accumulate token usage from all AssistantMessage turns (FR-002)
+      if (tokenUsageRef !== undefined) {
+        let inputTokens = 0
+        let outputTokens = 0
+        let cacheRead = 0
+        let cacheWrite = 0
+        for (const m of event.messages) {
+          if (!m || !('role' in m) || m.role !== 'assistant' || !('usage' in m)) continue
+          const u = m.usage as
+            | { input: number; output: number; cacheRead: number; cacheWrite: number }
+            | undefined
+          if (!u) continue
+          inputTokens += u.input
+          outputTokens += u.output
+          cacheRead += u.cacheRead
+          cacheWrite += u.cacheWrite
+        }
+        if (inputTokens > 0 || outputTokens > 0) {
+          tokenUsageRef.value = {
+            inputTokens,
+            outputTokens,
+            ...(cacheRead > 0 ? { cacheReadTokens: cacheRead } : {}),
+            ...(cacheWrite > 0 ? { cacheWriteTokens: cacheWrite } : {}),
+          }
+        }
       }
 
       eventBus.emit({

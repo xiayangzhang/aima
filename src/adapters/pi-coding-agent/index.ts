@@ -9,7 +9,7 @@ import {
 } from '@mariozechner/pi-coding-agent'
 import type { Amygdala } from '../../amygdala/index'
 import type { BrainEventBus } from '../../eventbus/index'
-import type { CognitiveBrainType } from '../../types/index'
+import type { BrainTokenUsage, CognitiveBrainType } from '../../types/index'
 import type { CognitiveWorkspace } from '../../workspace/index'
 import type { BrainAdapter, BrainRunParams, BrainRunResult, BrainSignal } from '../index'
 import { createAimaExtension } from './extension'
@@ -42,6 +42,8 @@ interface SessionState {
   systemPromptRef: { value: string }
   /** Mutable ref — populated by agent_end handler with last assistant text (for fallback slot write) */
   lastTextRef: { value: string }
+  /** Mutable ref — populated by agent_end handler with accumulated token usage */
+  tokenUsageRef: { value: BrainTokenUsage | null }
 }
 
 // ─── PiCodingAgentAdapter ─────────────────────────────────────────────────────
@@ -76,6 +78,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
       // First run: create a new AgentSession
       const systemPromptRef = { value: systemPrompt }
       const lastTextRef = { value: '' }
+      const tokenUsageRef: { value: BrainTokenUsage | null } = { value: null }
 
       // Auth: inject API key into an in-memory AuthStorage
       const authStorage = AuthStorage.inMemory()
@@ -96,6 +99,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
         this.config.eventBus,
         this.config.getAllowedTools?.(brain),
         lastTextRef,
+        tokenUsageRef,
       )
 
       // ResourceLoader: minimal no-disk setup; extension wired via factory
@@ -127,7 +131,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
             })
           ).session
 
-      state = { session, systemPromptRef, lastTextRef }
+      state = { session, systemPromptRef, lastTextRef, tokenUsageRef }
       this.sessions.set(key, state)
     } else {
       // Subsequent run: refresh system prompt via mutable ref (ResourceLoader reads it live)
@@ -140,6 +144,9 @@ export class PiCodingAgentAdapter implements BrainAdapter {
       }
     }
 
+    // Reset token usage before each run so we capture only this activation's tokens
+    state.tokenUsageRef.value = null
+
     if (initialPrompt !== undefined) {
       await state.session.prompt(initialPrompt)
 
@@ -150,6 +157,19 @@ export class PiCodingAgentAdapter implements BrainAdapter {
           output: { reply: state.lastTextRef.value, _fallback: true },
         })
       }
+    }
+
+    // T007: Emit brain.token_usage event if token data was captured (FR-002, FR-004)
+    const tokenUsage = state.tokenUsageRef.value
+    if (tokenUsage !== null) {
+      this.config.eventBus.emit({
+        event_type: 'brain.token_usage',
+        level: 'INFO',
+        brain,
+        thread_id: threadId,
+        session_id: key,
+        payload: { brain, threadId, tokenUsage },
+      })
     }
 
     return {

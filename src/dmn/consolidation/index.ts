@@ -96,7 +96,16 @@ export class DmnConsolidation {
     ])
 
     const prompt = buildPredictivePrompt(increment, procedural, semantic)
-    const response = await callLlm(prompt, this.config.llm, { maxTokens: 1024 })
+    const { text: response, usage: predUsage } = await callLlm(prompt, this.config.llm, {
+      maxTokens: 1024,
+    })
+    this.config.eventBus?.emit({
+      event_type: 'brain.token_usage',
+      level: 'INFO',
+      brain: 'dmn',
+      thread_id: null,
+      payload: { brain: 'dmn', tokenUsage: predUsage },
+    })
 
     const predictions = parseLlmJson<PredictionResult[]>(response, [])
     await this.writePredictions(predictions)
@@ -124,7 +133,16 @@ export class DmnConsolidation {
     if (pendingItems.length === 0) return
 
     const prompt = buildPendingMaintenancePrompt(increment, pendingItems)
-    const response = await callLlm(prompt, this.config.llm, { maxTokens: 1024 })
+    const { text: response, usage: maintenanceUsage } = await callLlm(prompt, this.config.llm, {
+      maxTokens: 1024,
+    })
+    this.config.eventBus?.emit({
+      event_type: 'brain.token_usage',
+      level: 'INFO',
+      brain: 'dmn',
+      thread_id: null,
+      payload: { brain: 'dmn', tokenUsage: maintenanceUsage },
+    })
     const decisions = parseLlmJson<Array<{ action: string; updated_note: string | null }>>(
       response,
       pendingItems.map(() => ({ action: 'keep', updated_note: null })),
@@ -191,7 +209,16 @@ Respond with JSON:
 
 Only include clusters with 2+ entries. Entries not in any cluster should not appear.`
 
-    const response = await callLlm(prompt, this.config.llm, { maxTokens: 1024 })
+    const { text: response, usage: mergeUsage } = await callLlm(prompt, this.config.llm, {
+      maxTokens: 1024,
+    })
+    this.config.eventBus?.emit({
+      event_type: 'brain.token_usage',
+      level: 'INFO',
+      brain: 'dmn',
+      thread_id: null,
+      payload: { brain: 'dmn', tokenUsage: mergeUsage },
+    })
     const result = parseLlmJson<{
       clusters: Array<{ indices: number[]; canonical_content: string; merged_tags: string[] }>
     }>(response, { clusters: [] })

@@ -3,7 +3,7 @@ import type { Amygdala } from '../../amygdala/index'
 import type { BrainEventBus } from '../../eventbus/index'
 import { createAimaMcpServer } from '../../mcp/index'
 import type { SpawnExecutionSessionFn } from '../../mcp/index'
-import type { CognitiveBrainType } from '../../types/index'
+import type { BrainTokenUsage, CognitiveBrainType } from '../../types/index'
 import type { CognitiveWorkspace } from '../../workspace/index'
 import type { BrainAdapter, BrainRunParams, BrainRunResult, BrainSignal } from '../index'
 
@@ -83,10 +83,25 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
     })
 
     let sessionId = existingSessionId ?? ''
+    let tokenUsage: BrainTokenUsage | null = null
     try {
       for await (const msg of q) {
-        if (msg.type === 'result' && msg.subtype === 'success') {
-          sessionId = msg.session_id
+        if (msg.type === 'result') {
+          if (msg.subtype === 'success') {
+            sessionId = msg.session_id
+          }
+          // T008: Capture token usage from result message (present on both success and error)
+          const u = msg.usage
+          tokenUsage = {
+            inputTokens: u.input_tokens,
+            outputTokens: u.output_tokens,
+            ...(u.cache_read_input_tokens > 0
+              ? { cacheReadTokens: u.cache_read_input_tokens }
+              : {}),
+            ...(u.cache_creation_input_tokens > 0
+              ? { cacheWriteTokens: u.cache_creation_input_tokens }
+              : {}),
+          }
         }
       }
     } finally {
@@ -95,6 +110,18 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
 
     if (sessionId) {
       this.sessionIds.set(key, sessionId)
+    }
+
+    // T009: Emit brain.token_usage event if tokens were recorded (FR-003, FR-004)
+    if (tokenUsage !== null) {
+      this.config.eventBus.emit({
+        event_type: 'brain.token_usage',
+        level: 'INFO',
+        brain,
+        thread_id: threadId,
+        session_id: sessionId,
+        payload: { brain, threadId, tokenUsage },
+      })
     }
 
     return {

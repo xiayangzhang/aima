@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import type { BrainTokenUsage } from './types/index'
 
 export interface LlmConfig {
   /** If not set, reads from process.env.ANTHROPIC_API_KEY */
@@ -17,7 +18,7 @@ export async function callLlm(
   prompt: string,
   config: LlmConfig,
   opts?: { maxTokens?: number },
-): Promise<string> {
+): Promise<{ text: string; usage: BrainTokenUsage }> {
   const client = new Anthropic({ apiKey: config.apiKey ?? process.env.ANTHROPIC_API_KEY })
   const response = await client.messages.create({
     model: config.model ?? 'claude-haiku-4-5-20251001',
@@ -26,7 +27,18 @@ export async function callLlm(
   })
   const block = response.content[0]
   if (block?.type !== 'text') throw new Error('Unexpected LLM response type')
-  return block.text
+  const u = response.usage
+  const usage: BrainTokenUsage = {
+    inputTokens: u.input_tokens,
+    outputTokens: u.output_tokens,
+    ...(u.cache_read_input_tokens != null && u.cache_read_input_tokens > 0
+      ? { cacheReadTokens: u.cache_read_input_tokens }
+      : {}),
+    ...(u.cache_creation_input_tokens != null && u.cache_creation_input_tokens > 0
+      ? { cacheWriteTokens: u.cache_creation_input_tokens }
+      : {}),
+  }
+  return { text: block.text, usage }
 }
 
 /**

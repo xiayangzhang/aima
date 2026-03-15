@@ -32,7 +32,7 @@ export class BrainEventBus {
       thread_id: params.thread_id ?? null,
       session_id: params.session_id ?? null,
       causation_id: params.causation_id ?? null,
-      schema_version: '1.0',
+      schema_version: '1.1',
       payload: params.payload ?? {},
     }
     this.emitter.emit('event', event)

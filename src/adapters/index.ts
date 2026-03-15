@@ -1,4 +1,4 @@
-import type { BrainType, CognitiveBrainType } from '../types/index'
+import type { BrainTokenUsage, BrainType, CognitiveBrainType } from '../types/index'
 
 // ─── Brain Signals ────────────────────────────────────────────────────────────
 
@@ -25,6 +25,7 @@ export interface BrainRunResult {
   output: Record<string, unknown> // structured result written to Slot
   stopReason: 'done' | 'interrupted' | 'error'
   injectedMemoryIds: string[] // Block 4 injected memory IDs, for DMN use
+  tokenUsage?: BrainTokenUsage // per-run token consumption; emitted via EventBus
 }
 
 // ─── BrainAdapter Interface ───────────────────────────────────────────────────
