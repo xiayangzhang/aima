@@ -26,5 +26,6 @@ research/
 scripts/
 kitty-specs/
 contracts/
+tickets/
 .claudeignore
 CLAUDE.md

@@ -4,10 +4,12 @@
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "bun": "./dist/index.js",
+  "source": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "bun": "./dist/index.js",
+      "default": "./dist/index.js",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
