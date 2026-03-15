@@ -40,6 +40,8 @@ interface SessionState {
   session: AgentSession
   /** Mutable ref — updated before each run so ResourceLoader returns fresh system prompt */
   systemPromptRef: { value: string }
+  /** Mutable ref — populated by agent_end handler with last assistant text (for fallback slot write) */
+  lastTextRef: { value: string }
 }
 
 // ─── PiCodingAgentAdapter ─────────────────────────────────────────────────────
@@ -73,6 +75,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
     if (!state) {
       // First run: create a new AgentSession
       const systemPromptRef = { value: systemPrompt }
+      const lastTextRef = { value: '' }
 
       // Auth: inject API key into an in-memory AuthStorage
       const authStorage = AuthStorage.inMemory()
@@ -92,6 +95,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
         this.config.amygdala,
         this.config.eventBus,
         this.config.getAllowedTools?.(brain),
+        lastTextRef,
       )
 
       // ResourceLoader: minimal no-disk setup; extension wired via factory
@@ -123,7 +127,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
             })
           ).session
 
-      state = { session, systemPromptRef }
+      state = { session, systemPromptRef, lastTextRef }
       this.sessions.set(key, state)
     } else {
       // Subsequent run: refresh system prompt via mutable ref (ResourceLoader reads it live)
@@ -138,6 +142,14 @@ export class PiCodingAgentAdapter implements BrainAdapter {
 
     if (initialPrompt !== undefined) {
       await state.session.prompt(initialPrompt)
+
+      // T003/T004: Fallback slot write if brain never called workspace_write_slot (FR-001..007)
+      const slot = await this.config.workspace.readSlot(threadId, brain)
+      if (slot?.output == null && slot?.status !== 'error') {
+        await this.config.workspace.writeSlot(threadId, brain, {
+          output: { reply: state.lastTextRef.value, _fallback: true },
+        })
+      }
     }
 
     return {

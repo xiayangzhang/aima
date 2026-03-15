@@ -287,6 +287,19 @@ export class ThreadRunner {
     // Persist session ID for future activations within this Thread
     this.brainSessions.set(sessionKey, result.sessionId)
 
+    // Belt-and-suspenders: warn if slot output is still null after adapter.run() (FR-003..005)
+    const slot = await this.workspace.readSlot(threadId, brain)
+    if (slot?.output == null) {
+      this.eventBus.emit({
+        event_type: 'brain.slot_output_null',
+        level: 'ALERT',
+        brain,
+        thread_id: threadId,
+        session_id: result.sessionId,
+        payload: { brain, threadId, reason: 'slot_output_null' },
+      })
+    }
+
     // Notify workspace (triggers route())
     this.workspace.notifySlotDone(threadId, brain, result.stopReason === 'done' ? 'done' : 'error')
 

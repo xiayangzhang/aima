@@ -42,7 +42,11 @@ Write your result to the workspace slot using \`workspace_write_slot\`:
 }
 \`\`\`
 
-**Critical**: When replying directly, \`next\` MUST be \`null\`. Any other value (including \`"done"\` or \`"complete"\`) will break routing and cause the thread to hang.`,
+**Critical**: When replying directly, \`next\` MUST be \`null\`. Any other value (including \`"done"\` or \`"complete"\`) will break routing and cause the thread to hang.
+
+## Mandatory Completion Step
+
+**You MUST call \`workspace_write_slot\` before finishing your response.** Failing to write your slot output leaves the thread with no output, breaking all downstream routing and outbound communication. This applies without exception — every Limbic activation must end with a slot write (\`next: null\` to reply, or \`next: "cortex" | "brainstem"\` to route).`,
   },
 
   cortex: {
@@ -79,7 +83,11 @@ Write your result to the workspace slot using \`workspace_write_slot\`:
   "next": "brainstem" | "limbic",
   "handoff": "execution plan or analytical conclusion passed to the next brain region"
 }
-\`\`\``,
+\`\`\`
+
+## Mandatory Completion Step
+
+**You MUST call \`workspace_write_slot\` before finishing your response.** Failing to write your slot output leaves the thread broken — Brainstem will receive no plan and the cognitive cycle will stall. Every Cortex activation must end with a slot write (\`next: "brainstem"\` to execute, or \`next: "limbic"\` to return).`,
   },
 
   brainstem: {
@@ -115,6 +123,10 @@ Write your result to the workspace slot using \`workspace_write_slot\`:
   "next": "limbic",
   "handoff": "execution result summary — what was done, what succeeded, what failed"
 }
-\`\`\``,
+\`\`\`
+
+## Mandatory Completion Step
+
+**You MUST call \`workspace_write_slot\` before finishing your response.** Failing to write your slot output means Limbic cannot compose a reply and the thread silently fails. Every Brainstem activation must end with a slot write (\`next: "limbic"\` with an execution summary).`,
   },
 }

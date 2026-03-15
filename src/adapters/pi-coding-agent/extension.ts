@@ -26,6 +26,7 @@ export function createAimaExtension(
   amygdala: Amygdala,
   eventBus: BrainEventBus,
   allowedTools?: string[],
+  lastTextRef?: { value: string },
 ): ExtensionFactory {
   return (pi) => {
     // Build per-brain override set from role's allowed_tools frontmatter
@@ -124,9 +125,29 @@ export function createAimaExtension(
       })
     })
 
-    // ── agent_end: emit brain.loop_end ────────────────────────────────────────
+    // ── agent_end: capture last text + emit brain.loop_end ───────────────────
 
-    pi.on('agent_end', (_event) => {
+    pi.on('agent_end', (event) => {
+      // Capture last assistant text message for fallback slot write (FR-002)
+      if (lastTextRef !== undefined) {
+        let lastText = ''
+        for (let i = event.messages.length - 1; i >= 0; i--) {
+          const m = event.messages[i]
+          if (!m || !('role' in m) || m.role !== 'assistant' || !('content' in m)) continue
+          const content = m.content
+          if (!Array.isArray(content)) break
+          for (let j = content.length - 1; j >= 0; j--) {
+            const block = content[j] as { type: string; text?: string } | undefined
+            if (block?.type === 'text' && typeof block.text === 'string') {
+              lastText = block.text
+              break
+            }
+          }
+          break
+        }
+        lastTextRef.value = lastText
+      }
+
       eventBus.emit({
         event_type: 'brain.loop_end',
         level: 'INFO',
