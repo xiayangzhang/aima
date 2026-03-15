@@ -15,6 +15,11 @@ export interface ContextAssemblerConfig {
    * Omitting or passing an empty string preserves the original output (backwards compatible).
    */
   soul?: string
+  /**
+   * Extra Markdown files loaded from identityDir (e.g. experience.md, jd.md).
+   * Injected between soul and ## Role, sorted alphabetically by key.
+   */
+  extras?: Record<string, string>
   identities: Record<CognitiveBrainType, BrainIdentity>
   skillIndex?: string // Skill index text (static, may be empty)
   timezone?: string // e.g. 'Australia/Sydney', defaults to 'UTC'
@@ -51,6 +56,16 @@ export function assembleBlock12(brain: CognitiveBrainType, config: ContextAssemb
 
   if (config.soul && config.soul.trim() !== '') {
     lines.push(config.soul.trim(), '')
+  }
+
+  // Inject extras (e.g. experience.md, jd.md) between soul and ## Role, sorted by key
+  if (config.extras) {
+    for (const key of Object.keys(config.extras).sort()) {
+      const content = config.extras[key]
+      if (content && content.trim() !== '') {
+        lines.push(content.trim(), '')
+      }
+    }
   }
 
   lines.push('## Role', identity.role, '', '## Instructions', identity.instructions)

@@ -56,17 +56,20 @@ allowed_tools:
     await fs.writeFile(path.join(tmpDir, 'brainstem.md'), content)
     const loader = new IdentityLoader(tmpDir)
     const cache = await loader.load()
-    expect(cache.roles.brainstem?.allowedTools).toEqual(['bash', 'edit'])
+    // 034: allowedTools = union of defaults + override
+    expect(cache.roles.brainstem?.allowedTools).toContain('bash')
+    expect(cache.roles.brainstem?.allowedTools).toContain('edit')
     expect(cache.roles.brainstem?.body).toContain('负责工具执行和任务完成')
   })
 
-  test('missing brain file → role absent from cache (graceful degradation)', async () => {
+  test('missing brain file → roles fall back to defaults (graceful degradation)', async () => {
     await fs.writeFile(path.join(tmpDir, 'soul.md'), 'soul')
     const loader = new IdentityLoader(tmpDir)
     const cache = await loader.load()
-    expect(cache.roles.limbic).toBeUndefined()
-    expect(cache.roles.cortex).toBeUndefined()
-    expect(cache.roles.brainstem).toBeUndefined()
+    // 034: default identities always present even without override files
+    expect(cache.roles.limbic).toBeDefined()
+    expect(cache.roles.cortex).toBeDefined()
+    expect(cache.roles.brainstem).toBeDefined()
   })
 
   test('nonexistent directory throws error containing path', async () => {

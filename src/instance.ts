@@ -655,9 +655,12 @@ export class AIMAInstance {
 
     const soulRaw = cache?.soul || undefined
     const skillIndex = cache?.skillIndex || config.skillIndex
+    const extrasRaw =
+      cache?.extras && Object.keys(cache.extras).length > 0 ? cache.extras : undefined
 
     return {
       ...(soulRaw !== undefined ? { soul: soulRaw } : {}),
+      ...(extrasRaw !== undefined ? { extras: extrasRaw } : {}),
       identities: {
         limbic: buildIdentity('limbic'),
         cortex: buildIdentity('cortex'),

@@ -14,6 +14,8 @@ export interface IdentityCache {
   soul: string
   skillIndex: string
   roles: Partial<Record<CognitiveBrainType, RoleEntry>>
+  /** Extra Markdown files from identityDir (e.g. experience.md, jd.md). Key = filename without .md. */
+  extras: Record<string, string>
 }
 
 /**
@@ -87,10 +89,18 @@ export class IdentityLoader {
       }
     }
 
-    return { soul: '', skillIndex: '', roles }
+    return { soul: '', skillIndex: '', roles, extras: {} }
   }
 
   private async _loadDir(dir: string): Promise<IdentityCache> {
+    const KNOWN_FILES = new Set([
+      'soul.md',
+      'skill-index.md',
+      'limbic.md',
+      'cortex.md',
+      'brainstem.md',
+    ])
+
     const readOptional = async (filename: string): Promise<string> => {
       try {
         return await fs.readFile(path.join(dir, filename), 'utf-8')
@@ -113,7 +123,19 @@ export class IdentityLoader {
       }
     }
 
-    return { soul, skillIndex, roles }
+    // Scan for extra .md files (not in KNOWN_FILES) — e.g. experience.md, jd.md
+    const extras: Record<string, string> = {}
+    const dirEntries = await fs.readdir(dir)
+    for (const entry of dirEntries.sort()) {
+      if (!entry.endsWith('.md')) continue
+      if (KNOWN_FILES.has(entry)) continue
+      const content = await fs.readFile(path.join(dir, entry), 'utf-8')
+      if (content.trim() !== '') {
+        extras[entry.slice(0, -3)] = content
+      }
+    }
+
+    return { soul, skillIndex, roles, extras }
   }
 
   private _merge(base: IdentityCache, override: IdentityCache | null): IdentityCache {
@@ -142,6 +164,8 @@ export class IdentityLoader {
       soul: override.soul || base.soul,
       skillIndex: override.skillIndex || base.skillIndex,
       roles,
+      // extras: merge by key, override wins per key
+      extras: { ...base.extras, ...override.extras },
     }
   }
 }

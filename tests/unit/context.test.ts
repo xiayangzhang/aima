@@ -176,6 +176,82 @@ describe('assembleBlock4', () => {
   })
 })
 
+describe('assembleBlock12 with extras', () => {
+  const baseConfig: ContextAssemblerConfig = {
+    identities: {
+      limbic: { role: 'Limbic Brain', instructions: 'Understand emotions' },
+      cortex: { role: 'Cortex Brain', instructions: 'Synthesize information' },
+      brainstem: { role: 'Brainstem Brain', instructions: 'Execute tasks' },
+    },
+  }
+
+  test('extras injected between soul and ## Role', () => {
+    const cfg = {
+      ...baseConfig,
+      soul: 'Soul text',
+      extras: { experience: '## Experience\n3 years at SaaS' },
+    }
+    const output = assembleBlock12('limbic', cfg)
+    const soulIdx = output.indexOf('Soul text')
+    const extraIdx = output.indexOf('## Experience')
+    const roleIdx = output.indexOf('## Role')
+    expect(soulIdx).toBeGreaterThanOrEqual(0)
+    expect(extraIdx).toBeGreaterThanOrEqual(0)
+    expect(soulIdx).toBeLessThan(extraIdx)
+    expect(extraIdx).toBeLessThan(roleIdx)
+  })
+
+  test('extras sorted alphabetically by key', () => {
+    const cfg = {
+      ...baseConfig,
+      extras: { jd: 'JD content', experience: 'Experience content' },
+    }
+    const output = assembleBlock12('limbic', cfg)
+    const expIdx = output.indexOf('Experience content')
+    const jdIdx = output.indexOf('JD content')
+    // 'experience' sorts before 'jd' alphabetically
+    expect(expIdx).toBeLessThan(jdIdx)
+    expect(expIdx).toBeLessThan(output.indexOf('## Role'))
+  })
+
+  test('no extras → output unchanged (backwards compatible)', () => {
+    const withoutExtras = assembleBlock12('limbic', baseConfig)
+    const withEmptyExtras = assembleBlock12('limbic', { ...baseConfig, extras: {} })
+    expect(withoutExtras).toBe(withEmptyExtras)
+  })
+
+  test('extras without soul still appear before ## Role', () => {
+    const cfg = { ...baseConfig, extras: { jd: 'Job Description content' } }
+    const output = assembleBlock12('limbic', cfg)
+    const jdIdx = output.indexOf('Job Description content')
+    const roleIdx = output.indexOf('## Role')
+    expect(jdIdx).toBeGreaterThanOrEqual(0)
+    expect(jdIdx).toBeLessThan(roleIdx)
+    expect(output.startsWith('Job Description content'))
+  })
+
+  test('soul + extras + skillIndex: full order correct', () => {
+    const cfg = {
+      ...baseConfig,
+      soul: 'Soul content',
+      extras: { experience: 'Experience section', jd: 'JD section' },
+      skillIndex: 'Skills list',
+    }
+    const output = assembleBlock12('limbic', cfg)
+    const soulIdx = output.indexOf('Soul content')
+    const expIdx = output.indexOf('Experience section')
+    const jdIdx = output.indexOf('JD section')
+    const roleIdx = output.indexOf('## Role')
+    const instrIdx = output.indexOf('## Instructions')
+    const skillIdx = output.indexOf('## Skill Index')
+    expect(soulIdx).toBeLessThan(expIdx)
+    expect(expIdx).toBeLessThan(jdIdx)
+    expect(jdIdx).toBeLessThan(roleIdx)
+    expect(roleIdx).toBeLessThan(instrIdx)
+    expect(instrIdx).toBeLessThan(skillIdx)
+  })
+})
+
 describe('assembleBlock12 with soul', () => {
   const baseConfig: ContextAssemblerConfig = {
     identities: {
