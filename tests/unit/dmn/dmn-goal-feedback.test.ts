@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
 // Mock callLlm BEFORE the DmnReactive module is loaded
-const mockCallLlm = mock(() => Promise.resolve('{"achieved": true, "reason": "default"}'))
+const mockCallLlm = mock(() => Promise.resolve({ text: '{"achieved": true, "reason": "default"}', usage: { inputTokens: 0, outputTokens: 0 } }))
 
 mock.module('../../../src/llm', () => ({
   callLlm: mockCallLlm,
@@ -107,7 +107,7 @@ function makeConfig() {
 describe('feedbackMemoryUsage — goal-based evaluation', () => {
   beforeEach(() => {
     mockCallLlm.mockReset()
-    mockCallLlm.mockResolvedValue('{"achieved": true, "reason": "default"}')
+    mockCallLlm.mockResolvedValue({ text: '{"achieved": true, "reason": "default"}', usage: { inputTokens: 0, outputTokens: 0 } })
   })
 
   // V1: goal + reply + achieved=true → positive
@@ -119,7 +119,7 @@ describe('feedbackMemoryUsage — goal-based evaluation', () => {
     ws.getSlotsByThread.mockResolvedValue([
       { brain: 'limbic', status: 'done', output: { reply: 'I have sent the confirmation email.' } },
     ] as never)
-    mockCallLlm.mockResolvedValue('{"achieved": true, "reason": "reply confirms email sent"}')
+    mockCallLlm.mockResolvedValue({ text: '{"achieved": true, "reason": "reply confirms email sent"}', usage: { inputTokens: 0, outputTokens: 0 } })
 
     const reactive = new DmnReactive(config)
     await reactive.start()
@@ -149,7 +149,7 @@ describe('feedbackMemoryUsage — goal-based evaluation', () => {
         output: { reply: 'I need more information about your travel dates.' },
       },
     ] as never)
-    mockCallLlm.mockResolvedValue('{"achieved": false, "reason": "no booking confirmation"}')
+    mockCallLlm.mockResolvedValue({ text: '{"achieved": false, "reason": "no booking confirmation"}', usage: { inputTokens: 0, outputTokens: 0 } })
 
     const reactive = new DmnReactive(config)
     await reactive.start()

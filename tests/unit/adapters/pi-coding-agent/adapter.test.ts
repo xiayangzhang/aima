@@ -21,6 +21,8 @@ function makeWorkspaceMock() {
   return {
     pushSignal: mock((_signal: BrainSignal) => undefined),
     popSignal: mock((_type: string) => undefined as BrainSignal | undefined),
+    readSlot: mock(async () => null),
+    writeSlot: mock(async () => ({}) as never),
   } as unknown as CognitiveWorkspace
 }
 

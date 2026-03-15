@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
 
 // Mock the llm module BEFORE the hippocampus module is loaded
-const mockCallLlm = mock(() => Promise.resolve('{"merge": false, "reason": "default"}'))
+const mockCallLlm = mock(() => Promise.resolve({ text: '{"merge": false, "reason": "default"}', usage: { inputTokens: 0, outputTokens: 0 } }))
 
 mock.module('../../../src/llm', () => ({
   callLlm: mockCallLlm,
@@ -50,7 +50,7 @@ const seqB = [
 describe('runSegmentRefine', () => {
   beforeEach(() => {
     mockCallLlm.mockReset()
-    mockCallLlm.mockResolvedValue('{"merge": false, "reason": "default"}')
+    mockCallLlm.mockResolvedValue({ text: '{"merge": false, "reason": "default"}', usage: { inputTokens: 0, outputTokens: 0 } })
   })
 
   test('merge=true → updateMemorySegment called for source entries with correct seq', async () => {
@@ -64,7 +64,7 @@ describe('runSegmentRefine', () => {
       llm: { model: 'claude-haiku-4-5-20251001' },
     })
 
-    mockCallLlm.mockResolvedValue('{"merge": true, "reason": "same topic"}')
+    mockCallLlm.mockResolvedValue({ text: '{"merge": true, "reason": "same topic"}', usage: { inputTokens: 0, outputTokens: 0 } })
     await (c as never as { runSegmentRefine: () => Promise<void> }).runSegmentRefine()
 
     // seqA has 2 entries → offset=2; seqB[0]→seq 2, seqB[1]→seq 3
@@ -84,7 +84,7 @@ describe('runSegmentRefine', () => {
       llm: { model: 'claude-haiku-4-5-20251001' },
     })
 
-    mockCallLlm.mockResolvedValue('{"merge": false, "reason": "different topics"}')
+    mockCallLlm.mockResolvedValue({ text: '{"merge": false, "reason": "different topics"}', usage: { inputTokens: 0, outputTokens: 0 } })
     await (c as never as { runSegmentRefine: () => Promise<void> }).runSegmentRefine()
 
     expect(updateSpy).not.toHaveBeenCalled()
@@ -116,7 +116,7 @@ describe('runSegmentRefine', () => {
       llm: { model: 'claude-haiku-4-5-20251001' },
     })
 
-    mockCallLlm.mockResolvedValue('not valid json at all !!!')
+    mockCallLlm.mockResolvedValue({ text: 'not valid json at all !!!', usage: { inputTokens: 0, outputTokens: 0 } })
     await (c as never as { runSegmentRefine: () => Promise<void> }).runSegmentRefine()
 
     expect(updateSpy).not.toHaveBeenCalled()
@@ -146,7 +146,7 @@ describe('runSegmentRefine', () => {
 
     // Both pairs return merge=true, but B is merged in pair A-B,
     // so pair B-C should be skipped
-    mockCallLlm.mockResolvedValue('{"merge": true, "reason": "same"}')
+    mockCallLlm.mockResolvedValue({ text: '{"merge": true, "reason": "same"}', usage: { inputTokens: 0, outputTokens: 0 } })
     await (c as never as { runSegmentRefine: () => Promise<void> }).runSegmentRefine()
 
     // Only seqB entries should be updated (B merged into A), not seqC (B-C skipped)

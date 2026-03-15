@@ -404,7 +404,7 @@ describe('T029 — DmnReactive retroactive correction', () => {
 
   it('no correction when fewer than 2 episodic entries', async () => {
     const { config, ws, bus } = makeDmnConfig()
-    callLlmSpy.mockResolvedValue('{"topic_switched": false}')
+    callLlmSpy.mockResolvedValue({ text: '{"topic_switched": false}', usage: { inputTokens: 0, outputTokens: 0 } })
     const reactive = new DmnReactive(config)
     await reactive.start()
 
@@ -447,13 +447,14 @@ describe('T029 — DmnReactive retroactive correction', () => {
       })
     }
 
-    callLlmSpy.mockResolvedValue(
-      JSON.stringify({
+    callLlmSpy.mockResolvedValue({
+      text: JSON.stringify({
         needs_correction: true,
         correction_type: 'reasoning_error',
         correction_message: 'Previous reasoning was flawed',
       }),
-    )
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await reactive.start()
     // Use error status so rule pre-check allows the LLM correction call
@@ -500,13 +501,14 @@ describe('T029 — DmnReactive retroactive correction', () => {
       })
     }
 
-    callLlmSpy.mockResolvedValue(
-      JSON.stringify({
+    callLlmSpy.mockResolvedValue({
+      text: JSON.stringify({
         needs_correction: false,
         correction_type: null,
         correction_message: '',
       }),
-    )
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await reactive.start()
     const event = makeBrainCompleteEvent('thread-rc3', 'cortex')
@@ -547,13 +549,14 @@ describe('T029 — DmnReactive retroactive correction', () => {
       })
     }
 
-    callLlmSpy.mockResolvedValue(
-      JSON.stringify({
+    callLlmSpy.mockResolvedValue({
+      text: JSON.stringify({
         needs_correction: true,
         correction_type: 'factual_error',
         correction_message: 'Wrong facts',
       }),
-    )
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await reactive.start()
     // Use error status so rule pre-check allows the LLM correction call
@@ -620,7 +623,7 @@ describe('T030 — DmnConsolidation predictive activation', () => {
       updatedAt: new Date(),
     })
 
-    callLlmSpy.mockResolvedValue('[]')
+    callLlmSpy.mockResolvedValue({ text: '[]', usage: { inputTokens: 0, outputTokens: 0 } })
     await c.runOnce()
 
     expect(callLlmSpy).toHaveBeenCalled()
@@ -653,8 +656,8 @@ describe('T030 — DmnConsolidation predictive activation', () => {
       updatedAt: new Date(),
     })
 
-    callLlmSpy.mockResolvedValue(
-      JSON.stringify([
+    callLlmSpy.mockResolvedValue({
+      text: JSON.stringify([
         {
           target_brain: 'limbic',
           note: 'Schedule follow-up',
@@ -662,7 +665,8 @@ describe('T030 — DmnConsolidation predictive activation', () => {
           confidence: 'high',
         },
       ]),
-    )
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await c.runOnce()
 
@@ -699,11 +703,12 @@ describe('T030 — DmnConsolidation predictive activation', () => {
       updatedAt: new Date(),
     })
 
-    callLlmSpy.mockResolvedValue(
-      JSON.stringify([
+    callLlmSpy.mockResolvedValue({
+      text: JSON.stringify([
         { target_brain: 'limbic', note: 'Low confidence', trigger_at_hours: 2, confidence: 'low' },
       ]),
-    )
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await c.runOnce()
 
@@ -723,7 +728,7 @@ describe('T030 — DmnConsolidation predictive activation', () => {
       baseImportance: 0.5,
     })
 
-    callLlmSpy.mockResolvedValue(JSON.stringify([{ action: 'remove', updated_note: null }]))
+    callLlmSpy.mockResolvedValue({ text: JSON.stringify([{ action: 'remove', updated_note: null }]), usage: { inputTokens: 0, outputTokens: 0 } })
 
     await c.runOnce()
 
@@ -744,7 +749,7 @@ describe('T030 — DmnConsolidation predictive activation', () => {
       baseImportance: 0.5,
     })
 
-    callLlmSpy.mockResolvedValue(JSON.stringify([{ action: 'keep', updated_note: null }]))
+    callLlmSpy.mockResolvedValue({ text: JSON.stringify([{ action: 'keep', updated_note: null }]), usage: { inputTokens: 0, outputTokens: 0 } })
 
     await c.runOnce()
 
@@ -764,9 +769,10 @@ describe('T030 — DmnConsolidation predictive activation', () => {
       baseImportance: 0.5,
     })
 
-    callLlmSpy.mockResolvedValue(
-      JSON.stringify([{ action: 'update', updated_note: 'revised note' }]),
-    )
+    callLlmSpy.mockResolvedValue({
+      text: JSON.stringify([{ action: 'update', updated_note: 'revised note' }]),
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await c.runOnce()
 
@@ -960,7 +966,7 @@ describe('T033 — Retroactive correction pre-check', () => {
 
   it('V1: skips correction LLM for healthy brain.complete (status=done, output present, no error stopReason)', async () => {
     const { config, bus } = makeDmnConfig()
-    callLlmSpy.mockResolvedValue('{}')
+    callLlmSpy.mockResolvedValue({ text: '{}', usage: { inputTokens: 0, outputTokens: 0 } })
     const reactive = new DmnReactive(config)
     await reactive.start()
 
@@ -1005,9 +1011,10 @@ describe('T033 — Retroactive correction pre-check', () => {
       })
     }
 
-    callLlmSpy.mockResolvedValue(
-      JSON.stringify({ needs_correction: false, correction_type: null, correction_message: '' }),
-    )
+    callLlmSpy.mockResolvedValue({
+      text: JSON.stringify({ needs_correction: false, correction_type: null, correction_message: '' }),
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await reactive.start()
     const event = makeBrainCompleteEvent('thread-t033-v2', 'cortex', {
@@ -1050,9 +1057,10 @@ describe('T033 — Retroactive correction pre-check', () => {
       })
     }
 
-    callLlmSpy.mockResolvedValue(
-      JSON.stringify({ needs_correction: false, correction_type: null, correction_message: '' }),
-    )
+    callLlmSpy.mockResolvedValue({
+      text: JSON.stringify({ needs_correction: false, correction_type: null, correction_message: '' }),
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await reactive.start()
     const event = makeBrainCompleteEvent('thread-t033-v3', 'cortex', {
@@ -1095,9 +1103,10 @@ describe('T033 — Retroactive correction pre-check', () => {
       })
     }
 
-    callLlmSpy.mockResolvedValue(
-      JSON.stringify({ needs_correction: false, correction_type: null, correction_message: '' }),
-    )
+    callLlmSpy.mockResolvedValue({
+      text: JSON.stringify({ needs_correction: false, correction_type: null, correction_message: '' }),
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await reactive.start()
     const event = makeBrainCompleteEvent('thread-t033-v4', 'cortex', {

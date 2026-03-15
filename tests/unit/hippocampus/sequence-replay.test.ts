@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test'
 
 // Mock the llm module BEFORE the hippocampus module is loaded
-const mockCallLlm = mock(() => Promise.resolve('{}'))
+const mockCallLlm = mock(() => Promise.resolve({ text: '{}', usage: { inputTokens: 0, outputTokens: 0 } }))
 
 mock.module('../../../src/llm', () => ({
   callLlm: mockCallLlm,
@@ -45,7 +45,7 @@ const makeSeg = (segmentId = 'seg-1') => ({
 describe('runSequenceReplay', () => {
   beforeEach(() => {
     mockCallLlm.mockReset()
-    mockCallLlm.mockResolvedValue(sampleLlmResponse)
+    mockCallLlm.mockResolvedValue({ text: sampleLlmResponse, usage: { inputTokens: 0, outputTokens: 0 } })
   })
 
   test('writeMemory called for each extracted semantic and procedural item', async () => {
@@ -100,7 +100,7 @@ describe('runSequenceReplay', () => {
       llm: { model: 'claude-haiku-4-5-20251001' },
     })
 
-    mockCallLlm.mockResolvedValue('not valid json at all !!!')
+    mockCallLlm.mockResolvedValue({ text: 'not valid json at all !!!', usage: { inputTokens: 0, outputTokens: 0 } })
 
     await expect(
       (c as never as { runSequenceReplay: () => Promise<void> }).runSequenceReplay(),
@@ -120,13 +120,14 @@ describe('runSequenceReplay', () => {
       llm: { model: 'claude-haiku-4-5-20251001' },
     })
 
-    mockCallLlm.mockResolvedValue(
-      JSON.stringify({
+    mockCallLlm.mockResolvedValue({
+      text: JSON.stringify({
         semantic: [{ content: 'Updated fact', entityId: null, tags: [] }],
         procedural: [],
         implicit: [],
       }),
-    )
+      usage: { inputTokens: 0, outputTokens: 0 },
+    })
 
     await (c as never as { runSequenceReplay: () => Promise<void> }).runSequenceReplay()
 
@@ -153,7 +154,7 @@ describe('runSequenceReplay', () => {
       replayTopK: 3,
     })
 
-    mockCallLlm.mockResolvedValue(JSON.stringify({ semantic: [], procedural: [], implicit: [] }))
+    mockCallLlm.mockResolvedValue({ text: JSON.stringify({ semantic: [], procedural: [], implicit: [] }), usage: { inputTokens: 0, outputTokens: 0 } })
 
     await (c as never as { runSequenceReplay: () => Promise<void> }).runSequenceReplay()
 

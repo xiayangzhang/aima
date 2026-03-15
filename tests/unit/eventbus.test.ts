@@ -20,7 +20,7 @@ describe('BrainEventBus', () => {
     expect(event.thread_id).toBe('thread-1')
     expect(event.session_id).toBeNull()
     expect(event.causation_id).toBeNull()
-    expect(event.schema_version).toBe('1.0')
+    expect(event.schema_version).toBe('1.1')
     expect(event.payload).toEqual({ foo: 'bar' })
     expect(event.occurred_at).toBeInstanceOf(Date)
   })

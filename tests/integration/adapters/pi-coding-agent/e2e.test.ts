@@ -21,6 +21,9 @@ const mockDb = {} as Parameters<typeof CognitiveWorkspace>[0]
 
 function makeAdapter() {
   const workspace = new CognitiveWorkspace(mockDb)
+  // Stub readSlot/writeSlot since mockDb has no real DB connection
+  workspace.readSlot = async () => null
+  workspace.writeSlot = async () => ({}) as never
   const eventBus = new BrainEventBus()
   const amygdala = new Amygdala({}, workspace, eventBus)
   const events: BrainEvent[] = []
@@ -83,6 +86,9 @@ describe('PiCodingAgentAdapter E2E (requires ANTHROPIC_API_KEY)', () => {
     async () => {
       let sessionCreateCount = 0
       const workspace = new CognitiveWorkspace(mockDb)
+      // Stub readSlot/writeSlot since mockDb has no real DB connection
+      workspace.readSlot = async () => null
+      workspace.writeSlot = async () => ({}) as never
       const eventBus = new BrainEventBus()
       const amygdala = new Amygdala({}, workspace, eventBus)
 

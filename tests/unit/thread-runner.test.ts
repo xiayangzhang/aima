@@ -69,6 +69,7 @@ describe('ThreadRunner routing', () => {
     workspace.removeExpiredPending = async () => {}
     workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => [] // prevent DB calls from assembleBlock4
+    workspace.readSlot = async () => null
   }
 
   test('limbic reply + null next → complete + thread.reply event emitted', async () => {
@@ -199,6 +200,7 @@ describe('ThreadRunner routing — extended', () => {
     workspace.removeExpiredPending = async () => {}
     workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
+    workspace.readSlot = async () => null
   }
 
   // T049: cortex next: limbic → limbic activated
@@ -308,6 +310,7 @@ describe('ThreadRunner routing — extended', () => {
     workspace.removeExpiredPending = async () => {}
     workspace.getPendingObservations = async () => [] // empty during recovery
     workspace.searchMemory = async () => []
+    workspace.readSlot = async () => null
     workspace.updateThreadState = async (_id, state) => {
       pendingThread.state = state
     }
@@ -454,6 +457,7 @@ describe('ThreadRunner routing — extended', () => {
       },
     ]
     workspace.searchMemory = async () => []
+    workspace.readSlot = async () => null
     workspace.updateThreadState = async (id, state) => {
       if (id === 'original-thread') originalThread.state = state
     }
@@ -564,6 +568,7 @@ describe('ThreadRunner routing — extended', () => {
     workspace.removeExpiredPending = async () => {}
     workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
+    workspace.readSlot = async () => null
     workspace.writeSlot = async (_tid, brain, data) => {
       writtenSlotBrain = brain
       writtenSlotData = data
@@ -875,6 +880,7 @@ describe('ThreadRunner.trigger() — initialPrompt wiring (T029)', () => {
     workspace.removeExpiredPending = async () => {}
     workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
+    workspace.readSlot = async () => null
     workspace.updateThreadState = async (_id, state) => {
       thread.state = state
     }
@@ -911,6 +917,7 @@ describe('ThreadRunner.trigger() — initialPrompt wiring (T029)', () => {
     workspace.removeExpiredPending = async () => {}
     workspace.getPendingObservations = async () => []
     workspace.searchMemory = async () => []
+    workspace.readSlot = async () => null
     workspace.updateThreadState = async (_id, state) => {
       thread.state = state
     }

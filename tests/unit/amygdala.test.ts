@@ -106,7 +106,7 @@ describe('Amygdala.check — escalation', () => {
 
   beforeEach(() => {
     callLlmSpy = spyOn(llmModule, 'callLlm')
-    callLlmSpy.mockResolvedValue('{"decision":"escalate","reason":"mocked"}')
+    callLlmSpy.mockResolvedValue({ text: '{"decision":"escalate","reason":"mocked"}', usage: { inputTokens: 0, outputTokens: 0 } })
   })
 
   afterEach(() => {
@@ -167,7 +167,7 @@ describe('Amygdala Stage 3 — LLM evaluation', () => {
 
   // V1: LLM returns allow
   test('V1 — returns allow when LLM responds allow', async () => {
-    callLlmSpy.mockResolvedValue('{"decision":"allow","reason":"safe context"}')
+    callLlmSpy.mockResolvedValue({ text: '{"decision":"allow","reason":"safe context"}', usage: { inputTokens: 0, outputTokens: 0 } })
     const { amygdala } = makeStage3Setup({ haiku_enabled: true })
     const result = await amygdala.check('custom_tool', { cmd: 'ls /tmp' })
     expect(result.decision).toBe('allow')
@@ -176,7 +176,7 @@ describe('Amygdala Stage 3 — LLM evaluation', () => {
 
   // V2: LLM returns block
   test('V2 — returns block when LLM responds block', async () => {
-    callLlmSpy.mockResolvedValue('{"decision":"block","reason":"dangerous command"}')
+    callLlmSpy.mockResolvedValue({ text: '{"decision":"block","reason":"dangerous command"}', usage: { inputTokens: 0, outputTokens: 0 } })
     const { amygdala } = makeStage3Setup({ haiku_enabled: true })
     const result = await amygdala.check('custom_tool', { cmd: 'rm -rf /' })
     expect(result.decision).toBe('block')
@@ -194,7 +194,7 @@ describe('Amygdala Stage 3 — LLM evaluation', () => {
 
   // V4: LLM returns invalid decision → escalate
   test('V4 — falls back to escalate when LLM returns invalid decision', async () => {
-    callLlmSpy.mockResolvedValue('{"decision":"unknown_value","reason":"..."}')
+    callLlmSpy.mockResolvedValue({ text: '{"decision":"unknown_value","reason":"..."}', usage: { inputTokens: 0, outputTokens: 0 } })
     const { amygdala } = makeStage3Setup({ haiku_enabled: true })
     const result = await amygdala.check('custom_tool', {})
     expect(result.decision).toBe('escalate')
@@ -218,7 +218,7 @@ describe('Amygdala Stage 3 — LLM evaluation', () => {
 
   // V7: writeMemory called after evaluation (fire-and-forget)
   test('V7 — writes implicit memory after Stage 3 evaluation', async () => {
-    callLlmSpy.mockResolvedValue('{"decision":"allow","reason":"safe"}')
+    callLlmSpy.mockResolvedValue({ text: '{"decision":"allow","reason":"safe"}', usage: { inputTokens: 0, outputTokens: 0 } })
     const { amygdala, writeMemory } = makeStage3Setup({ haiku_enabled: true })
     await amygdala.check('custom_tool', {})
     // Give the fire-and-forget writeMemory promise a tick to settle
@@ -336,7 +336,7 @@ describe('Amygdala Stage 2 — Implicit memory match', () => {
       riskLevels: { custom_tool: 'high' },
     })
     getByTags.mockResolvedValue([])
-    callLlmSpy.mockResolvedValue('{"decision":"allow","reason":"llm ok"}')
+    callLlmSpy.mockResolvedValue({ text: '{"decision":"allow","reason":"llm ok"}', usage: { inputTokens: 0, outputTokens: 0 } })
     await amygdala.check('custom_tool', {})
     expect(callLlmSpy).toHaveBeenCalledTimes(1)
   })
@@ -348,7 +348,7 @@ describe('Amygdala Stage 2 — Implicit memory match', () => {
       riskLevels: { custom_tool: 'high' },
     })
     getByTags.mockRejectedValue(new Error('db error'))
-    callLlmSpy.mockResolvedValue('{"decision":"escalate","reason":"fallback"}')
+    callLlmSpy.mockResolvedValue({ text: '{"decision":"escalate","reason":"fallback"}', usage: { inputTokens: 0, outputTokens: 0 } })
     const result = await amygdala.check('custom_tool', {})
     expect(result.decision).toBeDefined()
     expect(callLlmSpy).toHaveBeenCalledTimes(1)
