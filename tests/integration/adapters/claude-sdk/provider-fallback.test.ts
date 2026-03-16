@@ -153,7 +153,7 @@ describe.skipIf(SKIP)('ClaudeAgentSDKAdapter — provider fallback (real API)', 
     })
   })
 
-  it('propagates error when all providers are exhausted', { timeout: 30_000 }, async () => {
+  it('propagates error when all providers are exhausted', { timeout: 40_000 }, async () => {
     await withTransaction(db, async (workspace) => {
       const eventBus = new BrainEventBus()
       const amygdala = new Amygdala({}, workspace, eventBus)

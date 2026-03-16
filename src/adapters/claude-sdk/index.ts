@@ -86,17 +86,15 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
 
       // Per-attempt timeout: the claude subprocess has its own internal retry backoff
       // (up to 11 attempts, ~90s) before propagating a connection error to the parent.
-      // We abort the attempt early so the adapter's fallback chain can take over.
-      // Default: 20s per attempt. Only applies when a fallback provider exists.
-      const hasMoreAttempts = i < attempts.length - 1
+      // We abort the attempt early so the adapter's fallback chain can take over,
+      // or so callers get a fast error when all providers are exhausted.
+      // Default: 20s per attempt.
       const attemptTimeoutMs = 20_000
       let timedOut = false
-      const attemptTimeoutId = hasMoreAttempts
-        ? setTimeout(() => {
-            timedOut = true
-            abortController.abort()
-          }, attemptTimeoutMs)
-        : undefined
+      const attemptTimeoutId = setTimeout(() => {
+        timedOut = true
+        abortController.abort()
+      }, attemptTimeoutMs)
 
       const existingSessionId = this.sessionIds.get(key)
 
