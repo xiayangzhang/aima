@@ -90,10 +90,12 @@ export async function assembleBlock3(
   const localTime = now.toLocaleString('en-AU', { timeZone: timezone, hour12: false })
 
   const slotsText = slots
-    .map(
-      (s) =>
-        `  ${s.brain}: ${s.status}${s.output ? ` (output: ${JSON.stringify(s.output).slice(0, 100)})` : ''}`,
-    )
+    .map((s) => {
+      const parts = [`  ${s.brain}: ${s.status}`]
+      if (s.input) parts.push(`(input: ${JSON.stringify(s.input).slice(0, 200)})`)
+      if (s.output) parts.push(`(output: ${JSON.stringify(s.output).slice(0, 100)})`)
+      return parts.join(' ')
+    })
     .join('\n')
 
   return [

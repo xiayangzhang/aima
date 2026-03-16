@@ -5,6 +5,15 @@ import type { BrainType, UsageOutcome } from '../../types/index'
 import type { CognitiveWorkspace } from '../../workspace/index'
 import type { DmnConfig } from '../index'
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Safely coerce an unknown JSONB value to string or null. */
+function toStringOrNull(value: unknown): string | null {
+  if (value == null) return null
+  if (typeof value === 'string') return value
+  return JSON.stringify(value)
+}
+
 // ─── SignalRule ───────────────────────────────────────────────────────────────
 
 export interface SignalRule {
@@ -263,15 +272,14 @@ Respond with JSON: {"topic_switched": boolean, "reason": string}`
     const output = outputSlot?.output as Record<string, unknown> | undefined
     const status = outputSlot?.status as string | undefined
     const next = (output?.next as string | undefined) ?? null
-    const handoff = (output?.handoff as string | undefined) ?? null
-    const reply = (output?.reply as string | undefined) ?? null
+    const handoff = toStringOrNull(output?.handoff)
+    const reply = toStringOrNull(output?.reply)
     const stopReason = payload.stopReason as string | undefined
 
     // Extract situation: from slot.input.handoff (upstream handoff) or thread.trigger
     const slotInput = outputSlot?.input as Record<string, unknown> | null | undefined
-    const handoffIn = (slotInput?.handoff as string | undefined) ?? null
     const thread = (payload.thread as { trigger?: string | null } | undefined) ?? null
-    const situation = handoffIn ?? thread?.trigger ?? null
+    const situation = toStringOrNull(slotInput?.handoff) ?? toStringOrNull(thread?.trigger)
 
     // Derive routing decision token
     // 'end_turn' = raw LLM stop reason; 'done' = adapter-normalized success — both are non-error
