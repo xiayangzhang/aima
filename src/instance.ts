@@ -392,11 +392,7 @@ export class AIMAInstance {
    * The active brain adapter will deliver it in real-time (steer/followUp);
    * inactive adapters store it for delivery on next activation.
    */
-  async injectToThread(
-    threadId: string,
-    type: BrainSignalType,
-    message: string,
-  ): Promise<void> {
+  async injectToThread(threadId: string, type: BrainSignalType, message: string): Promise<void> {
     const signal = { type, threadId, message }
     for (const adapter of this._adaptersMap.values()) {
       await adapter.inject(signal)
