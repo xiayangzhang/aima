@@ -84,6 +84,20 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
       )
       this.abortControllers.set(key, abortController)
 
+      // Per-attempt timeout: the claude subprocess has its own internal retry backoff
+      // (up to 11 attempts, ~90s) before propagating a connection error to the parent.
+      // We abort the attempt early so the adapter's fallback chain can take over.
+      // Default: 20s per attempt. Only applies when a fallback provider exists.
+      const hasMoreAttempts = i < attempts.length - 1
+      const attemptTimeoutMs = 20_000
+      let timedOut = false
+      const attemptTimeoutId = hasMoreAttempts
+        ? setTimeout(() => {
+            timedOut = true
+            abortController.abort()
+          }, attemptTimeoutMs)
+        : undefined
+
       const existingSessionId = this.sessionIds.get(key)
 
       const q = query({
@@ -140,9 +154,13 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
           }
         }
         // Success: store session and exit retry loop
+        clearTimeout(attemptTimeoutId)
         break
       } catch (err) {
-        const reason = classifyProviderError(err)
+        clearTimeout(attemptTimeoutId)
+        // If we triggered the abort via per-attempt timeout, treat as 'timeout' so
+        // the fallback chain can take over (even if AbortError wouldn't match normally).
+        const reason = timedOut ? 'timeout' : classifyProviderError(err)
         const isLastAttempt = i === attempts.length - 1
 
         if (reason === null || isLastAttempt) {
@@ -173,6 +191,7 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
         // Clear session — fallback must start fresh (sessions don't transfer across providers)
         this.sessionIds.delete(key)
       } finally {
+        clearTimeout(attemptTimeoutId)
         this.abortControllers.delete(key)
       }
     }
