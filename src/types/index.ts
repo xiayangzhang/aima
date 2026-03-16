@@ -106,6 +106,62 @@ export interface BrainTokenUsage {
   cacheWriteTokens?: number
 }
 
+// ─── Provider Config ──────────────────────────────────────────────────────────
+
+/** A single API provider: where to reach it and how to authenticate. */
+export interface ProviderEndpoint {
+  /** API base URL. e.g. 'https://api.anthropic.com' or 'https://your-proxy.com' */
+  baseUrl: string
+  /** Credentials (API key) for this endpoint. */
+  apiKey: string
+}
+
+/** Pairs a model identifier with the provider endpoint that serves it. */
+export interface ModelSpec {
+  /** Model ID. e.g. 'claude-sonnet-4-6', 'claude-opus-4-6' */
+  model: string
+  /** Which endpoint and credentials to use for this model. */
+  provider: ProviderEndpoint
+}
+
+/**
+ * Full configuration for a single brain area.
+ * Defines the primary ModelSpec and an optional ordered fallback chain.
+ */
+export interface BrainModelConfig {
+  /** First attempt for every brain activation. */
+  primary: ModelSpec
+  /**
+   * Ordered fallback chain. When primary fails (429, 5xx, timeout),
+   * the adapter tries each entry in sequence.
+   */
+  fallback?: ModelSpec[]
+  /**
+   * Maximum total attempts per activation, including the primary.
+   * Defaults to min(2, 1 + fallback.length).
+   * Cannot exceed 1 + fallback.length.
+   */
+  maxAttempts?: number
+}
+
+/**
+ * Top-level provider configuration passed to AIMA adapter constructors.
+ *
+ * Resolution order for each brain:
+ *   1. Per-brain override (brains.limbic / brains.cortex / brains.brainstem)
+ *   2. Default (applies to all brains not individually overridden)
+ */
+export interface MultiProviderConfig {
+  /** Baseline config applied to any brain without a per-brain override. */
+  default: BrainModelConfig
+  /** Optional per-brain overrides. Unspecified brains use `default`. */
+  brains?: {
+    limbic?: BrainModelConfig
+    cortex?: BrainModelConfig
+    brainstem?: BrainModelConfig
+  }
+}
+
 // ─── Input Types ─────────────────────────────────────────────────────────────
 
 export interface CreateThreadParams {
