@@ -31,6 +31,11 @@ export type {
   CreatePendingParams,
   // Interface
   ICognitiveWorkspace,
+  // Provider config
+  ProviderEndpoint,
+  ModelSpec,
+  BrainModelConfig,
+  MultiProviderConfig,
 } from './types/index'
 
 // ── Brain Runtime ─────────────────────────────────────────────────────────────
