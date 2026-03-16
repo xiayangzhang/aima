@@ -9,6 +9,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 const BASE_CONFIG = {
   databaseUrl: 'postgresql://localhost/test',
   adapter: 'claude-sdk' as const,
+  apiKey: 'sk-test-unit',
 }
 
 describe('AIMAInstance — spawnSubExecution', () => {

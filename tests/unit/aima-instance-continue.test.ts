@@ -30,6 +30,7 @@ function makeInstance() {
   return new AIMAInstance({
     databaseUrl: 'postgresql://localhost/test',
     adapter: 'claude-sdk',
+    apiKey: 'sk-test-unit',
   })
 }
 

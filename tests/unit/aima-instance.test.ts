@@ -27,6 +27,7 @@ describe('AIMAInstance', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
     })
     expect(instance).toBeDefined()
     // Cleanup: stop without starting (should not throw)
@@ -46,50 +47,59 @@ describe('AIMAInstance', () => {
 // ─── Per-brain adapter instance tests ──────────────────────────────────────────
 
 describe('AIMAInstance — per-brain adapter instances (claude-sdk)', () => {
+  const getModel = (adapter: { config: Record<string, unknown> } | undefined) =>
+    (adapter?.config.providers as { default: { primary: { model: string } } } | undefined)?.default
+      .primary.model
+
   test('limbic uses haiku default when brainModels omitted', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
     })
     const adapters = getAdapters(instance)
-    expect(adapters.get('limbic')?.config.model).toBe('claude-haiku-4-5-20251001')
+    expect(getModel(adapters.get('limbic'))).toBe('claude-haiku-4-5-20251001')
   })
 
   test('cortex uses sonnet default when brainModels omitted', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
     })
     const adapters = getAdapters(instance)
-    expect(adapters.get('cortex')?.config.model).toBe('claude-sonnet-4-6')
+    expect(getModel(adapters.get('cortex'))).toBe('claude-sonnet-4-6')
   })
 
   test('brainstem uses sonnet default when brainModels omitted', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
     })
     const adapters = getAdapters(instance)
-    expect(adapters.get('brainstem')?.config.model).toBe('claude-sonnet-4-6')
+    expect(getModel(adapters.get('brainstem'))).toBe('claude-sonnet-4-6')
   })
 
   test('limbic respects brainModels override', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
       brainModels: { limbic: 'claude-opus-4-6' },
     })
     const adapters = getAdapters(instance)
-    expect(adapters.get('limbic')?.config.model).toBe('claude-opus-4-6')
+    expect(getModel(adapters.get('limbic'))).toBe('claude-opus-4-6')
     // cortex and brainstem still use defaults
-    expect(adapters.get('cortex')?.config.model).toBe('claude-sonnet-4-6')
-    expect(adapters.get('brainstem')?.config.model).toBe('claude-sonnet-4-6')
+    expect(getModel(adapters.get('cortex'))).toBe('claude-sonnet-4-6')
+    expect(getModel(adapters.get('brainstem'))).toBe('claude-sonnet-4-6')
   })
 
   test('all three brains are independent adapter instances', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
     })
     const adapters = getAdapters(instance)
     const limbic = adapters.get('limbic')
@@ -160,6 +170,7 @@ describe('AIMAInstance — embedding config wiring (T028-A)', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
     })
     const opts = getWorkspaceOptions(instance)
     expect(opts.embedding).toBeUndefined()
@@ -170,6 +181,7 @@ describe('AIMAInstance — embedding config wiring (T028-A)', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
       embedding: embeddingConfig,
     })
     const opts = getWorkspaceOptions(instance)
@@ -182,6 +194,7 @@ describe('AIMAInstance — amygdala config wiring (T028-B)', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
     })
     const cfg = getAmygdalaConfig(instance)
     expect(cfg.llm).toBeUndefined()
@@ -194,6 +207,7 @@ describe('AIMAInstance — amygdala config wiring (T028-B)', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
       amygdala: { llm: llmConfig, haiku_enabled: true },
     })
     const cfg = getAmygdalaConfig(instance)
@@ -206,6 +220,7 @@ describe('AIMAInstance — amygdala config wiring (T028-B)', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
       amygdala: { riskLevels },
     })
     const cfg = getAmygdalaConfig(instance)
@@ -216,6 +231,7 @@ describe('AIMAInstance — amygdala config wiring (T028-B)', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
       amygdala: { haiku_enabled: false },
     })
     const cfg = getAmygdalaConfig(instance)
@@ -256,6 +272,7 @@ describe('AIMAInstance.receive() — trigger wiring (T029)', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
     })
     const workspace = getWorkspace(instance)
     const runner = getThreadRunner(instance)
@@ -280,6 +297,7 @@ describe('AIMAInstance.receive() — trigger wiring (T029)', () => {
     const instance = new AIMAInstance({
       databaseUrl: 'postgresql://localhost/test',
       adapter: 'claude-sdk',
+      apiKey: 'sk-test-unit',
     })
     const workspace = getWorkspace(instance)
     const runner = getThreadRunner(instance)

@@ -30,8 +30,25 @@ import type { LlmConfig } from './llm'
 import type { SpawnExecutionSessionFn } from './mcp/index'
 import { ThreadRunner } from './runner/index'
 import * as schema from './schema/index'
-import type { CognitiveBrainType } from './types/index'
+import type { CognitiveBrainType, MultiProviderConfig } from './types/index'
 import { CognitiveWorkspace } from './workspace/index'
+
+// ─── Provider Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Build a single-provider MultiProviderConfig from explicit args or environment variables.
+ * Convenience wrapper for the common single-provider setup.
+ */
+function providerFromEnv(model: string, apiKey: string, baseUrl: string): MultiProviderConfig {
+  return {
+    default: {
+      primary: {
+        model,
+        provider: { baseUrl, apiKey },
+      },
+    },
+  }
+}
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -608,25 +625,40 @@ export class AIMAInstance {
     }
 
     if (config.adapter === 'claude-sdk') {
+      const apiKey = config.apiKey ?? process.env.ANTHROPIC_API_KEY ?? ''
+      const baseUrl = process.env.ANTHROPIC_BASE_URL ?? 'https://api.anthropic.com'
+
       adapters.set(
         'limbic',
         new ClaudeAgentSDKAdapter({
           ...shared,
-          model: config.brainModels?.limbic ?? 'claude-haiku-4-5-20251001',
+          providers: providerFromEnv(
+            config.brainModels?.limbic ?? 'claude-haiku-4-5-20251001',
+            apiKey,
+            baseUrl,
+          ),
         }),
       )
       adapters.set(
         'cortex',
         new ClaudeAgentSDKAdapter({
           ...shared,
-          model: config.brainModels?.cortex ?? 'claude-sonnet-4-6',
+          providers: providerFromEnv(
+            config.brainModels?.cortex ?? 'claude-sonnet-4-6',
+            apiKey,
+            baseUrl,
+          ),
         }),
       )
       adapters.set(
         'brainstem',
         new ClaudeAgentSDKAdapter({
           ...shared,
-          model: config.brainModels?.brainstem ?? 'claude-sonnet-4-6',
+          providers: providerFromEnv(
+            config.brainModels?.brainstem ?? 'claude-sonnet-4-6',
+            apiKey,
+            baseUrl,
+          ),
           spawnExecutionSession: this.spawnSubExecution.bind(this) as SpawnExecutionSessionFn,
         }),
       )
