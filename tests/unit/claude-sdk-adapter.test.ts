@@ -11,7 +11,14 @@ function makeAdapter() {
   const eventBus = new BrainEventBus()
   const amygdala = new Amygdala({}, workspace, eventBus)
   return new ClaudeAgentSDKAdapter({
-    model: 'claude-haiku-4-5-20251001',
+    providers: {
+      default: {
+        primary: {
+          model: 'claude-haiku-4-5-20251001',
+          provider: { baseUrl: 'https://api.anthropic.com', apiKey: 'sk-test-unit' },
+        },
+      },
+    },
     workspace,
     eventBus,
     amygdala,
@@ -39,7 +46,14 @@ describe('ClaudeAgentSDKAdapter', () => {
     const eventBus = new BrainEventBus()
     const amygdala = new Amygdala({}, workspace, eventBus)
     const adapter = new ClaudeAgentSDKAdapter({
-      model: 'claude-haiku-4-5-20251001',
+      providers: {
+        default: {
+          primary: {
+            model: 'claude-haiku-4-5-20251001',
+            provider: { baseUrl: 'https://api.anthropic.com', apiKey: 'sk-test-unit' },
+          },
+        },
+      },
       workspace,
       eventBus,
       amygdala,

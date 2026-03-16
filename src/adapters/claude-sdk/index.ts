@@ -3,19 +3,15 @@ import type { Amygdala } from '../../amygdala/index'
 import type { BrainEventBus } from '../../eventbus/index'
 import { createAimaMcpServer } from '../../mcp/index'
 import type { SpawnExecutionSessionFn } from '../../mcp/index'
-import type {
-  BrainTokenUsage,
-  CognitiveBrainType,
-  MultiProviderConfig,
-} from '../../types/index'
+import type { BrainTokenUsage, CognitiveBrainType, MultiProviderConfig } from '../../types/index'
 import type { CognitiveWorkspace } from '../../workspace/index'
+import type { BrainAdapter, BrainRunParams, BrainRunResult, BrainSignal } from '../index'
 import {
   buildAttemptList,
   classifyProviderError,
   resolveBrainConfig,
   validateMultiProviderConfig,
 } from '../provider-utils'
-import type { BrainAdapter, BrainRunParams, BrainRunResult, BrainSignal } from '../index'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -82,6 +78,7 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
 
     for (let i = 0; i < attempts.length; i++) {
       const spec = attempts[i]
+      if (spec === undefined) break
       // Create a fresh AbortController for each attempt (aborted controllers cannot be re-armed)
       const abortController = new AbortController()
       this.abortControllers.set(key, abortController)
@@ -146,6 +143,7 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
 
         // Retryable and more providers available — emit fallback event and retry
         const nextSpec = attempts[i + 1]
+        if (nextSpec === undefined) break
         this.config.eventBus.emit({
           event_type: 'provider.fallback',
           level: 'INFO',
