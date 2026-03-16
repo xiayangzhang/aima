@@ -75,9 +75,15 @@ export function createAimaMcpServer(
             status?: SlotStatus
             output?: Record<string, unknown>
           }
+          // Normalize handoff to string — brains may produce a JSON object; the
+          // BrainOutput contract requires handoff: string.
+          const normalizedOutput =
+            output !== undefined && output.handoff !== undefined && typeof output.handoff !== 'string'
+              ? { ...output, handoff: JSON.stringify(output.handoff) }
+              : output
           await workspace.writeSlot(threadId, brain as CognitiveBrainType, {
             ...(status !== undefined ? { status } : {}),
-            ...(output !== undefined ? { output } : {}),
+            ...(normalizedOutput !== undefined ? { output: normalizedOutput } : {}),
           })
           return {
             content: [{ type: 'text' as const, text: JSON.stringify({ ok: true }) }],
