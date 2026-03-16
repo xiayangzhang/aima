@@ -66,13 +66,6 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
     const brainConfig = resolveBrainConfig(this.config.providers, brain)
     const attempts = buildAttemptList(brainConfig)
 
-    const mcpServer = createAimaMcpServer(
-      this.config.workspace,
-      this.config.spawnExecutionSession
-        ? { spawnExecutionSession: this.config.spawnExecutionSession }
-        : undefined,
-    )
-
     let sessionId = this.sessionIds.get(key) ?? ''
     let tokenUsage: BrainTokenUsage | null = null
 
@@ -81,6 +74,14 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
       if (spec === undefined) break
       // Create a fresh AbortController for each attempt (aborted controllers cannot be re-armed)
       const abortController = new AbortController()
+      // Create a fresh MCP server for each attempt: McpServer instances are stateful and
+      // cannot be reused after the previous subprocess has connected and exited.
+      const mcpServer = createAimaMcpServer(
+        this.config.workspace,
+        this.config.spawnExecutionSession
+          ? { spawnExecutionSession: this.config.spawnExecutionSession }
+          : undefined,
+      )
       this.abortControllers.set(key, abortController)
 
       const existingSessionId = this.sessionIds.get(key)
@@ -92,11 +93,19 @@ export class ClaudeAgentSDKAdapter implements BrainAdapter {
           systemPrompt,
           abortController,
           ...(existingSessionId !== undefined ? { resume: existingSessionId } : {}),
+          ...(process.env.CLAUDE_CODE_EXECUTABLE !== undefined
+            ? { pathToClaudeCodeExecutable: process.env.CLAUDE_CODE_EXECUTABLE }
+            : {}),
           persistSession: false,
           mcpServers: {
             'aima-workspace': mcpServer,
           },
           env: {
+            ...process.env,
+            // Ensure the claude subprocess runs in SDK subprocess mode,
+            // not CLI mode — overrides any parent Claude Code env vars.
+            CLAUDE_CODE_ENTRYPOINT: 'sdk-ts',
+            CLAUDECODE: undefined,
             ANTHROPIC_API_KEY: spec.provider.apiKey,
             ANTHROPIC_BASE_URL: spec.provider.baseUrl,
           },

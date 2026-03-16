@@ -30,7 +30,14 @@ function makeAdapter() {
   eventBus.subscribe((e) => events.push(e))
 
   const adapter = new PiCodingAgentAdapter({
-    modelId: 'claude-haiku-4-5-20251001',
+    providers: {
+      default: {
+        primary: {
+          model: 'claude-haiku-4-5-20251001',
+          provider: { baseUrl: 'https://api.anthropic.com', apiKey: process.env.ANTHROPIC_API_KEY ?? '' },
+        },
+      },
+    },
     workspace,
     eventBus,
     amygdala,
@@ -94,7 +101,14 @@ describe('PiCodingAgentAdapter E2E (requires ANTHROPIC_API_KEY)', () => {
 
       // Use a counting wrapper around the real session creation
       const adapter = new PiCodingAgentAdapter({
-        modelId: 'claude-haiku-4-5-20251001',
+        providers: {
+          default: {
+            primary: {
+              model: 'claude-haiku-4-5-20251001',
+              provider: { baseUrl: 'https://api.anthropic.com', apiKey: process.env.ANTHROPIC_API_KEY ?? '' },
+            },
+          },
+        },
         workspace,
         eventBus,
         amygdala,
