@@ -594,11 +594,18 @@ export class AIMAInstance {
     }
 
     if (config.adapter === 'pi-coding-agent') {
+      const apiKey = config.apiKey ?? process.env.ANTHROPIC_API_KEY ?? ''
+      const baseUrl = process.env.ANTHROPIC_BASE_URL ?? 'https://api.anthropic.com'
+
       adapters.set(
         'limbic',
         new PiCodingAgentAdapter({
           ...shared,
-          modelId: config.brainModels?.limbic ?? 'claude-haiku-4-5-20251001',
+          providers: providerFromEnv(
+            config.brainModels?.limbic ?? 'claude-haiku-4-5-20251001',
+            apiKey,
+            baseUrl,
+          ),
           getApiKey: apiKeyFn,
           getAllowedTools: (brain) => this.identityCache?.roles[brain]?.allowedTools ?? [],
         }),
@@ -607,7 +614,11 @@ export class AIMAInstance {
         'cortex',
         new PiCodingAgentAdapter({
           ...shared,
-          modelId: config.brainModels?.cortex ?? 'claude-sonnet-4-6',
+          providers: providerFromEnv(
+            config.brainModels?.cortex ?? 'claude-sonnet-4-6',
+            apiKey,
+            baseUrl,
+          ),
           getApiKey: apiKeyFn,
           getAllowedTools: (brain) => this.identityCache?.roles[brain]?.allowedTools ?? [],
         }),
@@ -616,7 +627,11 @@ export class AIMAInstance {
         'brainstem',
         new PiCodingAgentAdapter({
           ...shared,
-          modelId: config.brainModels?.brainstem ?? 'claude-sonnet-4-6',
+          providers: providerFromEnv(
+            config.brainModels?.brainstem ?? 'claude-sonnet-4-6',
+            apiKey,
+            baseUrl,
+          ),
           getApiKey: apiKeyFn,
           getAllowedTools: (brain) => this.identityCache?.roles[brain]?.allowedTools ?? [],
         }),

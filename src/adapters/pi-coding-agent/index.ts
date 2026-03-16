@@ -9,17 +9,24 @@ import {
 } from '@mariozechner/pi-coding-agent'
 import type { Amygdala } from '../../amygdala/index'
 import type { BrainEventBus } from '../../eventbus/index'
-import type { BrainTokenUsage, CognitiveBrainType } from '../../types/index'
+import type { BrainTokenUsage, CognitiveBrainType, MultiProviderConfig } from '../../types/index'
 import type { CognitiveWorkspace } from '../../workspace/index'
 import type { BrainAdapter, BrainRunParams, BrainRunResult, BrainSignal } from '../index'
+import { resolveBrainConfig, validateMultiProviderConfig } from '../provider-utils'
 import { createAimaExtension } from './extension'
 import { buildMcpTools } from './mcp-tools'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 export interface PiCodingAgentAdapterConfig {
-  /** Anthropic model ID, e.g. 'claude-sonnet-4-6' */
-  modelId: string
+  /**
+   * Multi-provider config for per-brain model selection.
+   *
+   * Note: pi-coding-agent does NOT support custom base URLs — only the primary
+   * model name is used. Fallback chains and provider.baseUrl are ignored.
+   * Auth is handled separately via getApiKey() + AuthStorage.
+   */
+  providers: MultiProviderConfig
   workspace: CognitiveWorkspace
   eventBus: BrainEventBus
   amygdala: Amygdala
@@ -63,6 +70,7 @@ export class PiCodingAgentAdapter implements BrainAdapter {
   private readonly sessions: Map<string, SessionState> = new Map()
 
   constructor(config: PiCodingAgentAdapterConfig) {
+    validateMultiProviderConfig(config.providers)
     this.config = config
   }
 
@@ -87,9 +95,12 @@ export class PiCodingAgentAdapter implements BrainAdapter {
         authStorage.setRuntimeApiKey('anthropic', apiKey)
       }
 
-      // Model: resolve from registry using getModel
+      // Model: resolve per-brain primary model from MultiProviderConfig
+      // (pi-coding-agent does not support base URL overrides — only model name applies)
+      const brainConfig = resolveBrainConfig(this.config.providers, brain)
+      const resolvedModel = brainConfig.primary.model
       const modelRegistry = new ModelRegistry(authStorage)
-      const model = getModel('anthropic', this.config.modelId as Parameters<typeof getModel>[1])
+      const model = getModel('anthropic', resolvedModel as Parameters<typeof getModel>[1])
 
       // Extension: Amygdala interception + EventBus bridge
       const extensionFactory = createAimaExtension(
